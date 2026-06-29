@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Portable outbound lead control dashboard for AImetos.">
+  <title>AImetos Outbound Control</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">AImetos · Internal tool</p>
+      <h1>Outbound control</h1>
+    </div>
+    <div class="actions">
+      <label class="button button-primary" for="csv-file">Import CSV</label>
+      <input id="csv-file" type="file" accept=".csv,text/csv" hidden>
+      <button id="export-button" class="button" type="button">Export CSV</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="summary" aria-label="Dataset summary">
+      <div><span id="lead-count">0</span><small>Total leads</small></div>
+      <div><span id="visible-count">0</span><small>Visible</small></div>
+      <div class="data-state"><span id="save-state">Ready</span><small>Browser state</small></div>
+    </section>
+
+    <section class="controls" aria-label="Search and filters">
+      <label class="search-field">
+        <span class="sr-only">Search</span>
+        <input id="search" type="search" placeholder="Search company, email or city">
+      </label>
+      <select id="filter-outreach" aria-label="Filter by outreach status"><option value="">All outreach</option></select>
+      <select id="filter-lead" aria-label="Filter by lead status"><option value="">All lead statuses</option></select>
+      <select id="filter-reply" aria-label="Filter by reply status"><option value="">All replies</option></select>
+      <select id="filter-sector" aria-label="Filter by sector"><option value="">All sectors</option></select>
+      <button id="clear-filters" class="text-button" type="button">Clear</button>
+    </section>
+
+    <p id="notice" class="notice" role="status" aria-live="polite"></p>
+
+    <section class="workspace">
+      <div class="table-card">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th><th>Contact</th><th>City</th><th>Sector</th>
+                <th>Outreach</th><th>Lead</th><th>Reply</th>
+              </tr>
+            </thead>
+            <tbody id="lead-rows"></tbody>
+          </table>
+        </div>
+        <div id="empty-state" class="empty-state">
+          <strong>No leads loaded</strong>
+          <span>Import a Google Sheets CSV to begin. Your edits will stay in this browser.</span>
+        </div>
+      </div>
+
+      <aside id="detail-panel" class="detail-panel" aria-label="Lead details">
+        <div class="panel-empty">Select a lead to inspect and edit it.</div>
+      </aside>
+    </section>
+  </main>
+
+  <template id="detail-template">
+    <div class="panel-heading">
+      <div><p class="eyebrow">Lead detail</p><h2 data-display="company_name"></h2></div>
+      <span class="record-id" data-display="id"></span>
+    </div>
+    <form id="lead-form">
+      <fieldset>
+        <legend>Workflow</legend>
+        <div class="form-grid">
+          <label>Outreach status<input name="outreach_status" list="outreach-options"></label>
+          <label>Lead status<input name="lead_status" list="lead-options"></label>
+          <label>Reply status<input name="reply_status" list="reply-options"></label>
+          <label>Follow-up step<input name="metadata.followup_step"></label>
+          <label>Last contact<input name="metadata.last_contact_date" placeholder="YYYY-MM-DD"></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Lead</legend>
+        <div class="form-grid">
+          <label>Lead ID<input name="id"></label>
+          <label>Company<input name="company_name"></label>
+          <label>Email<input name="email" type="email"></label>
+          <label>Phone<input name="telefono"></label>
+          <label>City<input name="city"></label>
+          <label>Sector<input name="sector"></label>
+          <label>Target type<input name="target_type"></label>
+          <label>Offer type<input name="offer_type"></label>
+          <label>Language<input name="metadata.language"></label>
+          <label>GHL contact ID<input name="metadata.ghl_contact_id"></label>
+          <label class="wide">Website<input name="website" type="url"></label>
+          <label class="wide">Landing URL<input name="landing_url" type="url"></label>
+          <label class="wide">Source URL<input name="source_url" type="url"></label>
+          <label class="wide">Pain hypothesis<textarea name="pain_hypothesis" rows="3"></textarea></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Messages</legend>
+        <details open><summary>First email</summary>
+          <label>Subject<input name="messages.first.subject"></label>
+          <label>Body<textarea name="messages.first.body" rows="7"></textarea></label>
+        </details>
+        <details><summary>Follow-up 1</summary>
+          <label>Subject<input name="messages.followup1.subject"></label>
+          <label>Body<textarea name="messages.followup1.body" rows="7"></textarea></label>
+        </details>
+        <details><summary>Follow-up 2</summary>
+          <label>Subject<input name="messages.followup2.subject"></label>
+          <label>Body<textarea name="messages.followup2.body" rows="7"></textarea></label>
+        </details>
+      </fieldset>
+    </form>
+  </template>
+
+  <datalist id="outreach-options"></datalist>
+  <datalist id="lead-options"></datalist>
+  <datalist id="reply-options"></datalist>
+  <script src="parser.js"></script>
+  <script src="storage.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
