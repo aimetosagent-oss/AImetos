@@ -1,0 +1,44 @@
+[
+  {
+    "title": "Grasshopper slow facade workflow",
+    "url": "https://example.com/facade-slow",
+    "description": "Large parametric model with Grasshopper optimization taking hours.",
+    "companyName": "Parametric Facades SL",
+    "country": "Spain"
+  },
+  {
+    "jobTitle": "Computational Designer",
+    "link": "https://jobs.example.com/123",
+    "company": "Digital Design Studio",
+    "description": "Rhino Grasshopper vacancy for facade computational design.",
+    "location": "London, United Kingdom"
+  },
+  {
+    "position": "Design Automation Engineer",
+    "website": "https://fabrication.example",
+    "organization": "Fabrication Lab",
+    "text": "Automate Grasshopper definitions for digital fabrication deliverables.",
+    "url": "https://fabrication.example/careers/design-automation"
+  },
+  {
+    "title": "Architecture portfolio",
+    "url": "https://example.com/portfolio",
+    "snippet": "Residential architecture projects and press.",
+    "company_name": "General Architecture Office"
+  },
+  {
+    "unexpected": true,
+    "body": "<p>No usable fields</p>"
+  },
+  {
+    "title": "No URL result",
+    "description": "Grasshopper automation but no public URL",
+    "companyName": "Missing URL Ltd"
+  },
+  {
+    "title": "Duplicate URL with query",
+    "url": "https://example.com/facade-slow?utm_source=x",
+    "description": "Duplicate source should normalize to same URL.",
+    "companyName": "Parametric Facades SL"
+  }
+]

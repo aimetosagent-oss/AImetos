@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "is_relevant",
+    "pain_category",
+    "pain_summary",
+    "pain_hypothesis",
+    "pain_signal",
+    "evidence_quote",
+    "evidence_strength",
+    "buyer_role",
+    "recommended_service",
+    "outreach_angle",
+    "reason",
+    "excluded_reason"
+  ],
+  "properties": {
+    "is_relevant": { "type": "boolean" },
+    "pain_category": {
+      "type": "string",
+      "enum": ["performance", "iterations", "automation", "hiring_signal", "no_clear_pain"]
+    },
+    "pain_summary": { "type": "string" },
+    "pain_hypothesis": { "type": "string" },
+    "pain_signal": { "type": "string" },
+    "evidence_quote": { "type": "string", "maxLength": 280 },
+    "evidence_strength": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "buyer_role": { "type": "string" },
+    "recommended_service": {
+      "type": "string",
+      "enum": [
+        "Ejecución externalizada de definiciones pesadas",
+        "Automatización de variantes y entregables",
+        "Diagnóstico de cuello de botella técnico",
+        "No recomendado"
+      ]
+    },
+    "outreach_angle": { "type": "string" },
+    "reason": { "type": "string" },
+    "excluded_reason": { "type": "string" }
+  }
+}

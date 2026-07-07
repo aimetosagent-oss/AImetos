@@ -1,0 +1,283 @@
+{
+  "name": "GH Compute — Apollo Optional Enrichment",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [2, 4],
+              "triggerAtHour": 9,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "02-schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-980, -80]
+    },
+    {
+      "parameters": {},
+      "id": "02-manual",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-980, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date().toISOString();\nreturn [{ json: { run_id: `apollo-${now.replace(/[^0-9]/g, '').slice(0, 14)}-${Math.random().toString(36).slice(2, 8)}`, workflow_name: 'GH Compute — Apollo Optional Enrichment', started_at: now } }];"
+      },
+      "id": "02-init",
+      "name": "Initialize Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-760, 0]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "00_CONFIG",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "02-read-config",
+      "name": "Read Config",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [-540, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const init = $('Initialize Run').first().json;\nconst cfg = {};\nfor (const item of $input.all()) {\n  const key = String(item.json.key || '').trim();\n  if (key) cfg[key] = item.json.value || '';\n}\nconst skipped = [];\nif (String(cfg.APOLLO_ENABLED || '').trim() !== 'TRUE') skipped.push('APOLLO_ENABLED is not TRUE');\nif (!$env.APOLLO_API_KEY) skipped.push('APOLLO_API_KEY is empty');\nif (!$env.APOLLO_ENRICH_ENDPOINT) skipped.push('APOLLO_ENRICH_ENDPOINT is empty');\nif (skipped.length) {\n  return [{ json: { ...init, proceed: false, run_id: init.run_id, workflow_name: init.workflow_name, started_at: init.started_at, finished_at: new Date().toISOString(), status: 'Skipped', sources_requested: 0, raw_items: 0, new_signals: 0, qualified_leads: 0, errors: '', details: skipped.join('; ') } }];\n}\nreturn [{ json: { ...init, proceed: true } }];"
+      },
+      "id": "02-check",
+      "name": "Check Apollo Conditions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-320, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "proceed",
+              "leftValue": "={{ $json.proceed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "02-if-proceed",
+      "name": "Proceed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-100, 0]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "04_RUN_LOG",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "02-log-skipped",
+      "name": "Write Skipped Run Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [120, 160]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "03_LEADS_CUALIFICADOS",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "02-read-leads",
+      "name": "Read Qualified Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [120, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const init = $('Initialize Run').first().json;\nconst out = [];\nfor (const item of $input.all()) {\n  const lead = item.json;\n  const score = Number(lead.score || 0);\n  if (score < 65) continue;\n  if (!String(lead.decision_maker_name || '').trim()) continue;\n  if (!String(lead.decision_maker_role || '').trim()) continue;\n  if (String(lead.email || '').trim()) continue;\n  if (String(lead.enrichment_status || '').trim() !== 'Pending') continue;\n  out.push({ json: { ...lead, run_id: init.run_id, workflow_name: init.workflow_name, started_at: init.started_at } });\n}\nreturn out;"
+      },
+      "id": "02-filter",
+      "name": "Filter Apollo Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [340, -100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APOLLO_ENRICH_ENDPOINT }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.APOLLO_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ name: $json.decision_maker_name, role: $json.decision_maker_role, company: $json.company_name, domain: $json.domain, website: $json.website }) }}",
+        "options": {
+          "timeout": 70000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "02-call-apollo",
+      "name": "Call Apollo Enrichment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, -100],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $('Filter Apollo Candidates').item.json;\nconst response = $input.first().json;\nconst body = response.body || response;\nconst findEmail = (value) => {\n  if (!value) return '';\n  if (typeof value === 'string') return (/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(value.trim()) ? value.trim() : '');\n  if (Array.isArray(value)) return value.map(findEmail).find(Boolean) || '';\n  if (typeof value === 'object') return findEmail(value.email || value.work_email || value.email_address || value.person?.email || value.contact?.email || Object.values(value));\n  return '';\n};\nconst email = findEmail(body);\nreturn [{ json: { lead_id: lead.lead_id, email, email_source: email ? 'Apollo' : lead.email_source || '', enrichment_status: email ? 'Enriched' : 'No email found', updated_at: new Date().toISOString() } }];"
+      },
+      "id": "02-parse",
+      "name": "Parse Apollo Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, -100]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "03_LEADS_CUALIFICADOS",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": ["lead_id"],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "02-update",
+      "name": "Update Enrichment Fields Only",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1000, -100]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Initialize Run", "type": "main", "index": 0 }]]
+    },
+    "Manual Trigger": {
+      "main": [[{ "node": "Initialize Run", "type": "main", "index": 0 }]]
+    },
+    "Initialize Run": {
+      "main": [[{ "node": "Read Config", "type": "main", "index": 0 }]]
+    },
+    "Read Config": {
+      "main": [[{ "node": "Check Apollo Conditions", "type": "main", "index": 0 }]]
+    },
+    "Check Apollo Conditions": {
+      "main": [[{ "node": "Proceed?", "type": "main", "index": 0 }]]
+    },
+    "Proceed?": {
+      "main": [
+        [{ "node": "Read Qualified Leads", "type": "main", "index": 0 }],
+        [{ "node": "Write Skipped Run Log", "type": "main", "index": 0 }]
+      ]
+    },
+    "Read Qualified Leads": {
+      "main": [[{ "node": "Filter Apollo Candidates", "type": "main", "index": 0 }]]
+    },
+    "Filter Apollo Candidates": {
+      "main": [[{ "node": "Call Apollo Enrichment", "type": "main", "index": 0 }]]
+    },
+    "Call Apollo Enrichment": {
+      "main": [[{ "node": "Parse Apollo Result", "type": "main", "index": 0 }]]
+    },
+    "Parse Apollo Result": {
+      "main": [[{ "node": "Update Enrichment Fields Only", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid",
+    "saveManualExecutions": true
+  },
+  "versionId": "gh-compute-apollo-enrichment-1",
+  "id": "GH_COMPUTE_APOLLO_ENRICHMENT",
+  "tags": []
+}

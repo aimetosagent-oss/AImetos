@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["channel", "language", "subject", "message", "evidence_used"],
+  "properties": {
+    "channel": {
+      "type": "string",
+      "enum": ["LinkedIn", "Email"]
+    },
+    "language": {
+      "type": "string",
+      "enum": ["es"]
+    },
+    "subject": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "evidence_used": {
+      "type": "string",
+      "maxLength": 500
+    }
+  }
+}

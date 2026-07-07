@@ -1,0 +1,68 @@
+{
+  "name": "GH Compute — Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "04-error",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [-420, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst now = new Date().toISOString();\nconst workflow = payload.workflow || {};\nconst execution = payload.execution || {};\nconst error = payload.error || {};\nconst baseUrl = $env.N8N_EDITOR_BASE_URL || '';\nconst executionId = execution.id || payload.executionId || '';\nconst executionUrl = baseUrl && executionId ? `${baseUrl.replace(/\\/$/, '')}/workflow/${workflow.id || ''}/executions/${executionId}` : '';\nreturn [{ json: { run_id: `error-${now.replace(/[^0-9]/g, '').slice(0, 14)}-${Math.random().toString(36).slice(2, 8)}`, workflow_name: workflow.name || payload.workflowName || 'Unknown workflow', started_at: now, finished_at: now, status: 'Failed', sources_requested: 0, raw_items: 0, new_signals: 0, qualified_leads: 0, errors: error.message || payload.message || 'Unknown n8n execution error', details: JSON.stringify({ execution_id: executionId, execution_url: executionUrl, timestamp: now }) } }];"
+      },
+      "id": "04-extract",
+      "name": "Extract Error Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "04_RUN_LOG",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "04-log",
+      "name": "Write Failed Run Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [20, 0]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [[{ "node": "Extract Error Details", "type": "main", "index": 0 }]]
+    },
+    "Extract Error Details": {
+      "main": [[{ "node": "Write Failed Run Log", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid",
+    "saveManualExecutions": true
+  },
+  "versionId": "gh-compute-error-handler-1",
+  "id": "GH_COMPUTE_ERROR_HANDLER",
+  "tags": []
+}

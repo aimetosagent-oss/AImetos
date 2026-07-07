@@ -1,0 +1,192 @@
+{
+  "name": "GH Compute — Outreach Drafts",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "03-manual",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-760, 0]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "03_LEADS_CUALIFICADOS",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "03-read-leads",
+      "name": "Read Qualified Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [-540, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const lead = item.json;\n  if (!['A', 'B'].includes(String(lead.priority || '').trim())) continue;\n  if (String(lead.lead_status || '').trim() !== 'Validated') continue;\n  if (!String(lead.decision_maker_name || '').trim()) continue;\n  if (!String(lead.decision_maker_role || '').trim()) continue;\n  if (String(lead.outreach_status || '').trim() !== 'Pending') continue;\n  const channel = String(lead.email || '').trim() ? 'Email' : 'LinkedIn';\n  out.push({ json: { ...lead, channel, language: 'es' } });\n}\nreturn out;"
+      },
+      "id": "03-filter",
+      "name": "Filter Draft Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-320, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/responses",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: $env.OPENAI_MODEL, input: [{ role: 'system', content: 'Eres un redactor B2B en español para mensajes humanos revisados antes de enviarse. Crea un único borrador breve basado solo en la evidencia recibida. No afirmes que la empresa tiene un problema como hecho. Usa lenguaje condicional como Es posible que o En equipos con este tipo de flujo. Menciona una señal pública concreta y pide permiso con una pregunta simple. Prohibido: lenguaje de envío automático, claims no soportados, HPC, cloud computing, AI transformation, somos los mejores. LinkedIn máximo 110 palabras. Email máximo 140 palabras. Devuelve solo JSON válido.' }, { role: 'user', content: 'company_name: ' + $json.company_name + '\\ndecision_maker_name: ' + $json.decision_maker_name + '\\ndecision_maker_role: ' + $json.decision_maker_role + '\\nsource_title: ' + ($json.source_title || '') + '\\nsource_url: ' + $json.source_url + '\\npain_summary: ' + $json.pain_summary + '\\npain_hypothesis: ' + $json.pain_hypothesis + '\\nevidence_quote: ' + ($json.evidence_quote || '') + '\\nrecommended_service: ' + $json.recommended_service + '\\noutreach_angle: ' + $json.outreach_angle + '\\nchannel: ' + $json.channel + '\\nlanguage: es' }], text: { format: { type: 'json_schema', name: 'outreach_draft', strict: true, schema: { type: 'object', additionalProperties: false, required: ['channel','language','subject','message','evidence_used'], properties: { channel: { type: 'string', enum: ['LinkedIn','Email'] }, language: { type: 'string', enum: ['es'] }, subject: { type: 'string', maxLength: 120 }, message: { type: 'string', maxLength: 1000 }, evidence_used: { type: 'string', maxLength: 500 } } } } } }) }}",
+        "options": {
+          "timeout": 70000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "03-openai",
+      "name": "Generate Draft With OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-100, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst lead = $('Filter Draft Candidates').item.json;\nconst response = $input.first().json;\nconst body = response.body || response;\nlet text = '';\nif (Array.isArray(body.output)) for (const block of body.output) for (const content of (block.content || [])) if (content.type === 'output_text') text += content.text || '';\ntext = text || body.output_text || body.text || '';\nlet draft;\ntry { draft = JSON.parse(String(text)); } catch (error) { draft = null; }\nif (!draft || !['LinkedIn', 'Email'].includes(draft.channel) || draft.language !== 'es') {\n  const quote = String(lead.evidence_quote || lead.pain_summary || '').slice(0, 180);\n  draft = { channel: lead.channel, language: 'es', subject: lead.channel === 'Email' ? `Consulta sobre flujos Grasshopper en ${lead.company_name}` : '', message: `Hola ${lead.decision_maker_name}, he visto la señal pública \"${quote}\". Es posible que en equipos con este tipo de flujo aparezcan picos de ejecución o preparación repetitiva de variantes. En AImetos ayudamos con ${lead.recommended_service}. ¿Tiene sentido que te envíe una idea concreta para revisarla?`, evidence_used: quote };\n}\nconst words = String(draft.message || '').trim().split(/\\s+/);\nconst limit = draft.channel === 'LinkedIn' ? 110 : 140;\nif (words.length > limit) draft.message = words.slice(0, limit).join(' ');\nreturn [{ json: { draft_id: 'draft_' + crypto.createHash('sha256').update(`${lead.lead_id}|${Date.now()}`).digest('hex').slice(0, 16), lead_id: lead.lead_id, company_name: lead.company_name, contact_name: lead.decision_maker_name, contact_role: lead.decision_maker_role, channel: draft.channel, language: 'es', subject: draft.subject || '', message: draft.message || '', evidence_used: draft.evidence_used || lead.evidence_quote || lead.source_url, status: 'Draft', generated_at: new Date().toISOString(), reviewed_at: '', sent_at: '', notes: 'Revisar manualmente antes de enviar.', outreach_status: 'Draft generated', updated_at: new Date().toISOString() } }];"
+      },
+      "id": "03-parse",
+      "name": "Prepare Draft Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "05_OUTREACH_DRAFTS",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "03-append-draft",
+      "name": "Append Outreach Draft",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [340, -80]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => ({ json: { lead_id: item.json.lead_id, outreach_status: 'Draft generated', updated_at: item.json.updated_at } }));"
+      },
+      "id": "03-lead-update-row",
+      "name": "Prepare Lead Draft Status Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [340, 100]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "03_LEADS_CUALIFICADOS",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": ["lead_id"],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "03-update-lead",
+      "name": "Update Lead Draft Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [560, 100]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Read Qualified Leads", "type": "main", "index": 0 }]]
+    },
+    "Read Qualified Leads": {
+      "main": [[{ "node": "Filter Draft Candidates", "type": "main", "index": 0 }]]
+    },
+    "Filter Draft Candidates": {
+      "main": [[{ "node": "Generate Draft With OpenAI", "type": "main", "index": 0 }]]
+    },
+    "Generate Draft With OpenAI": {
+      "main": [[{ "node": "Prepare Draft Row", "type": "main", "index": 0 }]]
+    },
+    "Prepare Draft Row": {
+      "main": [
+        [
+          { "node": "Append Outreach Draft", "type": "main", "index": 0 },
+          { "node": "Prepare Lead Draft Status Update", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Prepare Lead Draft Status Update": {
+      "main": [[{ "node": "Update Lead Draft Status", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid",
+    "saveManualExecutions": true
+  },
+  "versionId": "gh-compute-outreach-drafts-1",
+  "id": "GH_COMPUTE_OUTREACH_DRAFTS",
+  "tags": []
+}

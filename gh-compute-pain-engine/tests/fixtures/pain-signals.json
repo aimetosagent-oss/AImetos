@@ -1,0 +1,62 @@
+[
+  {
+    "name": "high_confidence_performance",
+    "normalized": {
+      "company_name": "Parametric Facades SL",
+      "source_title": "Grasshopper performance bottlenecks in facade optimization",
+      "raw_text": "Our facade team runs large Grasshopper definitions with multiple variants. Some definitions are slow, freeze Rhino, and take hours during optimization.",
+      "source_url": "https://example.com/facade-optimization"
+    },
+    "classification": {
+      "is_relevant": true,
+      "pain_category": "performance",
+      "evidence_strength": "high"
+    },
+    "expectedPriority": "A"
+  },
+  {
+    "name": "medium_hiring_signal",
+    "normalized": {
+      "company_name": "Digital Design Studio",
+      "source_title": "Computational Designer vacancy",
+      "raw_text": "We are hiring a Computational Designer with Rhino and Grasshopper experience for parametric design workflows.",
+      "source_url": "https://example.com/jobs/computational-designer"
+    },
+    "classification": {
+      "is_relevant": true,
+      "pain_category": "hiring_signal",
+      "evidence_strength": "medium"
+    },
+    "expectedNotPriority": "A"
+  },
+  {
+    "name": "automation_signal",
+    "normalized": {
+      "company_name": "Fabrication Lab",
+      "source_title": "Automated model export workflow",
+      "raw_text": "The team uses Grasshopper automation for repetitive geometry generation and automated model export across many variants.",
+      "source_url": "https://example.com/automation"
+    },
+    "classification": {
+      "is_relevant": true,
+      "pain_category": "automation",
+      "evidence_strength": "medium"
+    },
+    "expectedMinimumScore": 65
+  },
+  {
+    "name": "irrelevant_architecture",
+    "normalized": {
+      "company_name": "General Architecture Office",
+      "source_title": "Architecture portfolio",
+      "raw_text": "A residential architecture portfolio with no computational design, automation, Rhino, or Grasshopper operational evidence.",
+      "source_url": "https://example.com/portfolio"
+    },
+    "classification": {
+      "is_relevant": false,
+      "pain_category": "no_clear_pain",
+      "evidence_strength": "low"
+    },
+    "expectedPriority": "C"
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "name": "gh-compute-pain-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate-project.mjs",
+    "test": "node tests/validate-workflows.mjs && node tests/test-scoring.mjs && node tests/test-normalization.mjs"
+  }
+}

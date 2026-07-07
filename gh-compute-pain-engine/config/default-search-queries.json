@@ -1,0 +1,52 @@
+[
+  {
+    "query": "\"Grasshopper\" \"computational designer\"",
+    "country": "Spain",
+    "countryCode": "ES"
+  },
+  {
+    "query": "\"Rhino Grasshopper\" \"job\"",
+    "country": "Spain",
+    "countryCode": "ES"
+  },
+  {
+    "query": "\"parametric design\" \"Grasshopper\"",
+    "country": "Spain",
+    "countryCode": "ES"
+  },
+  {
+    "query": "\"computational design\" \"Rhino\"",
+    "country": "Spain",
+    "countryCode": "ES"
+  },
+  {
+    "query": "\"facade\" \"Grasshopper\"",
+    "country": "Spain",
+    "countryCode": "ES"
+  },
+  {
+    "query": "\"Grasshopper\" \"optimization\"",
+    "country": "Spain",
+    "countryCode": "ES"
+  },
+  {
+    "query": "\"Rhino.Compute\" OR \"Hops\"",
+    "country": "Spain",
+    "countryCode": "ES"
+  },
+  {
+    "query": "\"Grasshopper\" \"slow\"",
+    "country": "Spain",
+    "countryCode": "ES"
+  },
+  {
+    "query": "\"Grasshopper\" \"crash\"",
+    "country": "Spain",
+    "countryCode": "ES"
+  },
+  {
+    "query": "\"Grasshopper\" \"automation\"",
+    "country": "Spain",
+    "countryCode": "ES"
+  }
+]

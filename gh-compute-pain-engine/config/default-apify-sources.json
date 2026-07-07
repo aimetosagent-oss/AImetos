@@ -1,0 +1,28 @@
+[
+  {
+    "id": "google_search",
+    "enabled": true,
+    "task_id": "REPLACE_WITH_APIFY_TASK_ID",
+    "apify_token_env_var": "APIFY_TOKEN",
+    "result_type": "web_search",
+    "input_template": {
+      "queries": "{{query}}",
+      "resultsPerPage": 10,
+      "maxPagesPerQuery": 1,
+      "languageCode": "en",
+      "countryCode": "{{countryCode}}"
+    }
+  },
+  {
+    "id": "jobs",
+    "enabled": false,
+    "task_id": "REPLACE_WITH_APIFY_TASK_ID",
+    "apify_token_env_var": "APIFY_TOKEN",
+    "result_type": "jobs",
+    "input_template": {
+      "query": "{{query}}",
+      "location": "{{country}}",
+      "maxResults": 20
+    }
+  }
+]
