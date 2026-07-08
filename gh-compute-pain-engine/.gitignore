@@ -7,3 +7,5 @@ npm-debug.log*
 *.local
 coverage/
 tmp/
+.n8n-local.env
+*.local.env
