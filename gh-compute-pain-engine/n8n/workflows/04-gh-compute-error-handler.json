@@ -7,29 +7,257 @@
       "name": "Error Trigger",
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
-      "position": [-420, 0]
+      "position": [
+        -420,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const payload = $input.first().json;\nconst now = new Date().toISOString();\nconst workflow = payload.workflow || {};\nconst execution = payload.execution || {};\nconst error = payload.error || {};\nconst baseUrl = $env.N8N_EDITOR_BASE_URL || '';\nconst executionId = execution.id || payload.executionId || '';\nconst executionUrl = baseUrl && executionId ? `${baseUrl.replace(/\\/$/, '')}/workflow/${workflow.id || ''}/executions/${executionId}` : '';\nreturn [{ json: { run_id: `error-${now.replace(/[^0-9]/g, '').slice(0, 14)}-${Math.random().toString(36).slice(2, 8)}`, workflow_name: workflow.name || payload.workflowName || 'Unknown workflow', started_at: now, finished_at: now, status: 'Failed', sources_requested: 0, raw_items: 0, new_signals: 0, qualified_leads: 0, errors: error.message || payload.message || 'Unknown n8n execution error', details: JSON.stringify({ execution_id: executionId, execution_url: executionUrl, timestamp: now }) } }];"
+        "assignments": {
+          "assignments": [
+            {
+              "id": "04-cred-01",
+              "name": "client_name",
+              "value": "AImetos - Scrap Grasshopper",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-02",
+              "name": "page_name",
+              "value": "GH Compute Lead Engine",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-03",
+              "name": "google_sheet_id",
+              "value": "1Dd-BimZHX6n8sSTXpdDmVmf0qxNOwMB0cBML0DlbPDw",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-04",
+              "name": "config_sheet_name",
+              "value": "00_CONFIG",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-05",
+              "name": "companies_sheet_name",
+              "value": "01_EMPRESAS_OBJETIVO",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-06",
+              "name": "pain_signals_sheet_name",
+              "value": "02_PAIN_SIGNALS",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-07",
+              "name": "qualified_leads_sheet_name",
+              "value": "03_LEADS_CUALIFICADOS",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-08",
+              "name": "run_log_sheet_name",
+              "value": "04_RUN_LOG",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-09",
+              "name": "outreach_drafts_sheet_name",
+              "value": "05_OUTREACH_DRAFTS",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-10",
+              "name": "timezone",
+              "value": "Europe/Madrid",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-11",
+              "name": "openai_model",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-12",
+              "name": "default_outreach_language",
+              "value": "es",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-13",
+              "name": "min_qualified_score",
+              "value": "65",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-14",
+              "name": "priority_a_score",
+              "value": "80",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-15",
+              "name": "max_items_per_query",
+              "value": "20",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-16",
+              "name": "max_raw_text_characters",
+              "value": "6000",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-17",
+              "name": "apify_poll_interval_seconds",
+              "value": "20",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-18",
+              "name": "apify_max_polls",
+              "value": "12",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-19",
+              "name": "default_apify_token_env_var",
+              "value": "APIFY_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-20",
+              "name": "apify_token_client_01_env_var",
+              "value": "APIFY_TOKEN_CLIENT_01",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-21",
+              "name": "apify_token_client_02_env_var",
+              "value": "APIFY_TOKEN_CLIENT_02",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-22",
+              "name": "apify_token_client_03_env_var",
+              "value": "APIFY_TOKEN_CLIENT_03",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-23",
+              "name": "apify_token_client_04_env_var",
+              "value": "APIFY_TOKEN_CLIENT_04",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-24",
+              "name": "apify_token_client_05_env_var",
+              "value": "APIFY_TOKEN_CLIENT_05",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-25",
+              "name": "apify_token_client_06_env_var",
+              "value": "APIFY_TOKEN_CLIENT_06",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-26",
+              "name": "apify_token_client_07_env_var",
+              "value": "APIFY_TOKEN_CLIENT_07",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-27",
+              "name": "apify_token_client_08_env_var",
+              "value": "APIFY_TOKEN_CLIENT_08",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-28",
+              "name": "openai_api_key_env_var",
+              "value": "OPENAI_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-29",
+              "name": "apollo_enabled",
+              "value": "false",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-30",
+              "name": "apollo_api_key_env_var",
+              "value": "APOLLO_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-31",
+              "name": "apollo_enrich_endpoint_env_var",
+              "value": "APOLLO_ENRICH_ENDPOINT",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-32",
+              "name": "summary_email_enabled",
+              "value": "false",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-33",
+              "name": "summary_email_to",
+              "value": "roger@aimetos.com",
+              "type": "string"
+            },
+            {
+              "id": "04-cred-34",
+              "name": "n8n_editor_base_url_env_var",
+              "value": "N8N_EDITOR_BASE_URL",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "04-credentials",
+      "name": "CREDENCIALS",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst cred = $('CREDENCIALS').first().json;\nconst now = new Date().toISOString();\nconst workflow = payload.workflow || {};\nconst execution = payload.execution || {};\nconst error = payload.error || {};\nconst baseUrl = $env[cred.n8n_editor_base_url_env_var || 'N8N_EDITOR_BASE_URL'] || '';\nconst executionId = execution.id || payload.executionId || '';\nconst executionUrl = baseUrl && executionId ? baseUrl.replace(/\\/$/, '') + '/workflow/' + (workflow.id || '') + '/executions/' + executionId : '';\nreturn [{ json: { ...cred, run_id: 'error-' + now.replace(/[^0-9]/g, '').slice(0, 14) + '-' + Math.random().toString(36).slice(2, 8), workflow_name: workflow.name || payload.workflowName || 'Unknown workflow', started_at: now, finished_at: now, status: 'Failed', sources_requested: 0, raw_items: 0, new_signals: 0, qualified_leads: 0, errors: error.message || payload.message || 'Unknown n8n execution error', details: JSON.stringify({ execution_id: executionId, execution_url: executionUrl, timestamp: now }) } }];"
       },
       "id": "04-extract",
       "name": "Extract Error Details",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-200, 0]
+      "position": [
+        -200,
+        0
+      ]
     },
     {
       "parameters": {
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "value": "={{ $('CREDENCIALS').first().json.google_sheet_id }}",
           "mode": "id"
         },
         "sheetName": {
           "__rl": true,
-          "value": "04_RUN_LOG",
+          "value": "={{ $('CREDENCIALS').first().json.run_log_sheet_name }}",
           "mode": "name"
         },
         "columns": {
@@ -44,15 +272,45 @@
       "name": "Write Failed Run Log",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
-      "position": [20, 0]
+      "position": [
+        20,
+        0
+      ]
     }
   ],
   "connections": {
     "Error Trigger": {
-      "main": [[{ "node": "Extract Error Details", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "CREDENCIALS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Extract Error Details": {
-      "main": [[{ "node": "Write Failed Run Log", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Write Failed Run Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CREDENCIALS": {
+      "main": [
+        [
+          {
+            "node": "Extract Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "pinData": {},

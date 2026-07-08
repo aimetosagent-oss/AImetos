@@ -7,19 +7,244 @@
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [-760, 0]
+      "position": [
+        -760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "03-cred-01",
+              "name": "client_name",
+              "value": "AImetos - Scrap Grasshopper",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-02",
+              "name": "page_name",
+              "value": "GH Compute Lead Engine",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-03",
+              "name": "google_sheet_id",
+              "value": "1Dd-BimZHX6n8sSTXpdDmVmf0qxNOwMB0cBML0DlbPDw",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-04",
+              "name": "config_sheet_name",
+              "value": "00_CONFIG",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-05",
+              "name": "companies_sheet_name",
+              "value": "01_EMPRESAS_OBJETIVO",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-06",
+              "name": "pain_signals_sheet_name",
+              "value": "02_PAIN_SIGNALS",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-07",
+              "name": "qualified_leads_sheet_name",
+              "value": "03_LEADS_CUALIFICADOS",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-08",
+              "name": "run_log_sheet_name",
+              "value": "04_RUN_LOG",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-09",
+              "name": "outreach_drafts_sheet_name",
+              "value": "05_OUTREACH_DRAFTS",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-10",
+              "name": "timezone",
+              "value": "Europe/Madrid",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-11",
+              "name": "openai_model",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-12",
+              "name": "default_outreach_language",
+              "value": "es",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-13",
+              "name": "min_qualified_score",
+              "value": "65",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-14",
+              "name": "priority_a_score",
+              "value": "80",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-15",
+              "name": "max_items_per_query",
+              "value": "20",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-16",
+              "name": "max_raw_text_characters",
+              "value": "6000",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-17",
+              "name": "apify_poll_interval_seconds",
+              "value": "20",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-18",
+              "name": "apify_max_polls",
+              "value": "12",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-19",
+              "name": "default_apify_token_env_var",
+              "value": "APIFY_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-20",
+              "name": "apify_token_client_01_env_var",
+              "value": "APIFY_TOKEN_CLIENT_01",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-21",
+              "name": "apify_token_client_02_env_var",
+              "value": "APIFY_TOKEN_CLIENT_02",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-22",
+              "name": "apify_token_client_03_env_var",
+              "value": "APIFY_TOKEN_CLIENT_03",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-23",
+              "name": "apify_token_client_04_env_var",
+              "value": "APIFY_TOKEN_CLIENT_04",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-24",
+              "name": "apify_token_client_05_env_var",
+              "value": "APIFY_TOKEN_CLIENT_05",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-25",
+              "name": "apify_token_client_06_env_var",
+              "value": "APIFY_TOKEN_CLIENT_06",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-26",
+              "name": "apify_token_client_07_env_var",
+              "value": "APIFY_TOKEN_CLIENT_07",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-27",
+              "name": "apify_token_client_08_env_var",
+              "value": "APIFY_TOKEN_CLIENT_08",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-28",
+              "name": "openai_api_key_env_var",
+              "value": "OPENAI_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-29",
+              "name": "apollo_enabled",
+              "value": "false",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-30",
+              "name": "apollo_api_key_env_var",
+              "value": "APOLLO_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-31",
+              "name": "apollo_enrich_endpoint_env_var",
+              "value": "APOLLO_ENRICH_ENDPOINT",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-32",
+              "name": "summary_email_enabled",
+              "value": "false",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-33",
+              "name": "summary_email_to",
+              "value": "roger@aimetos.com",
+              "type": "string"
+            },
+            {
+              "id": "03-cred-34",
+              "name": "n8n_editor_base_url_env_var",
+              "value": "N8N_EDITOR_BASE_URL",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "03-credentials",
+      "name": "CREDENCIALS",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1200,
+        0
+      ]
     },
     {
       "parameters": {
         "operation": "read",
         "documentId": {
           "__rl": true,
-          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "value": "={{ $('CREDENCIALS').first().json.google_sheet_id }}",
           "mode": "id"
         },
         "sheetName": {
           "__rl": true,
-          "value": "03_LEADS_CUALIFICADOS",
+          "value": "={{ $('CREDENCIALS').first().json.qualified_leads_sheet_name }}",
           "mode": "name"
         },
         "options": {}
@@ -28,17 +253,23 @@
       "name": "Read Qualified Leads",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
-      "position": [-540, 0]
+      "position": [
+        -540,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const lead = item.json;\n  if (!['A', 'B'].includes(String(lead.priority || '').trim())) continue;\n  if (String(lead.lead_status || '').trim() !== 'Validated') continue;\n  if (!String(lead.decision_maker_name || '').trim()) continue;\n  if (!String(lead.decision_maker_role || '').trim()) continue;\n  if (String(lead.outreach_status || '').trim() !== 'Pending') continue;\n  const channel = String(lead.email || '').trim() ? 'Email' : 'LinkedIn';\n  out.push({ json: { ...lead, channel, language: 'es' } });\n}\nreturn out;"
+        "jsCode": "const cred = $('CREDENCIALS').first().json;\nconst out = [];\nfor (const item of $input.all()) {\n  const lead = item.json;\n  if (!['A', 'B'].includes(String(lead.priority || '').trim())) continue;\n  if (String(lead.lead_status || '').trim() !== 'Validated') continue;\n  if (!String(lead.decision_maker_name || '').trim()) continue;\n  if (!String(lead.decision_maker_role || '').trim()) continue;\n  if (String(lead.outreach_status || '').trim() !== 'Pending') continue;\n  const channel = String(lead.email || '').trim() ? 'Email' : 'LinkedIn';\n  out.push({ json: { ...cred, ...lead, channel, language: cred.default_outreach_language || 'es' } });\n}\nreturn out;"
       },
       "id": "03-filter",
       "name": "Filter Draft Candidates",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-320, 0]
+      "position": [
+        -320,
+        0
+      ]
     },
     {
       "parameters": {
@@ -49,7 +280,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.OPENAI_API_KEY }}"
+              "value": "={{ 'Bearer ' + $env[$('CREDENCIALS').first().json.openai_api_key_env_var || 'OPENAI_API_KEY'] }}"
             },
             {
               "name": "Content-Type",
@@ -60,7 +291,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ model: $env.OPENAI_MODEL, input: [{ role: 'system', content: 'Eres un redactor B2B en español para mensajes humanos revisados antes de enviarse. Crea un único borrador breve basado solo en la evidencia recibida. No afirmes que la empresa tiene un problema como hecho. Usa lenguaje condicional como Es posible que o En equipos con este tipo de flujo. Menciona una señal pública concreta y pide permiso con una pregunta simple. Prohibido: lenguaje de envío automático, claims no soportados, HPC, cloud computing, AI transformation, somos los mejores. LinkedIn máximo 110 palabras. Email máximo 140 palabras. Devuelve solo JSON válido.' }, { role: 'user', content: 'company_name: ' + $json.company_name + '\\ndecision_maker_name: ' + $json.decision_maker_name + '\\ndecision_maker_role: ' + $json.decision_maker_role + '\\nsource_title: ' + ($json.source_title || '') + '\\nsource_url: ' + $json.source_url + '\\npain_summary: ' + $json.pain_summary + '\\npain_hypothesis: ' + $json.pain_hypothesis + '\\nevidence_quote: ' + ($json.evidence_quote || '') + '\\nrecommended_service: ' + $json.recommended_service + '\\noutreach_angle: ' + $json.outreach_angle + '\\nchannel: ' + $json.channel + '\\nlanguage: es' }], text: { format: { type: 'json_schema', name: 'outreach_draft', strict: true, schema: { type: 'object', additionalProperties: false, required: ['channel','language','subject','message','evidence_used'], properties: { channel: { type: 'string', enum: ['LinkedIn','Email'] }, language: { type: 'string', enum: ['es'] }, subject: { type: 'string', maxLength: 120 }, message: { type: 'string', maxLength: 1000 }, evidence_used: { type: 'string', maxLength: 500 } } } } } }) }}",
+        "body": "={{ JSON.stringify({ model: ($('CREDENCIALS').first().json.openai_model || $env.OPENAI_MODEL), input: [{ role: 'system', content: 'Eres un redactor B2B en español para mensajes humanos revisados antes de enviarse. Crea un único borrador breve basado solo en la evidencia recibida. No afirmes que la empresa tiene un problema como hecho. Usa lenguaje condicional como Es posible que o En equipos con este tipo de flujo. Menciona una señal pública concreta y pide permiso con una pregunta simple. Prohibido: lenguaje de envío automático, claims no soportados, HPC, cloud computing, AI transformation, somos los mejores. LinkedIn máximo 110 palabras. Email máximo 140 palabras. Devuelve solo JSON válido.' }, { role: 'user', content: 'company_name: ' + $json.company_name + '\\ndecision_maker_name: ' + $json.decision_maker_name + '\\ndecision_maker_role: ' + $json.decision_maker_role + '\\nsource_title: ' + ($json.source_title || '') + '\\nsource_url: ' + $json.source_url + '\\npain_summary: ' + $json.pain_summary + '\\npain_hypothesis: ' + $json.pain_hypothesis + '\\nevidence_quote: ' + ($json.evidence_quote || '') + '\\nrecommended_service: ' + $json.recommended_service + '\\noutreach_angle: ' + $json.outreach_angle + '\\nchannel: ' + $json.channel + '\\nlanguage: es' }], text: { format: { type: 'json_schema', name: 'outreach_draft', strict: true, schema: { type: 'object', additionalProperties: false, required: ['channel','language','subject','message','evidence_used'], properties: { channel: { type: 'string', enum: ['LinkedIn','Email'] }, language: { type: 'string', enum: ['es'] }, subject: { type: 'string', maxLength: 120 }, message: { type: 'string', maxLength: 1000 }, evidence_used: { type: 'string', maxLength: 500 } } } } } }) }}",
         "options": {
           "timeout": 70000,
           "response": {
@@ -76,7 +307,10 @@
       "name": "Generate Draft With OpenAI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-100, 0],
+      "position": [
+        -100,
+        0
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -87,19 +321,22 @@
       "name": "Prepare Draft Row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [120, 0]
+      "position": [
+        120,
+        0
+      ]
     },
     {
       "parameters": {
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "value": "={{ $('CREDENCIALS').first().json.google_sheet_id }}",
           "mode": "id"
         },
         "sheetName": {
           "__rl": true,
-          "value": "05_OUTREACH_DRAFTS",
+          "value": "={{ $('CREDENCIALS').first().json.outreach_drafts_sheet_name }}",
           "mode": "name"
         },
         "columns": {
@@ -114,7 +351,10 @@
       "name": "Append Outreach Draft",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
-      "position": [340, -80]
+      "position": [
+        340,
+        -80
+      ]
     },
     {
       "parameters": {
@@ -124,25 +364,30 @@
       "name": "Prepare Lead Draft Status Update",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [340, 100]
+      "position": [
+        340,
+        100
+      ]
     },
     {
       "parameters": {
         "operation": "appendOrUpdate",
         "documentId": {
           "__rl": true,
-          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "value": "={{ $('CREDENCIALS').first().json.google_sheet_id }}",
           "mode": "id"
         },
         "sheetName": {
           "__rl": true,
-          "value": "03_LEADS_CUALIFICADOS",
+          "value": "={{ $('CREDENCIALS').first().json.qualified_leads_sheet_name }}",
           "mode": "name"
         },
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
-          "matchingColumns": ["lead_id"],
+          "matchingColumns": [
+            "lead_id"
+          ],
           "schema": []
         },
         "options": {}
@@ -151,32 +396,94 @@
       "name": "Update Lead Draft Status",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
-      "position": [560, 100]
+      "position": [
+        560,
+        100
+      ]
     }
   ],
   "connections": {
     "Manual Trigger": {
-      "main": [[{ "node": "Read Qualified Leads", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "CREDENCIALS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Read Qualified Leads": {
-      "main": [[{ "node": "Filter Draft Candidates", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Filter Draft Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Filter Draft Candidates": {
-      "main": [[{ "node": "Generate Draft With OpenAI", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Draft With OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Draft With OpenAI": {
-      "main": [[{ "node": "Prepare Draft Row", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Prepare Draft Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Prepare Draft Row": {
       "main": [
         [
-          { "node": "Append Outreach Draft", "type": "main", "index": 0 },
-          { "node": "Prepare Lead Draft Status Update", "type": "main", "index": 0 }
+          {
+            "node": "Append Outreach Draft",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Lead Draft Status Update",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Prepare Lead Draft Status Update": {
-      "main": [[{ "node": "Update Lead Draft Status", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Update Lead Draft Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CREDENCIALS": {
+      "main": [
+        [
+          {
+            "node": "Read Qualified Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "pinData": {},

@@ -27,6 +27,7 @@ const allowedNodeTypes = new Set([
   'n8n-nodes-base.manualTrigger',
   'n8n-nodes-base.errorTrigger',
   'n8n-nodes-base.code',
+  'n8n-nodes-base.set',
   'n8n-nodes-base.httpRequest',
   'n8n-nodes-base.if',
   'n8n-nodes-base.wait',
@@ -81,7 +82,12 @@ for (const header of requiredHeaders) {
 }
 
 const wf01 = fs.readFileSync(path.join(root, requiredWorkflowFiles[0]), 'utf8');
-assert.doesNotMatch(wf01, /apollo/i, 'workflow 01 is isolated from Apollo');
+const wf01Parsed = JSON.parse(wf01);
+for (const node of wf01Parsed.nodes) {
+  if (node.type === 'n8n-nodes-base.httpRequest') {
+    assert.doesNotMatch(JSON.stringify(node.parameters), /api\.apollo\.io|APOLLO_ENRICH_ENDPOINT/i, 'workflow 01 has no active Apollo request');
+  }
+}
 
 const wf02 = fs.readFileSync(path.join(root, requiredWorkflowFiles[1]), 'utf8');
 assert.match(wf02, /APOLLO_ENABLED/, 'workflow 02 checks APOLLO_ENABLED');
