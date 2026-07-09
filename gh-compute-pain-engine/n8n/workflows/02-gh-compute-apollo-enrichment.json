@@ -100,6 +100,150 @@
               "name": "timezone",
               "value": "Europe/Madrid",
               "type": "string"
+            },
+            {
+              "id": "02-cred-11",
+              "name": "openai_model",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-12",
+              "name": "default_outreach_language",
+              "value": "es",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-13",
+              "name": "min_qualified_score",
+              "value": "65",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-14",
+              "name": "priority_a_score",
+              "value": "80",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-15",
+              "name": "max_items_per_query",
+              "value": "20",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-16",
+              "name": "max_raw_text_characters",
+              "value": "6000",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-17",
+              "name": "apify_poll_interval_seconds",
+              "value": "20",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-18",
+              "name": "apify_max_polls",
+              "value": "12",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-19",
+              "name": "default_apify_token_env_var",
+              "value": "APIFY_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-20",
+              "name": "apify_token_client_01_env_var",
+              "value": "APIFY_TOKEN_CLIENT_01",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-21",
+              "name": "apify_token_client_02_env_var",
+              "value": "APIFY_TOKEN_CLIENT_02",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-22",
+              "name": "apify_token_client_03_env_var",
+              "value": "APIFY_TOKEN_CLIENT_03",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-23",
+              "name": "apify_token_client_04_env_var",
+              "value": "APIFY_TOKEN_CLIENT_04",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-24",
+              "name": "apify_token_client_05_env_var",
+              "value": "APIFY_TOKEN_CLIENT_05",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-25",
+              "name": "apify_token_client_06_env_var",
+              "value": "APIFY_TOKEN_CLIENT_06",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-26",
+              "name": "apify_token_client_07_env_var",
+              "value": "APIFY_TOKEN_CLIENT_07",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-27",
+              "name": "apify_token_client_08_env_var",
+              "value": "APIFY_TOKEN_CLIENT_08",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-28",
+              "name": "openai_api_key_env_var",
+              "value": "OPENAI_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-29",
+              "name": "apollo_enabled",
+              "value": "false",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-30",
+              "name": "apollo_api_key_env_var",
+              "value": "APOLLO_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-31",
+              "name": "apollo_enrich_endpoint_env_var",
+              "value": "APOLLO_ENRICH_ENDPOINT",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-32",
+              "name": "summary_email_enabled",
+              "value": "false",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-33",
+              "name": "summary_email_to",
+              "value": "roger@aimetos.com",
+              "type": "string"
+            },
+            {
+              "id": "02-cred-34",
+              "name": "n8n_editor_base_url_env_var",
+              "value": "N8N_EDITOR_BASE_URL",
+              "type": "string"
             }
           ]
         },
@@ -154,7 +298,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const init = $('Initialize Run').first().json;\nconst cfg = {};\nfor (const item of $input.all()) {\n  const key = String(item.json.key || '').trim();\n  if (key) cfg[key] = item.json.value || '';\n}\nconst enabled = String(cfg.APOLLO_ENABLED ?? '').trim().toLowerCase() === 'true';\nconst apiKeyEnvVar = String(cfg.APOLLO_API_KEY_ENV_VAR || 'APOLLO_API_KEY').trim();\nconst endpointEnvVar = String(cfg.APOLLO_ENRICH_ENDPOINT_ENV_VAR || 'APOLLO_ENRICH_ENDPOINT').trim();\nconst skipped = [];\nif (!enabled) skipped.push('APOLLO_ENABLED is not true in 00_CONFIG');\nif (!$env[apiKeyEnvVar]) skipped.push(apiKeyEnvVar + ' is empty');\nif (!$env[endpointEnvVar]) skipped.push(endpointEnvVar + ' is empty');\nif (skipped.length) {\n  return [{ json: { ...init, proceed: false, apollo_api_key_env_var: apiKeyEnvVar, apollo_enrich_endpoint_env_var: endpointEnvVar, finished_at: new Date().toISOString(), status: 'Skipped', sources_requested: 0, raw_items: 0, new_signals: 0, qualified_leads: 0, errors: '', details: skipped.join('; ') } }];\n}\nreturn [{ json: { ...init, proceed: true, apollo_api_key_env_var: apiKeyEnvVar, apollo_enrich_endpoint_env_var: endpointEnvVar } }];"
+        "jsCode": "const init = $('Initialize Run').first().json;\nconst cred = $('CREDENCIALS').first().json;\nconst cfg = {};\nfor (const item of $input.all()) {\n  const key = String(item.json.key || '').trim();\n  if (key) cfg[key] = item.json.value || '';\n}\n\nconst configEnabled = String(cfg.APOLLO_ENABLED ?? '').trim().toLowerCase() === 'true';\nconst credentialEnabled = String(cred.apollo_enabled ?? '').trim().toLowerCase() === 'true';\nconst enabled = configEnabled || credentialEnabled;\nconst apiKeyEnvVar = String(cfg.APOLLO_API_KEY_ENV_VAR || cred.apollo_api_key_env_var || 'APOLLO_API_KEY').trim();\nconst endpointEnvVar = String(cfg.APOLLO_ENRICH_ENDPOINT_ENV_VAR || cred.apollo_enrich_endpoint_env_var || 'APOLLO_ENRICH_ENDPOINT').trim();\nconst skipped = [];\n\nif (!enabled) skipped.push('Apollo disabled: set APOLLO_ENABLED=TRUE in 00_CONFIG or apollo_enabled=true in CREDENCIALS');\nif (!$env[apiKeyEnvVar]) skipped.push(apiKeyEnvVar + ' is empty');\nif (!$env[endpointEnvVar]) skipped.push(endpointEnvVar + ' is empty');\n\nif (skipped.length) {\n  return [{\n    json: {\n      ...init,\n      proceed: false,\n      apollo_api_key_env_var: apiKeyEnvVar,\n      apollo_enrich_endpoint_env_var: endpointEnvVar,\n      finished_at: new Date().toISOString(),\n      status: 'Skipped',\n      sources_requested: 0,\n      raw_items: 0,\n      new_signals: 0,\n      qualified_leads: 0,\n      errors: '',\n      details: skipped.join('; ')\n    }\n  }];\n}\n\nreturn [{ json: { ...init, proceed: true, apollo_api_key_env_var: apiKeyEnvVar, apollo_enrich_endpoint_env_var: endpointEnvVar } }];"
       },
       "id": "02-check",
       "name": "Check Apollo Conditions",
@@ -255,7 +399,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const init = $('Initialize Run').first().json;\nconst out = [];\nfor (const item of $input.all()) {\n  const lead = item.json;\n  const score = Number(lead.score || 0);\n  if (score < 65) continue;\n  if (!String(lead.decision_maker_name || '').trim()) continue;\n  if (!String(lead.decision_maker_role || '').trim()) continue;\n  if (String(lead.email || '').trim()) continue;\n  if (String(lead.enrichment_status || '').trim() !== 'Pending') continue;\n  out.push({ json: { ...lead, run_id: init.run_id, workflow_name: init.workflow_name, started_at: init.started_at } });\n}\nreturn out;"
+        "jsCode": "const init = $('Initialize Run').first().json;\nconst minScore = Number($('CREDENCIALS').first().json.min_qualified_score || 65);\nconst out = [];\n\nfor (const item of $input.all()) {\n  const lead = item.json;\n  const score = Number(lead.score || 0);\n  if (score < minScore) continue;\n  if (!['A', 'B'].includes(String(lead.priority || '').trim())) continue;\n  if (!String(lead.decision_maker_name || '').trim()) continue;\n  if (!String(lead.decision_maker_role || '').trim()) continue;\n  if (String(lead.email || '').trim()) continue;\n  if (String(lead.enrichment_status || '').trim() !== 'Pending') continue;\n  out.push({ json: { ...lead, run_id: init.run_id, workflow_name: init.workflow_name, started_at: init.started_at } });\n}\n\nreturn out;"
       },
       "id": "02-filter",
       "name": "Filter Apollo Candidates",
