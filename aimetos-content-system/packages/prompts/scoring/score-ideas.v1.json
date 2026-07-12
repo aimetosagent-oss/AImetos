@@ -1,0 +1,38 @@
+{
+  "name": "score-ideas",
+  "version": "1.0.0",
+  "objective": "Score ideas from 1 to 5 using AImetos criteria.",
+  "expectedInput": [
+    "business_context",
+    "metrics",
+    "language",
+    "constraints"
+  ],
+  "expectedOutput": {
+    "scoredIdeas": []
+  },
+  "jsonSchema": {
+    "type": "object",
+    "required": [
+      "scoredIdeas"
+    ],
+    "additionalProperties": false
+  },
+  "examples": [
+    {
+      "input": "mock AImetos context",
+      "output": {
+        "scoredIdeas": []
+      }
+    }
+  ],
+  "validationCriteria": [
+    "No clickbait",
+    "No unverifiable claims",
+    "Structured output only",
+    "One language per content item"
+  ],
+  "changelog": [
+    "1.0.0 initial mock-first prompt"
+  ]
+}

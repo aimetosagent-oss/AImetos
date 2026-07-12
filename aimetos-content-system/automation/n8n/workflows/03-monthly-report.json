@@ -1,0 +1,75 @@
+﻿{
+    "name":  "AImetos - Sistema automàtic XXSS - 11_Monthly report",
+    "active":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "path":  "monthly-report",
+                                         "responseMode":  "lastNode"
+                                     },
+                      "id":  "00_monthly_webhook",
+                      "name":  "00_monthly_webhook",
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2,
+                      "position":  [
+                                       0,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "return [{ json: { workflow: \u0027Monthly report\u0027, action: \u0027create_monthly_report\u0027, mode: $env.APP_MODE || \u0027mock\u0027, scenario: $env.MOCK_SCENARIO || \u0027normal\u0027, runId: $execution.id } }];"
+                                     },
+                      "id":  "01_create_monthly_report",
+                      "name":  "01_create_monthly_report",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       260,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "workflowId":  "bcvXqORNGgywlqap"
+                                     },
+                      "id":  "02_reusable_logging",
+                      "name":  "02_reusable_logging",
+                      "type":  "n8n-nodes-base.executeWorkflow",
+                      "typeVersion":  1,
+                      "position":  [
+                                       520,
+                                       0
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "00_monthly_webhook":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "01_create_monthly_report",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "01_create_monthly_report":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "02_reusable_logging",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     }
+                    },
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "saveDataErrorExecution":  "all",
+                     "saveDataSuccessExecution":  "all"
+                 }
+}

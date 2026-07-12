@@ -1,0 +1,50 @@
+﻿{
+    "name":  "AImetos - Sistema automàtic XXSS - 04_Subworkflow logging",
+    "active":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+
+                                     },
+                      "id":  "00_subworkflow_trigger",
+                      "name":  "00_subworkflow_trigger",
+                      "type":  "n8n-nodes-base.executeWorkflowTrigger",
+                      "typeVersion":  1,
+                      "position":  [
+                                       0,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const input = $input.all();\nreturn input.map((item) =\u003e ({\n  json: {\n    ...item.json,\n    log: {\n      workflow: \u0027Subworkflow logging\u0027,\n      action: \u0027structured_log\u0027,\n      mode: $env.APP_MODE || \u0027mock\u0027,\n      scenario: $env.MOCK_SCENARIO || \u0027normal\u0027,\n      runId: $execution.id,\n    },\n  },\n}));"
+                                     },
+                      "id":  "01_structured_log",
+                      "name":  "01_structured_log",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       260,
+                                       0
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "00_subworkflow_trigger":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "01_structured_log",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   }
+                    },
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "saveDataErrorExecution":  "all",
+                     "saveDataSuccessExecution":  "all"
+                 }
+}

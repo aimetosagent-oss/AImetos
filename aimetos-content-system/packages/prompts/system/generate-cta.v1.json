@@ -1,0 +1,38 @@
+{
+  "name": "generate-cta",
+  "version": "1.0.0",
+  "objective": "Generate CTAs aligned to qualified B2B leads.",
+  "expectedInput": [
+    "business_context",
+    "metrics",
+    "language",
+    "constraints"
+  ],
+  "expectedOutput": {
+    "ctas": []
+  },
+  "jsonSchema": {
+    "type": "object",
+    "required": [
+      "ctas"
+    ],
+    "additionalProperties": false
+  },
+  "examples": [
+    {
+      "input": "mock AImetos context",
+      "output": {
+        "ctas": []
+      }
+    }
+  ],
+  "validationCriteria": [
+    "No clickbait",
+    "No unverifiable claims",
+    "Structured output only",
+    "One language per content item"
+  ],
+  "changelog": [
+    "1.0.0 initial mock-first prompt"
+  ]
+}

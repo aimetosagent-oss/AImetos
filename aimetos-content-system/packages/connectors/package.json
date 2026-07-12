@@ -1,0 +1,5 @@
+{
+  "name": "@aimetos/connectors",
+  "private": true,
+  "type": "module"
+}

@@ -1,0 +1,103 @@
+import { createServer } from "node:http";
+import { readFileSync, existsSync } from "node:fs";
+import { extname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { loadConfig } from "../../../packages/config/src/env.ts";
+import { buildClientMonthlyReport, runMockContentFlow, writeReport } from "../../../packages/core/src/pipeline.ts";
+
+const root = fileURLToPath(new URL("../../..", import.meta.url));
+const dashboardDir = join(root, "apps", "dashboard", "public");
+
+function json(res, status, value) {
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer"
+  });
+  res.end(JSON.stringify(value, null, 2));
+}
+
+function serveStatic(req, res) {
+  const url = new URL(req.url || "/", "http://localhost");
+  const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
+  const target = join(dashboardDir, pathname.replace(/^\//, ""));
+  if (!target.startsWith(dashboardDir) || !existsSync(target)) {
+    return false;
+  }
+  const types = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".png": "image/png",
+    ".svg": "image/svg+xml"
+  };
+  res.writeHead(200, { "content-type": types[extname(target)] || "text/plain; charset=utf-8" });
+  res.end(readFileSync(target));
+  return true;
+}
+
+export function createAimetosServer() {
+  const config = loadConfig();
+  return createServer(async (req, res) => {
+    try {
+      const url = new URL(req.url || "/", "http://localhost");
+      if (url.pathname === "/health" || url.pathname === "/live") {
+        return json(res, 200, { ok: true, status: "healthy", mode: config.appMode });
+      }
+      if (url.pathname === "/ready") {
+        return json(res, 200, { ok: true, status: "ready", mode: config.appMode });
+      }
+      if (url.pathname === "/api/config") {
+        return json(res, 200, { mode: config.appMode, scenario: config.mockScenario, thresholds: config.thresholds });
+      }
+      if (url.pathname === "/api/run-mock-flow") {
+        const report = await runMockContentFlow();
+        const path = writeReport(report);
+        return json(res, 200, { ...report, exportPath: path });
+      }
+      if (url.pathname === "/api/overview") {
+        const report = await runMockContentFlow();
+        return json(res, 200, {
+          analysis: report.analysis,
+          ideas: report.selectedIdeas,
+          publications: report.publications,
+          connectorHealth: report.connectorHealth
+        });
+      }
+      if (url.pathname === "/api/client-report") {
+        return json(res, 200, await buildClientMonthlyReport());
+      }
+      if (url.pathname === "/api/linkedin-start") {
+        const posts = JSON.parse(readFileSync(join(root, "data", "fixtures", "linkedin-posts.json"), "utf8"));
+        const metricsComplete = posts.every((post) => typeof post.manualMetrics?.impressions === "number");
+        return json(res, 200, {
+          clientName: "Roger Arnau / AImetos",
+          source: "LinkedIn",
+          mode: "url-first",
+          canReadPublicUrl: false,
+          reason:
+            "LinkedIn no exposa de forma fiable el text complet ni les mètriques privades sense sessió/API. Les URLs queden registrades i només falten les mètriques mínimes.",
+          posts,
+          requiredMetrics: ["impressions", "reactions", "comments", "shares", "clicks", "profileVisits", "leads", "meetings"],
+          metricsComplete,
+          nextStep: metricsComplete
+            ? "Ja podem comparar aquests 3 posts. El següent pas és crear una nova publicació LinkedIn basada en el patró guanyador i mesurar-la."
+            : "Afegir les mètriques privades de cada post. Amb això el sistema podrà ordenar quin ha funcionat millor i recomanar què publicar ara sense inventar dades."
+        });
+      }
+      if (serveStatic(req, res)) return;
+      json(res, 404, { ok: false, error: "Not found" });
+    } catch (error) {
+      json(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const config = loadConfig();
+  createAimetosServer().listen(config.port, () => {
+    console.log("AImetos Content System running at http://localhost:" + config.port);
+  });
+}

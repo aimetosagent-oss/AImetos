@@ -1,0 +1,34 @@
+[
+  {
+    "id": "lead_001",
+    "company": "Tallers Riera",
+    "source": "linkedin",
+    "qualified": true,
+    "meetingId": "meet_001",
+    "pain": "trucades repetitives"
+  },
+  {
+    "id": "lead_002",
+    "company": "Serveis Delta",
+    "source": "blog",
+    "qualified": true,
+    "meetingId": "meet_002",
+    "pain": "seguiment comercial manual"
+  },
+  {
+    "id": "lead_003",
+    "company": "Industrial Nord",
+    "source": "newsletter",
+    "qualified": false,
+    "meetingId": null,
+    "pain": "informes manuals"
+  },
+  {
+    "id": "lead_004",
+    "company": "Logistica Marina",
+    "source": "blog",
+    "qualified": true,
+    "meetingId": "meet_003",
+    "pain": "automatitzacio n8n fragil"
+  }
+]

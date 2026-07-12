@@ -1,0 +1,68 @@
+[
+  {
+    "id": "linkedin_transformaciondigital_7439578127900573697",
+    "url": "https://www.linkedin.com/posts/rogerarnau_transformaciondigital-ia-pymes-activity-7439578127900573697-sIWZ",
+    "source": "linkedin",
+    "status": "needs_private_metrics",
+    "topic": "transformaciondigital-ia-pymes",
+    "format": "linkedin-post",
+    "knownFromUrl": ["transformaciondigital", "ia", "pymes"],
+    "manualMetrics": {
+      "impressions": 1613,
+      "reach": 849,
+      "reactions": 46,
+      "comments": 7,
+      "shares": 0,
+      "saves": 0,
+      "clicks": null,
+      "profileVisits": 34,
+      "newFollowers": 1,
+      "leads": 0,
+      "meetings": 0
+    }
+  },
+  {
+    "id": "linkedin_engineering_7437400981430161408",
+    "url": "https://www.linkedin.com/posts/rogerarnau_engineering-parametricdesign-computationaldesign-activity-7437400981430161408-DxWA",
+    "source": "linkedin",
+    "status": "needs_private_metrics",
+    "topic": "engineering-parametricdesign-computationaldesign",
+    "format": "linkedin-post",
+    "knownFromUrl": ["engineering", "parametricdesign", "computationaldesign"],
+    "manualMetrics": {
+      "impressions": 820,
+      "reach": 422,
+      "reactions": 9,
+      "comments": 1,
+      "shares": 0,
+      "saves": 0,
+      "clicks": null,
+      "profileVisits": 20,
+      "newFollowers": 0,
+      "leads": 0,
+      "meetings": 0
+    }
+  },
+  {
+    "id": "linkedin_projectmanagement_7421112163915694081",
+    "url": "https://www.linkedin.com/posts/rogerarnau_projectmanagement-emba-aprendizajecontinuo-activity-7421112163915694081-Qmqq",
+    "source": "linkedin",
+    "status": "needs_private_metrics",
+    "topic": "projectmanagement-emba-aprendizajecontinuo",
+    "format": "linkedin-post",
+    "knownFromUrl": ["projectmanagement", "emba", "aprendizajecontinuo"],
+    "manualMetrics": {
+      "impressions": 1595,
+      "reach": 858,
+      "reactions": 28,
+      "comments": 1,
+      "shares": 4,
+      "saves": 0,
+      "clicks": null,
+      "profileVisits": 17,
+      "newFollowers": 0,
+      "leads": 0,
+      "meetings": 0
+    }
+  }
+]

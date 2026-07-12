@@ -1,0 +1,66 @@
+{
+  "name": "AImetos - Sistema automatic XXSS - 00_Client Monthly Content Report",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "client-monthly-content-report",
+        "responseMode": "lastNode"
+      },
+      "id": "00_client_report_webhook",
+      "name": "00_client_report_webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const report = {\n  reportTitle: 'Informe mensual de contingut - Client demo AImetos',\n  period: 'Mes anterior',\n  decision: {\n    nextBestFormat: 'technical-post',\n    nextBestChannel: 'linkedin',\n    nextAction: 'Produir un post de decisio sobre agents de veu i adaptar-lo a reel curt.',\n    confidence: 'high'\n  },\n  executiveSummary: 'El millor contingut del mes combina criteri tecnic, decisio de negoci i CTA directe. El format guanyador es un post tecnic a LinkedIn, amb adaptacio posterior a reel curt i carrusel.',\n  topContent: [\n    {\n      rank: 1,\n      title: 'Post de decisio sobre voice agents',\n      platform: 'linkedin',\n      format: 'technical-post',\n      whyItWorked: 'Ha generat leads qualificats, reunions, desats i comparticions. El tema resol una decisio real: saber si un agent de veu te ROI abans de construir-lo.',\n      metrics: { qualifiedLeads: 3, meetings: 2, saves: 26, shares: 8, score: 347.48 }\n    },\n    {\n      rank: 2,\n      title: 'Carrusel sobre errors habituals en automatitzacions',\n      platform: 'instagram',\n      format: 'carousel',\n      whyItWorked: 'Funciona perque transforma un problema tecnic en una checklist facil de guardar i compartir.',\n      metrics: { qualifiedLeads: 2, meetings: 1, saves: 31, shares: 6, score: 286.2 }\n    }\n  ],\n  recommendations: [\n    {\n      title: 'Com saber si un agent de veu te ROI abans de construir-lo',\n      format: 'technical-post + reel curt',\n      channel: 'linkedin',\n      hook: 'Vols automatitzar trucades pero no saps si el volum justifica la inversio?',\n      productionBrief: 'Post de decisio amb 3 criteris: volum, variabilitat i seguiment mesurable. Adaptar a reel de 45 segons amb hook directe.',\n      cta: 'Demanar una auditoria de processos automatitzables'\n    },\n    {\n      title: 'Els 7 errors que fan fragils les automatitzacions amb n8n',\n      format: 'carousel',\n      channel: 'instagram',\n      hook: 'Un workflow no esta acabat quan funciona un cop: esta acabat quan aguanta errors.',\n      productionBrief: 'Carrusel de 7 diapositives amb error, risc i solucio Toyota: detectar, corregir, estandarditzar.',\n      cta: 'Revisar un workflow critic amb AImetos'\n    }\n  ],\n  calendar: [\n    { week: 'Setmana 1', asset: 'Post decisio agent de veu', status: 'ready_to_review' },\n    { week: 'Setmana 2', asset: 'Reel curt agent de veu', status: 'draft_needed' },\n    { week: 'Setmana 3', asset: 'Carrusel errors n8n', status: 'draft_needed' }\n  ],\n  clientView: 'Aixo es el que hauria de veure un client: que ha funcionat, que publicar ara, en quin format i per quin motiu.',\n  technicalStatus: {\n    mode: $env.APP_MODE || 'mock',\n    n8nWorkflowsValidated: 28,\n    credentialsRequiredNow: false,\n    runId: $execution.id\n  }\n};\nreturn [{ json: report }];"
+      },
+      "id": "01_build_client_report",
+      "name": "01_build_client_report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": "bcvXqORNGgywlqap"
+      },
+      "id": "02_reusable_logging",
+      "name": "02_reusable_logging",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [560, 0]
+    }
+  ],
+  "connections": {
+    "00_client_report_webhook": {
+      "main": [
+        [
+          {
+            "node": "01_build_client_report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01_build_client_report": {
+      "main": [
+        [
+          {
+            "node": "02_reusable_logging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  }
+}

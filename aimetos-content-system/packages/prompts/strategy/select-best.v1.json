@@ -1,0 +1,38 @@
+{
+  "name": "select-best",
+  "version": "1.0.0",
+  "objective": "Select only the best two or three ideas above threshold.",
+  "expectedInput": [
+    "business_context",
+    "metrics",
+    "language",
+    "constraints"
+  ],
+  "expectedOutput": {
+    "selectedIds": []
+  },
+  "jsonSchema": {
+    "type": "object",
+    "required": [
+      "selectedIds"
+    ],
+    "additionalProperties": false
+  },
+  "examples": [
+    {
+      "input": "mock AImetos context",
+      "output": {
+        "selectedIds": []
+      }
+    }
+  ],
+  "validationCriteria": [
+    "No clickbait",
+    "No unverifiable claims",
+    "Structured output only",
+    "One language per content item"
+  ],
+  "changelog": [
+    "1.0.0 initial mock-first prompt"
+  ]
+}

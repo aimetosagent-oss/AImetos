@@ -1,0 +1,75 @@
+﻿{
+    "name":  "AImetos - Sistema automàtic XXSS - 05_Subworkflow errors",
+    "active":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "path":  "subworkflow-errors",
+                                         "responseMode":  "lastNode"
+                                     },
+                      "id":  "00_subworkflow_trigger",
+                      "name":  "00_subworkflow_trigger",
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2,
+                      "position":  [
+                                       0,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "return [{ json: { workflow: \u0027Subworkflow errors\u0027, action: \u0027normalize_error\u0027, mode: $env.APP_MODE || \u0027mock\u0027, scenario: $env.MOCK_SCENARIO || \u0027normal\u0027, runId: $execution.id } }];"
+                                     },
+                      "id":  "01_normalize_error",
+                      "name":  "01_normalize_error",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       260,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "workflowId":  "bcvXqORNGgywlqap"
+                                     },
+                      "id":  "02_reusable_logging",
+                      "name":  "02_reusable_logging",
+                      "type":  "n8n-nodes-base.executeWorkflow",
+                      "typeVersion":  1,
+                      "position":  [
+                                       520,
+                                       0
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "00_subworkflow_trigger":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "01_normalize_error",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                        "01_normalize_error":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "02_reusable_logging",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               }
+                    },
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "saveDataErrorExecution":  "all",
+                     "saveDataSuccessExecution":  "all"
+                 }
+}

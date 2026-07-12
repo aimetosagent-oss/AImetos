@@ -1,0 +1,44 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+**/secrets/
+**/credentials/
+
+# Node
+node_modules/
+.pnpm-store/
+npm-debug.log*
+pnpm-debug.log*
+
+# Build and test output
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+
+# Runtime exports
+data/exports/*
+!data/exports/.gitkeep
+
+# n8n and local state
+.n8n/
+n8n-data/
+*.sqlite
+*.sqlite3
+*.log
+tmp/
+temp/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

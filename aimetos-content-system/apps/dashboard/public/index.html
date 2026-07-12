@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AImetos Content Intelligence</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand-lockup">
+        <img src="/assets/aimetos-logo.png" alt="AImetos" class="brand-logo" />
+        <div>
+          <strong>AImetos Content Intelligence</strong>
+          <span id="period">Mes anterior</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <nav class="tabs" aria-label="Perfil">
+          <button class="tab-button active" data-tab="client" type="button">Client</button>
+          <button class="tab-button" data-tab="admin" type="button">Administrador tècnic</button>
+        </nav>
+        <button id="refreshReport" type="button">Actualitzar informe</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="clientPanel" class="tab-panel active" aria-label="Perfil client">
+        <section class="hero" aria-label="Decisió principal">
+          <div>
+            <p class="eyebrow">Decisió recomanada</p>
+            <h1 id="nextAction">Carregant informe...</h1>
+            <p id="summary" class="summary"></p>
+          </div>
+          <div class="decision-grid">
+            <article>
+              <span>Format</span>
+              <strong id="bestFormat">-</strong>
+            </article>
+            <article>
+              <span>Canal</span>
+              <strong id="bestChannel">-</strong>
+            </article>
+            <article>
+              <span>Confiança</span>
+              <strong id="confidence">-</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="business-strip" aria-label="Estratègia de negoci">
+          <article>
+            <span>Objectiu comercial</span>
+            <strong id="businessObjective">-</strong>
+          </article>
+          <article>
+            <span>Trimestre</span>
+            <p id="strategyQuarter">-</p>
+          </article>
+          <article>
+            <span>Mes</span>
+            <p id="strategyMonth">-</p>
+          </article>
+          <article>
+            <span>Publicació</span>
+            <p id="strategyPublication">-</p>
+          </article>
+        </section>
+
+        <section class="simple-flow" aria-label="Informe simplificat">
+          <article class="focus-panel">
+            <div class="section-heading">
+              <h2>1. Què ha funcionat</h2>
+              <span>Contingut anterior</span>
+            </div>
+            <div id="topContent" class="list"></div>
+          </article>
+
+          <article class="focus-panel">
+            <div class="section-heading">
+              <h2>2. Què publicar ara</h2>
+              <span>3 opcions per aprovar</span>
+            </div>
+            <div id="recommendations" class="list"></div>
+          </article>
+
+          <article class="focus-panel">
+            <div class="section-heading">
+              <h2>3. Distribució per xarxes</h2>
+              <span>Mateixa idea, adaptada a cada canal</span>
+            </div>
+            <p class="note">
+              La campanya manté el mateix missatge central a LinkedIn, Instagram i Facebook perquè qualsevol persona que entri per una xarxa vegi una proposta coherent.
+            </p>
+            <div id="socialDistribution" class="channel-matrix"></div>
+          </article>
+
+          <article class="focus-panel">
+            <div class="section-heading">
+              <h2>4. Com validar-ho</h2>
+              <span>Després de publicar</span>
+            </div>
+            <div class="validation-cycle">
+              <article><strong>Publicar</strong><span>Dimarts 08:40</span></article>
+              <article><strong>24h</strong><span>Primera lectura útil</span></article>
+              <article><strong>72h</strong><span>Comparar patró</span></article>
+              <article><strong>7 dies</strong><span>Validar, ajustar o descartar</span></article>
+            </div>
+            <p id="confidenceNote" class="note"></p>
+          </article>
+        </section>
+      </section>
+
+      <section id="adminPanel" class="tab-panel" aria-label="Perfil administrador tècnic">
+        <section class="linkedin-start" aria-label="LinkedIn real">
+          <div class="section-heading">
+            <h2>LinkedIn real: punt de partida</h2>
+            <span id="linkedinStatus">Carregant URLs...</span>
+          </div>
+          <p id="linkedinReason" class="summary small-summary"></p>
+          <div id="linkedinPosts" class="url-list"></div>
+          <div class="needed-box">
+            <strong>Què falta per ordenar aquests posts?</strong>
+            <p id="requiredMetrics"></p>
+          </div>
+        </section>
+
+        <section class="layout">
+          <div>
+            <div class="section-heading">
+              <h2>Formats guanyadors</h2>
+              <span>Scores interns</span>
+            </div>
+            <div id="formats" class="list compact"></div>
+          </div>
+
+          <aside>
+            <div class="section-heading">
+              <h2>Calendari</h2>
+              <span>Properes 3 setmanes</span>
+            </div>
+            <div id="calendar" class="list compact"></div>
+
+            <div class="status-panel">
+              <h2>Estat tècnic</h2>
+              <dl>
+                <div><dt>Mode</dt><dd id="mode">-</dd></div>
+                <div><dt>Font dades</dt><dd id="dataSource">-</dd></div>
+                <div><dt>Workflows</dt><dd id="workflows">-</dd></div>
+                <div><dt>Credencials</dt><dd id="credentials">-</dd></div>
+              </dl>
+            </div>
+          </aside>
+        </section>
+      </section>
+    </main>
+
+    <template id="topContentTemplate">
+      <article class="content-row">
+        <div class="rank"></div>
+        <div>
+          <h3></h3>
+          <p></p>
+          <div class="chips"></div>
+        </div>
+        <div class="metric-stack"></div>
+      </article>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

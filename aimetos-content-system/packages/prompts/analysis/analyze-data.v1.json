@@ -1,0 +1,44 @@
+{
+  "name": "analyze-data",
+  "version": "1.0.0",
+  "objective": "Analyze content metrics across 30/90/historical windows.",
+  "expectedInput": [
+    "business_context",
+    "metrics",
+    "language",
+    "constraints"
+  ],
+  "expectedOutput": {
+    "patterns": [],
+    "risks": [],
+    "opportunities": []
+  },
+  "jsonSchema": {
+    "type": "object",
+    "required": [
+      "patterns",
+      "risks",
+      "opportunities"
+    ],
+    "additionalProperties": false
+  },
+  "examples": [
+    {
+      "input": "mock AImetos context",
+      "output": {
+        "patterns": [],
+        "risks": [],
+        "opportunities": []
+      }
+    }
+  ],
+  "validationCriteria": [
+    "No clickbait",
+    "No unverifiable claims",
+    "Structured output only",
+    "One language per content item"
+  ],
+  "changelog": [
+    "1.0.0 initial mock-first prompt"
+  ]
+}

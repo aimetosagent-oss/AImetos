@@ -1,0 +1,32 @@
+{
+  "normal": {
+    "description": "Baseline realistic AImetos performance."
+  },
+  "high_performance": {
+    "description": "More qualified leads and meetings."
+  },
+  "low_performance": {
+    "description": "Lower CTR and no meetings."
+  },
+  "missing_data": {
+    "description": "Some records have missing click signal."
+  },
+  "api_failure": {
+    "description": "Connectors simulate provider failures."
+  },
+  "rate_limit": {
+    "description": "Connectors simulate retryable rate limits."
+  },
+  "expired_credentials": {
+    "description": "Connectors simulate expired credentials."
+  },
+  "publishing_failure": {
+    "description": "Publication fails in mock mode."
+  },
+  "partial_metrics": {
+    "description": "Only partial metrics are available."
+  },
+  "no_qualified_ideas": {
+    "description": "Ideas stay below threshold."
+  }
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "camp_voice",
+    "name": "Agents de veu per operacions B2B",
+    "status": "active",
+    "budget": 400
+  },
+  {
+    "id": "camp_n8n",
+    "name": "Automatitzacions robustes amb n8n",
+    "status": "active",
+    "budget": 250
+  },
+  {
+    "id": "camp_dashboard",
+    "name": "Dashboards que activen decisions",
+    "status": "learning",
+    "budget": 150
+  }
+]

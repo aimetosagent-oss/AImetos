@@ -1,0 +1,75 @@
+﻿{
+    "name":  "AImetos - Sistema automàtic XXSS - 16_Generate main content",
+    "active":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "path":  "generate-main-content",
+                                         "responseMode":  "lastNode"
+                                     },
+                      "id":  "00_content_webhook",
+                      "name":  "00_content_webhook",
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2,
+                      "position":  [
+                                       0,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "return [{ json: { workflow: \u0027Generate main content\u0027, action: \u0027generate_main_content\u0027, mode: $env.APP_MODE || \u0027mock\u0027, scenario: $env.MOCK_SCENARIO || \u0027normal\u0027, runId: $execution.id } }];"
+                                     },
+                      "id":  "01_generate_main_content",
+                      "name":  "01_generate_main_content",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       260,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "workflowId":  "bcvXqORNGgywlqap"
+                                     },
+                      "id":  "02_reusable_logging",
+                      "name":  "02_reusable_logging",
+                      "type":  "n8n-nodes-base.executeWorkflow",
+                      "typeVersion":  1,
+                      "position":  [
+                                       520,
+                                       0
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "00_content_webhook":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "01_generate_main_content",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "01_generate_main_content":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "02_reusable_logging",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     }
+                    },
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "saveDataErrorExecution":  "all",
+                     "saveDataSuccessExecution":  "all"
+                 }
+}

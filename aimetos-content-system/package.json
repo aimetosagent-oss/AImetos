@@ -1,0 +1,35 @@
+{
+  "name": "aimetos-content-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mock-first automated content and digital strategy system for AImetos.",
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "dev": "node apps/api/src/server.ts",
+    "build": "node scripts/build.ts",
+    "lint": "node scripts/lint.ts",
+    "format": "node scripts/format-check.ts",
+    "typecheck": "node scripts/typecheck.ts",
+    "test": "node --test tests/unit/*.test.ts",
+    "test:integration": "node --test tests/integration/*.test.ts",
+    "test:e2e": "node --test tests/e2e/*.test.ts",
+    "test:all": "node scripts/run-tests.ts",
+    "db:migrate": "node scripts/db-migrate.ts",
+    "db:seed": "node scripts/db-seed.ts",
+    "mock:reset": "node scripts/mock-reset.ts",
+    "mock:scenario": "node scripts/mock-scenario.ts",
+    "docker:up": "docker compose -f docker-compose.yml -f docker-compose.mock.yml up --build",
+    "docker:down": "docker compose down",
+    "docker:validate": "node scripts/validate-docker.ts",
+    "validate": "node scripts/validate.ts"
+  }
+}

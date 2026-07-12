@@ -1,0 +1,9 @@
+name: backup-n8n
+on:
+  workflow_dispatch:
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Mock backup validates workflow exports without external credentials."

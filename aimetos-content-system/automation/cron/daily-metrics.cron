@@ -1,0 +1,1 @@
+17 6 * * * cd /app && node apps/worker/src/run.ts

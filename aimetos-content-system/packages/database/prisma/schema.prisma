@@ -1,0 +1,283 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  roleId    String?
+  role      Role?    @relation(fields: [roleId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  permissions Json
+  users       User[]
+  createdAt   DateTime @default(now())
+}
+
+model ContentSource {
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+  createdAt DateTime @default(now())
+}
+
+model Platform {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ContentItem {
+  id          String           @id @default(uuid())
+  title       String
+  language    String
+  status      String
+  currentSlug String?
+  deletedAt   DateTime?
+  versions    ContentVersion[]
+  formats     ContentFormat[]
+  reviews     ContentReview[]
+  approvals   ContentApproval[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ContentVersion {
+  id            String      @id @default(uuid())
+  contentItemId String
+  version       Int
+  body          String
+  source        String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id])
+  createdAt     DateTime    @default(now())
+  @@unique([contentItemId, version])
+}
+
+model ContentIdea {
+  id               String         @id @default(uuid())
+  title            String
+  objective        String
+  audience         String
+  pain             String
+  value            String
+  mainMessage      String
+  cta              String
+  priority         Int
+  relatedService   String
+  primaryChannel   String
+  category         String
+  language         String
+  status           String
+  scores           ContentScore[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model ContentScore {
+  id               String      @id @default(uuid())
+  ideaId           String
+  commercialImpact Int
+  differentiation  Int
+  estimatedEffort  Int
+  reusability      Int
+  authority        Int
+  globalScore      Float
+  idea             ContentIdea @relation(fields: [ideaId], references: [id])
+  createdAt        DateTime    @default(now())
+}
+
+model ContentReview {
+  id            String      @id @default(uuid())
+  contentItemId String
+  reviewer      String
+  status        String
+  comment       String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id])
+  createdAt     DateTime    @default(now())
+}
+
+model ContentApproval {
+  id            String      @id @default(uuid())
+  contentItemId String
+  approver      String
+  status        String
+  comment       String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id])
+  createdAt     DateTime    @default(now())
+}
+
+model ContentFormat {
+  id            String      @id @default(uuid())
+  contentItemId String
+  platform      String
+  format        String
+  body          String
+  metadata      Json
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id])
+  createdAt     DateTime    @default(now())
+}
+
+model Publication {
+  id          String   @id @default(uuid())
+  platform    String
+  status      String
+  publishedAt DateTime?
+  externalId  String?
+  createdAt   DateTime @default(now())
+}
+
+model PublicationSchedule {
+  id            String   @id @default(uuid())
+  publicationId String
+  scheduledAt   DateTime
+  status        String
+  createdAt     DateTime @default(now())
+}
+
+model Metric {
+  id          String   @id @default(uuid())
+  platform    String
+  format      String
+  topic       String
+  keyword     String
+  cta         String
+  metricDate  DateTime
+  values      Json
+  createdAt   DateTime @default(now())
+  @@index([metricDate])
+  @@index([platform, topic])
+}
+
+model MetricSnapshot {
+  id        String   @id @default(uuid())
+  window    String
+  summary   Json
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id        String   @id @default(uuid())
+  company   String
+  source    String
+  qualified Boolean
+  meetingId String?
+  createdAt DateTime @default(now())
+}
+
+model Conversion {
+  id        String   @id @default(uuid())
+  leadId    String
+  type      String
+  value     Float
+  createdAt DateTime @default(now())
+}
+
+model Campaign {
+  id        String   @id @default(uuid())
+  name      String
+  status    String
+  budget    Float
+  createdAt DateTime @default(now())
+}
+
+model Keyword {
+  id        String   @id @default(uuid())
+  value     String   @unique
+  intent    String
+  createdAt DateTime @default(now())
+}
+
+model Topic {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  weight    Float
+  createdAt DateTime @default(now())
+}
+
+model CallToAction {
+  id        String   @id @default(uuid())
+  label     String
+  target    String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Connector {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  kind      String
+  enabled   Boolean  @default(false)
+  config    Json
+  runs      ConnectorRun[]
+  createdAt DateTime @default(now())
+}
+
+model ConnectorRun {
+  id          String    @id @default(uuid())
+  connectorId String
+  status      String
+  startedAt   DateTime
+  finishedAt  DateTime?
+  error       String?
+  connector   Connector @relation(fields: [connectorId], references: [id])
+}
+
+model AutomationRun {
+  id         String   @id @default(uuid())
+  workflow   String
+  runId      String   @unique
+  status     String
+  logs       Json
+  durationMs Int
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  user           String
+  change         String
+  previousStatus String
+  nextStatus     String
+  comment        String
+  version        Int
+  origin         String
+  createdAt      DateTime @default(now())
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model PromptVersion {
+  id        String   @id @default(uuid())
+  name      String
+  version   String
+  body      String
+  schema    Json
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  @@unique([name, version])
+}
+
+model GeneratedAsset {
+  id        String   @id @default(uuid())
+  type      String
+  path      String
+  metadata  Json
+  createdAt DateTime @default(now())
+}

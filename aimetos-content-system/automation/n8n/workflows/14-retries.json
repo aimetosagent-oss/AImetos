@@ -1,0 +1,75 @@
+﻿{
+    "name":  "AImetos - Sistema automàtic XXSS - 22_Retries",
+    "active":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "path":  "retries",
+                                         "responseMode":  "lastNode"
+                                     },
+                      "id":  "00_retry_webhook",
+                      "name":  "00_retry_webhook",
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2,
+                      "position":  [
+                                       0,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "return [{ json: { workflow: \u0027Retries\u0027, action: \u0027retry_failed_steps\u0027, mode: $env.APP_MODE || \u0027mock\u0027, scenario: $env.MOCK_SCENARIO || \u0027normal\u0027, runId: $execution.id } }];"
+                                     },
+                      "id":  "01_retry_failed_steps",
+                      "name":  "01_retry_failed_steps",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       260,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "workflowId":  "bcvXqORNGgywlqap"
+                                     },
+                      "id":  "02_reusable_logging",
+                      "name":  "02_reusable_logging",
+                      "type":  "n8n-nodes-base.executeWorkflow",
+                      "typeVersion":  1,
+                      "position":  [
+                                       520,
+                                       0
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "00_retry_webhook":  {
+                                                 "main":  [
+                                                              [
+                                                                  {
+                                                                      "node":  "01_retry_failed_steps",
+                                                                      "type":  "main",
+                                                                      "index":  0
+                                                                  }
+                                                              ]
+                                                          ]
+                                             },
+                        "01_retry_failed_steps":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "02_reusable_logging",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                  }
+                    },
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "saveDataErrorExecution":  "all",
+                     "saveDataSuccessExecution":  "all"
+                 }
+}

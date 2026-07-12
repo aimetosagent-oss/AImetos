@@ -1,0 +1,1 @@
+30 8 * * 1 cd /app && MOCK_SCENARIO=normal node apps/worker/src/run.ts

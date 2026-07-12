@@ -1,0 +1,38 @@
+{
+  "name": "adapt-formats",
+  "version": "1.0.0",
+  "objective": "Create channel adaptations from the approved source content.",
+  "expectedInput": [
+    "business_context",
+    "metrics",
+    "language",
+    "constraints"
+  ],
+  "expectedOutput": {
+    "adaptations": []
+  },
+  "jsonSchema": {
+    "type": "object",
+    "required": [
+      "adaptations"
+    ],
+    "additionalProperties": false
+  },
+  "examples": [
+    {
+      "input": "mock AImetos context",
+      "output": {
+        "adaptations": []
+      }
+    }
+  ],
+  "validationCriteria": [
+    "No clickbait",
+    "No unverifiable claims",
+    "Structured output only",
+    "One language per content item"
+  ],
+  "changelog": [
+    "1.0.0 initial mock-first prompt"
+  ]
+}

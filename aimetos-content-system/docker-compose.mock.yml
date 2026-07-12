@@ -1,0 +1,9 @@
+services:
+  api:
+    environment:
+      APP_MODE: mock
+      MOCK_SCENARIO: normal
+  worker:
+    environment:
+      APP_MODE: mock
+      MOCK_SCENARIO: normal

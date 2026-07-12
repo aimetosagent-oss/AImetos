@@ -1,0 +1,38 @@
+{
+  "name": "generate-five-ideas",
+  "version": "1.0.0",
+  "objective": "Generate exactly five prioritized content ideas.",
+  "expectedInput": [
+    "business_context",
+    "metrics",
+    "language",
+    "constraints"
+  ],
+  "expectedOutput": {
+    "ideas": []
+  },
+  "jsonSchema": {
+    "type": "object",
+    "required": [
+      "ideas"
+    ],
+    "additionalProperties": false
+  },
+  "examples": [
+    {
+      "input": "mock AImetos context",
+      "output": {
+        "ideas": []
+      }
+    }
+  ],
+  "validationCriteria": [
+    "No clickbait",
+    "No unverifiable claims",
+    "Structured output only",
+    "One language per content item"
+  ],
+  "changelog": [
+    "1.0.0 initial mock-first prompt"
+  ]
+}

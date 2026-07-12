@@ -1,0 +1,12 @@
+services:
+  api:
+    environment:
+      APP_MODE: production
+      PUBLISHING_ENABLED: "false"
+    restart: always
+  worker:
+    environment:
+      APP_MODE: production
+    restart: always
+  postgres:
+    restart: always

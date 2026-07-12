@@ -1,0 +1,38 @@
+{
+  "name": "detect-unverified-claims",
+  "version": "1.0.0",
+  "objective": "Detect claims that need evidence before publishing.",
+  "expectedInput": [
+    "business_context",
+    "metrics",
+    "language",
+    "constraints"
+  ],
+  "expectedOutput": {
+    "claims": []
+  },
+  "jsonSchema": {
+    "type": "object",
+    "required": [
+      "claims"
+    ],
+    "additionalProperties": false
+  },
+  "examples": [
+    {
+      "input": "mock AImetos context",
+      "output": {
+        "claims": []
+      }
+    }
+  ],
+  "validationCriteria": [
+    "No clickbait",
+    "No unverifiable claims",
+    "Structured output only",
+    "One language per content item"
+  ],
+  "changelog": [
+    "1.0.0 initial mock-first prompt"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "name": "validate-aimetos-alignment",
+  "version": "1.0.0",
+  "objective": "Validate that content supports AImetos authority and commercial goals.",
+  "expectedInput": [
+    "business_context",
+    "metrics",
+    "language",
+    "constraints"
+  ],
+  "expectedOutput": {
+    "aligned": true,
+    "reasons": []
+  },
+  "jsonSchema": {
+    "type": "object",
+    "required": [
+      "aligned",
+      "reasons"
+    ],
+    "additionalProperties": false
+  },
+  "examples": [
+    {
+      "input": "mock AImetos context",
+      "output": {
+        "aligned": true,
+        "reasons": []
+      }
+    }
+  ],
+  "validationCriteria": [
+    "No clickbait",
+    "No unverifiable claims",
+    "Structured output only",
+    "One language per content item"
+  ],
+  "changelog": [
+    "1.0.0 initial mock-first prompt"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "detect-patterns",
+  "version": "1.0.0",
+  "objective": "Find sustained patterns without reacting to one-off anomalies.",
+  "expectedInput": [
+    "business_context",
+    "metrics",
+    "language",
+    "constraints"
+  ],
+  "expectedOutput": {
+    "sustainedPatterns": []
+  },
+  "jsonSchema": {
+    "type": "object",
+    "required": [
+      "sustainedPatterns"
+    ],
+    "additionalProperties": false
+  },
+  "examples": [
+    {
+      "input": "mock AImetos context",
+      "output": {
+        "sustainedPatterns": []
+      }
+    }
+  ],
+  "validationCriteria": [
+    "No clickbait",
+    "No unverifiable claims",
+    "Structured output only",
+    "One language per content item"
+  ],
+  "changelog": [
+    "1.0.0 initial mock-first prompt"
+  ]
+}
