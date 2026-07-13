@@ -1,0 +1,630 @@
+{
+  "name": "AImetos | Apollo decision maker enrichment",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "apollo-manual",
+      "name": "Inici manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1260,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-sheet",
+              "name": "google_sheet_id",
+              "value": "1JBuVbNMQTpk9BBxT8Lar6XFKSlzsvmqRw4cppbuRmjo",
+              "type": "string"
+            },
+            {
+              "id": "cfg-leads-tab",
+              "name": "leads_sheet_name",
+              "value": "LEADS",
+              "type": "string"
+            },
+            {
+              "id": "cfg-config-tab",
+              "name": "config_sheet_name",
+              "value": "CONFIG",
+              "type": "string"
+            },
+            {
+              "id": "cfg-version",
+              "name": "workflow_version",
+              "value": "1.0.0",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "apollo-base-config",
+      "name": "Configuracio base",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1040,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Configuracio base').first().json.google_sheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Configuracio base').first().json.config_sheet_name }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "apollo-read-config",
+      "name": "Llegir CONFIG",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -820,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIALS",
+          "name": "GOOGLE_SHEETS_CREDENTIALS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst defaults = $('Configuracio base').first().json;\nconst rawRows = $input.all().map((item) => item.json || {});\nconst values = {};\n\nfor (const row of rawRows) {\n  const key = String(row.KEY ?? row.key ?? '').trim();\n  if (!key || key.toUpperCase() === 'KEY') continue;\n  values[key.toUpperCase()] = row.VALUE ?? row.value ?? '';\n}\n\nconst readBool = (key, fallback) => {\n  const value = values[key] ?? fallback;\n  return String(value).trim().toLowerCase() === 'true';\n};\nconst readInt = (key, fallback, min, max) => {\n  const parsed = Math.floor(Number(values[key] ?? fallback));\n  const safe = Number.isFinite(parsed) ? parsed : fallback;\n  return Math.max(min, Math.min(max, safe));\n};\n\nreturn [{\n  json: {\n    ...defaults,\n    apollo_enabled: readBool('APOLLO_ENABLED', true),\n    batch_size: readInt('BATCH_SIZE', 10, 1, 100),\n    max_candidates_per_company: readInt('MAX_CANDIDATES_PER_COMPANY', 10, 1, 100),\n    overwrite_existing_contact_data: readBool('OVERWRITE_EXISTING_CONTACT_DATA', false),\n    recheck_after_days: readInt('RECHECK_AFTER_DAYS', 90, 1, 3650),\n    country_default: String(values.COUNTRY_DEFAULT || 'Spain').trim() || 'Spain',\n    apollo_api_key_env_var: String(values.APOLLO_API_KEY_ENV_VAR || 'APOLLO_API_KEY').trim() || 'APOLLO_API_KEY',\n    workflow_version: String(values.WORKFLOW_VERSION || defaults.workflow_version || '1.0.0').trim(),\n  },\n}];\n"
+      },
+      "id": "apollo-normalize-config",
+      "name": "Normalitzar CONFIG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -600,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Normalitzar CONFIG').first().json.google_sheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Normalitzar CONFIG').first().json.leads_sheet_name }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "apollo-read-leads",
+      "name": "Llegir LEADS",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -380,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIALS",
+          "name": "GOOGLE_SHEETS_CREDENTIALS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst cfg = $('Normalitzar CONFIG').first().json;\nconst rows = $input.all();\nconst now = new Date();\nconst emptyStatuses = new Set(['', 'pending', 'retry']);\nconst neverRepeat = new Set(['matched', 'completed']);\n\nconst clean = (value) => String(value ?? '').trim();\nconst hasLeadInput = (row) => [\n  'company_name',\n  'company_domain',\n  'company_website',\n  'company_city',\n].some((key) => clean(row[key]));\n\nconst isStale = (value) => {\n  const raw = clean(value);\n  if (!raw) return false;\n  const parsed = new Date(raw);\n  if (Number.isNaN(parsed.getTime())) return false;\n  const ageMs = now.getTime() - parsed.getTime();\n  return ageMs > Number(cfg.recheck_after_days) * 24 * 60 * 60 * 1000;\n};\n\nconst out = [];\nlet skipped = 0;\nlet blank = 0;\n\nfor (let index = 0; index < rows.length; index++) {\n  const row = rows[index].json || {};\n  if (!hasLeadInput(row)) {\n    blank++;\n    continue;\n  }\n\n  const status = clean(row.apollo_status).toLowerCase();\n  const due = emptyStatuses.has(status) || (!neverRepeat.has(status) && isStale(row.apollo_last_checked_at));\n  if (!due) {\n    skipped++;\n    continue;\n  }\n\n  out.push({\n    json: {\n      ...row,\n      row_number: index + 2,\n      workflow_version: cfg.workflow_version,\n      config: cfg,\n    },\n  });\n\n  if (out.length >= Number(cfg.batch_size)) break;\n}\n\nif (!out.length) {\n  return [{\n    json: {\n      summary_only: true,\n      total_rows: rows.length,\n      processed: 0,\n      matched: 0,\n      matched_without_email: 0,\n      no_person_found: 0,\n      insufficient_company_data: 0,\n      api_errors: 0,\n      rate_limited: 0,\n      credit_exhausted: 0,\n      skipped,\n      blank,\n      execution_started_at: now.toISOString(),\n      execution_finished_at: new Date().toISOString(),\n      workflow_version: cfg.workflow_version,\n    },\n  }];\n}\n\nreturn out;\n"
+      },
+      "id": "apollo-prepare-queue",
+      "name": "Preparar cues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-row",
+              "leftValue": "={{ !$json.summary_only }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "apollo-has-row",
+      "name": "Hi ha fila?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        60,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst SEARCH_URL = 'https://api.apollo.io/api/v1/mixed_people/api_search';\nconst ENRICH_URL = 'https://api.apollo.io/api/v1/people/match';\nconst REQUEST_TIMEOUT_MS = 60000;\nconst MAX_RETRIES = 2;\n\nconst TITLE_RULES = [\n  { label: 'Owner', score: 100, pattern: /\\b(owner|propietari|dueno|duena)\\b/i },\n  { label: 'Founder', score: 95, pattern: /\\b(co[-\\s]?founder|founder|fundador|fundadora)\\b/i },\n  { label: 'CEO', score: 90, pattern: /\\b(ceo|chief executive officer|director general)\\b/i },\n  { label: 'Managing Director', score: 85, pattern: /\\b(managing director|director gerente|director ejecutivo)\\b/i },\n  { label: 'General Manager', score: 80, pattern: /\\b(general manager|gerente general)\\b/i },\n  { label: 'Partner', score: 78, pattern: /\\b(partner|socio|socia)\\b/i },\n  { label: 'COO / Operations Director', score: 75, pattern: /\\b(coo|chief operating officer|operations director|director of operations|director de operaciones|operacions)\\b/i },\n  { label: 'Commercial / Sales Director', score: 70, pattern: /\\b(commercial director|sales director|director comercial|director de ventas|head of sales)\\b/i },\n  { label: 'Marketing Director', score: 65, pattern: /\\b(marketing director|director de marketing|head of marketing)\\b/i },\n  { label: 'Head of Operations', score: 58, pattern: /\\b(head of operations|operations head|responsable de operaciones)\\b/i },\n  { label: 'Head of Sales', score: 56, pattern: /\\b(head of sales|sales head|responsable de ventas)\\b/i },\n  { label: 'Head of Marketing', score: 54, pattern: /\\b(head of marketing|marketing head|responsable de marketing)\\b/i },\n  { label: 'Director', score: 50, pattern: /\\b(director|directora)\\b/i },\n  { label: 'Head', score: 45, pattern: /\\b(head|responsable)\\b/i },\n  { label: 'Manager', score: 40, pattern: /\\b(manager|gerente|responsable)\\b/i },\n];\n\nconst SENIORITY_SCORE = {\n  owner: 8,\n  founder: 7,\n  c_suite: 6,\n  partner: 5,\n  vp: 4,\n  director: 3,\n  head: 2,\n  manager: 1,\n};\n\nconst SEARCH_TITLES = [\n  'Owner',\n  'Founder',\n  'Co-Founder',\n  'CEO',\n  'Managing Director',\n  'General Manager',\n  'Partner',\n  'COO',\n  'Operations Director',\n  'Commercial Director',\n  'Sales Director',\n  'Marketing Director',\n  'Head of Operations',\n  'Head of Sales',\n  'Head of Marketing',\n  'Director',\n  'Head',\n  'Manager',\n];\n\nconst SEARCH_SENIORITIES = ['owner', 'founder', 'c_suite', 'partner', 'vp', 'director', 'head', 'manager'];\nconst EXCLUDED_TITLE = /\\b(intern|student|assistant|trainee|junior|becario|becaria|practicas)\\b/i;\nconst RECRUITER = /\\b(recruiter|talent acquisition|reclutador|seleccion)\\b/i;\nconst HR_SECTOR = /\\b(hr|human resources|recursos humanos|seleccion|recruitment|talent)\\b/i;\nconst ALLOWED_FUNCTION = /\\b(owner|founder|ceo|chief|managing|general manager|partner|coo|operations|commercial|sales|marketing|director|head|manager|procurement|purchasing|buyer|compras|ventas|operaciones|direccion)\\b/i;\n\nconst clean = (value) => String(value ?? '').trim();\nconst lower = (value) => clean(value).toLowerCase();\nconst isFilled = (value) => clean(value) !== '';\nconst toBool = (value) => String(value).trim().toLowerCase() === 'true';\nconst parseAttempts = (value) => Math.max(0, Math.floor(Number(value) || 0));\n\nfunction normalizeDomain(value) {\n  let text = lower(value);\n  if (!text) return '';\n  text = text.replace(/^https?:\\/\\//, '');\n  text = text.replace(/^www\\./, '');\n  text = text.split(/[/?#]/)[0];\n  text = text.replace(/\\.+$/, '').replace(/\\/+$/, '');\n  if (!text.includes('.') || /\\s/.test(text)) return '';\n  return text;\n}\n\nfunction normalizeCompanyName(value) {\n  return clean(value).replace(/\\s+/g, ' ');\n}\n\nfunction hash53(text, seed = 0) {\n  let h1 = 0xdeadbeef ^ seed;\n  let h2 = 0x41c6ce57 ^ seed;\n  for (let i = 0; i < text.length; i++) {\n    const ch = text.charCodeAt(i);\n    h1 = Math.imul(h1 ^ ch, 2654435761);\n    h2 = Math.imul(h2 ^ ch, 1597334677);\n  }\n  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);\n  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);\n  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36).toUpperCase();\n}\n\nfunction titleScore(title) {\n  for (const rule of TITLE_RULES) {\n    if (rule.pattern.test(clean(title))) return rule;\n  }\n  return { label: '', score: 0 };\n}\n\nfunction getSeniority(candidate) {\n  const value = lower(candidate.seniority || candidate.person_seniority || candidate.seniority_level || '');\n  if (value) return value;\n  const match = titleScore(candidate.title || candidate.job_title || '').label.toLowerCase();\n  if (match.includes('owner')) return 'owner';\n  if (match.includes('founder')) return 'founder';\n  if (match.includes('ceo')) return 'c_suite';\n  if (match.includes('partner')) return 'partner';\n  if (match.includes('director')) return 'director';\n  if (match.includes('head')) return 'head';\n  if (match.includes('manager')) return 'manager';\n  return '';\n}\n\nfunction candidateName(candidate) {\n  return clean(candidate.name) || [candidate.first_name, candidate.last_name || candidate.last_name_obfuscated].map(clean).filter(Boolean).join(' ');\n}\n\nfunction shouldExclude(candidate, sector) {\n  const title = clean(candidate.title || candidate.job_title || '');\n  if (!title) return true;\n  if (EXCLUDED_TITLE.test(title)) return true;\n  if (RECRUITER.test(title) && !HR_SECTOR.test(sector)) return true;\n  if (!ALLOWED_FUNCTION.test(title)) return true;\n  return false;\n}\n\nfunction organizationName(candidate) {\n  return clean(candidate.organization?.name || candidate.organization_name || candidate.account?.name || '');\n}\n\nfunction organizationDomain(candidate) {\n  return normalizeDomain(candidate.organization?.primary_domain || candidate.organization?.website_url || candidate.organization?.domain || candidate.domain || '');\n}\n\nfunction domainMatches(candidate, domain) {\n  const orgDomain = organizationDomain(candidate);\n  return Boolean(domain && orgDomain && orgDomain === domain);\n}\n\nfunction scoreCandidate(candidate, context, originalIndex) {\n  const title = clean(candidate.title || candidate.job_title || '');\n  if (shouldExclude({ ...candidate, title }, context.company_sector)) return null;\n  const titleHit = titleScore(title);\n  if (!titleHit.score) return null;\n  const seniority = getSeniority(candidate);\n  const seniorityRank = SENIORITY_SCORE[seniority] || 0;\n  const emailStatus = lower(candidate.email_status || candidate.contact_email_status || '');\n  const hasVerifiedEmail = emailStatus === 'verified' || candidate.has_email === true;\n  const current = candidate.current !== false;\n  const domainMatch = domainMatches(candidate, context.normalized_domain);\n  const orgName = organizationName(candidate).toLowerCase();\n  const companyName = lower(context.normalized_company_name);\n  const companyMatch = companyName && orgName && (orgName.includes(companyName) || companyName.includes(orgName));\n\n  if (!domainMatch && context.normalized_domain) {\n    const orgDomain = organizationDomain(candidate);\n    if (orgDomain && orgDomain !== context.normalized_domain) return null;\n  }\n\n  const score = titleHit.score\n    + seniorityRank\n    + (hasVerifiedEmail ? 3 : 0)\n    + (current ? 2 : 0)\n    + (domainMatch ? 2 : 0)\n    + (companyMatch ? 1 : 0);\n\n  return {\n    candidate,\n    score,\n    titleScore: titleHit.score,\n    titleLabel: titleHit.label,\n    seniority,\n    seniorityRank,\n    hasVerifiedEmail,\n    current,\n    domainMatch,\n    originalIndex,\n  };\n}\n\nfunction chooseBestCandidate(candidates, context) {\n  const scored = candidates\n    .map((candidate, index) => scoreCandidate(candidate, context, index))\n    .filter(Boolean)\n    .sort((a, b) => {\n      if (b.score !== a.score) return b.score - a.score;\n      if (b.seniorityRank !== a.seniorityRank) return b.seniorityRank - a.seniorityRank;\n      if (Number(b.hasVerifiedEmail) !== Number(a.hasVerifiedEmail)) return Number(b.hasVerifiedEmail) - Number(a.hasVerifiedEmail);\n      if (Number(b.current) !== Number(a.current)) return Number(b.current) - Number(a.current);\n      if (Number(b.domainMatch) !== Number(a.domainMatch)) return Number(b.domainMatch) - Number(a.domainMatch);\n      return a.originalIndex - b.originalIndex;\n    });\n  return scored[0] || null;\n}\n\nfunction minimumCompanyData(row, countryDefault) {\n  const domain = normalizeDomain(row.company_domain) || normalizeDomain(row.company_website);\n  const companyName = normalizeCompanyName(row.company_name);\n  const city = clean(row.company_city);\n  const country = clean(row.company_country) || countryDefault;\n  if (domain) return { ok: true, mode: 'domain', domain, companyName, city, country };\n  if (companyName && city) return { ok: true, mode: 'name_city', domain: '', companyName, city, country };\n  return { ok: false, mode: 'insufficient', domain: '', companyName, city, country };\n}\n\nfunction preserve(row, key, value, overwrite) {\n  const existing = clean(row[key]);\n  if (!overwrite && existing) return existing;\n  return clean(value);\n}\n\nfunction responseText(body) {\n  if (typeof body === 'string') return body;\n  try {\n    return JSON.stringify(body || {});\n  } catch {\n    return '';\n  }\n}\n\nfunction classifyApiError(status, body, timedOut) {\n  const text = responseText(body).toLowerCase();\n  if (timedOut) return { status: 'api_error', error: 'timeout' };\n  if (/credit|credits|balance|quota|limit exceeded|exhaust/i.test(text) && status !== 429) {\n    return { status: 'credit_exhausted', error: 'apollo credits or balance exhausted' };\n  }\n  if (status === 429) return { status: 'rate_limited', error: 'apollo rate limited' };\n  if (status === 400) return { status: 'api_error', error: '400 invalid Apollo request' };\n  if (status === 401 || status === 403) return { status: 'api_error', error: String(status) + ' Apollo credentials, master key, or endpoint scope issue' };\n  if (status === 404) return { status: 'api_error', error: '404 Apollo endpoint or resource not found' };\n  if (status === 409) return { status: 'api_error', error: '409 Apollo conflict' };\n  if (status === 422) return { status: 'api_error', error: '422 Apollo validation error' };\n  if (status >= 500) return { status: 'api_error', error: String(status) + ' temporary Apollo server error' };\n  return { status: 'api_error', error: String(status || 'unknown') + ' Apollo API error' };\n}\n\nasync function sleep(ms) {\n  await new Promise((resolve) => setTimeout(resolve, ms));\n}\n\nasync function apolloRequest(url, apiKey) {\n  let last = null;\n  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {\n    const controller = new AbortController();\n    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);\n    try {\n      const res = await fetch(url, {\n        method: 'POST',\n        headers: {\n          accept: 'application/json',\n          'cache-control': 'no-cache',\n          'content-type': 'application/json',\n          'x-api-key': apiKey,\n        },\n        signal: controller.signal,\n      });\n      const text = await res.text();\n      let body = text;\n      try {\n        body = text ? JSON.parse(text) : {};\n      } catch {}\n      last = { ok: res.ok, status: res.status, headers: res.headers, body, attempts: attempt + 1 };\n      const retryable = res.status === 429 || res.status >= 500;\n      if (!retryable || attempt === MAX_RETRIES) return last;\n      const retryAfter = Number(res.headers?.get?.('retry-after'));\n      const waitSeconds = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 60) : Math.min(2 ** attempt * 5, 30);\n      await sleep(waitSeconds * 1000);\n    } catch (error) {\n      last = { ok: false, status: 0, body: { message: error.message }, attempts: attempt + 1, timedOut: error.name === 'AbortError' };\n      if (attempt === MAX_RETRIES) return last;\n      await sleep(Math.min(2 ** attempt * 5, 30) * 1000);\n    } finally {\n      clearTimeout(timeout);\n    }\n  }\n  return last;\n}\n\nfunction buildSearchUrl(context, maxCandidates) {\n  const url = new URL(SEARCH_URL);\n  url.searchParams.set('page', '1');\n  url.searchParams.set('per_page', String(maxCandidates));\n  url.searchParams.set('include_similar_titles', 'false');\n  for (const title of SEARCH_TITLES) url.searchParams.append('person_titles[]', title);\n  for (const seniority of SEARCH_SENIORITIES) url.searchParams.append('person_seniorities[]', seniority);\n  if (context.normalized_domain) {\n    url.searchParams.append('q_organization_domains_list[]', context.normalized_domain);\n  } else {\n    url.searchParams.set('q_keywords', context.normalized_company_name);\n    const location = [context.company_city, context.company_country].map(clean).filter(Boolean).join(', ');\n    if (location) url.searchParams.append('organization_locations[]', location);\n  }\n  return url.toString();\n}\n\nfunction buildEnrichUrl(best, context) {\n  const candidate = best.candidate;\n  const url = new URL(ENRICH_URL);\n  const personId = clean(candidate.id || candidate.person_id);\n  if (personId) url.searchParams.set('id', personId);\n  const name = candidateName(candidate);\n  if (!personId && name) url.searchParams.set('name', name);\n  if (context.normalized_domain) url.searchParams.set('domain', context.normalized_domain);\n  if (!context.normalized_domain && context.normalized_company_name) url.searchParams.set('organization_name', context.normalized_company_name);\n  const linkedin = clean(candidate.linkedin_url || candidate.linkedinUrl);\n  if (!personId && linkedin) url.searchParams.set('linkedin_url', linkedin);\n  url.searchParams.set('reveal_personal_emails', 'false');\n  url.searchParams.set('reveal_phone_number', 'false');\n  return url.toString();\n}\n\nfunction currentEmploymentMatches(person, context) {\n  const history = Array.isArray(person.employment_history) ? person.employment_history : [];\n  const current = history.find((entry) => entry && entry.current === true);\n  if (!current) return true;\n  const orgId = clean(current.organization_id);\n  const personOrgId = clean(person.organization_id);\n  if (orgId && personOrgId && orgId === personOrgId) return true;\n  const orgName = lower(current.organization_name);\n  const companyName = lower(context.normalized_company_name);\n  if (companyName && orgName && (orgName.includes(companyName) || companyName.includes(orgName))) return true;\n  return !context.normalized_company_name;\n}\n\nfunction outputBase(row, status, error, attempts, nowIso) {\n  return {\n    ...row,\n    apollo_status: status,\n    apollo_error: error || '',\n    apollo_attempts: parseAttempts(row.apollo_attempts) + attempts,\n    apollo_last_checked_at: nowIso,\n    processed_at: nowIso,\n  };\n}\n\nfunction outputContact(row, best, person, context, attempts, nowIso, overwrite) {\n  const candidate = best.candidate;\n  const source = person || candidate;\n  const contact = source.contact || {};\n  const email = clean(source.email || contact.email || row.decision_maker_email);\n  const emailStatus = clean(source.email_status || contact.email_status || source.email_true_status || candidate.email_status);\n  const phone = clean(source.sanitized_phone || contact.sanitized_phone || source.phone || contact.phone);\n  const name = clean(source.name) || candidateName(candidate);\n  const firstName = clean(source.first_name || candidate.first_name);\n  const lastName = clean(source.last_name || candidate.last_name);\n  const title = clean(source.title || candidate.title);\n  const seniority = clean(source.seniority || best.seniority);\n  const departments = Array.isArray(source.departments) ? source.departments.join(', ') : clean(source.department || source.departments);\n  const status = email ? 'matched' : 'matched_without_email';\n\n  return {\n    ...row,\n    lead_id: clean(row.lead_id) || 'APOLLO-' + hash53([context.normalized_domain, context.normalized_company_name, context.company_city].join('|')),\n    decision_maker_name: preserve(row, 'decision_maker_name', name, overwrite),\n    decision_maker_first_name: preserve(row, 'decision_maker_first_name', firstName, overwrite),\n    decision_maker_last_name: preserve(row, 'decision_maker_last_name', lastName, overwrite),\n    decision_maker_job_title: preserve(row, 'decision_maker_job_title', title, overwrite),\n    decision_maker_seniority: preserve(row, 'decision_maker_seniority', seniority, overwrite),\n    decision_maker_department: preserve(row, 'decision_maker_department', departments, overwrite),\n    decision_maker_email: preserve(row, 'decision_maker_email', email, overwrite),\n    decision_maker_email_status: preserve(row, 'decision_maker_email_status', emailStatus, overwrite),\n    decision_maker_phone: preserve(row, 'decision_maker_phone', phone, overwrite),\n    decision_maker_linkedin_url: preserve(row, 'decision_maker_linkedin_url', source.linkedin_url || candidate.linkedin_url, overwrite),\n    apollo_person_id: preserve(row, 'apollo_person_id', source.id || candidate.id || source.person_id || candidate.person_id, overwrite),\n    apollo_organization_id: preserve(row, 'apollo_organization_id', source.organization_id || candidate.organization_id || source.organization?.id || candidate.organization?.id, overwrite),\n    apollo_status: status,\n    apollo_error: '',\n    apollo_attempts: parseAttempts(row.apollo_attempts) + attempts,\n    apollo_last_checked_at: nowIso,\n    processed_at: nowIso,\n  };\n}\n\nasync function processRow(row) {\n  const cfg = row.config || {};\n  const nowIso = new Date().toISOString();\n  const overwrite = toBool(cfg.overwrite_existing_contact_data);\n  const company = minimumCompanyData(row, cfg.country_default || 'Spain');\n  const context = {\n    normalized_domain: company.domain,\n    normalized_company_name: company.companyName,\n    company_city: company.city,\n    company_country: company.country,\n    company_sector: clean(row.company_sector),\n  };\n\n  if (!company.ok) {\n    return outputBase(row, 'insufficient_company_data', 'Need company_domain, company_website, or company_name + company_city', 0, nowIso);\n  }\n  if (!toBool(cfg.apollo_enabled)) {\n    return outputBase(row, 'skipped', 'APOLLO_ENABLED is false', 0, nowIso);\n  }\n\n  const apiKeyName = clean(cfg.apollo_api_key_env_var || 'APOLLO_API_KEY');\n  const apiKey = $env[apiKeyName];\n  if (!apiKey) {\n    return outputBase(row, 'api_error', apiKeyName + ' is not configured in n8n/EasyPanel environment', 0, nowIso);\n  }\n\n  const search = await apolloRequest(buildSearchUrl(context, Number(cfg.max_candidates_per_company) || 10), apiKey);\n  if (!search.ok) {\n    const classified = classifyApiError(search.status, search.body, search.timedOut);\n    return outputBase(row, classified.status, classified.error, search.attempts || 1, nowIso);\n  }\n\n  const people = Array.isArray(search.body?.people) ? search.body.people : [];\n  const best = chooseBestCandidate(people, context);\n  if (!best) {\n    return outputBase(row, 'no_person_found', 'No decision-maker candidate matched deterministic rules', search.attempts || 1, nowIso);\n  }\n\n  const alreadyHasEmail = isFilled(row.decision_maker_email) && !overwrite;\n  const alreadyHasPersonId = isFilled(row.apollo_person_id);\n  if (alreadyHasEmail || alreadyHasPersonId) {\n    return outputContact(row, best, best.candidate, context, search.attempts || 1, nowIso, overwrite);\n  }\n\n  const enrich = await apolloRequest(buildEnrichUrl(best, context), apiKey);\n  const attempts = (search.attempts || 1) + (enrich.attempts || 1);\n  if (!enrich.ok) {\n    const classified = classifyApiError(enrich.status, enrich.body, enrich.timedOut);\n    return outputBase(row, classified.status, classified.error, attempts, nowIso);\n  }\n\n  const person = enrich.body?.person || enrich.body?.contact || {};\n  if (!currentEmploymentMatches(person, context)) {\n    return outputBase(row, 'no_person_found', 'Best enriched person is not currently matched to this company', attempts, nowIso);\n  }\n\n  return outputContact(row, best, person, context, attempts, nowIso, overwrite);\n}\n\nreturn await (async () => {\n  const inputRows = $input.all().map((item) => item.json || {});\n  const output = [];\n  for (const row of inputRows) {\n    output.push({ json: await processRow(row) });\n  }\n  return output;\n})();\n"
+      },
+      "id": "apollo-search-enrich",
+      "name": "Apollo - buscar i enriquir",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Normalitzar CONFIG').first().json.google_sheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Normalitzar CONFIG').first().json.leads_sheet_name }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json['row_number'] }}",
+            "lead_id": "={{ $json['lead_id'] }}",
+            "company_name": "={{ $json['company_name'] }}",
+            "company_domain": "={{ $json['company_domain'] }}",
+            "company_website": "={{ $json['company_website'] }}",
+            "company_city": "={{ $json['company_city'] }}",
+            "company_country": "={{ $json['company_country'] }}",
+            "company_sector": "={{ $json['company_sector'] }}",
+            "source": "={{ $json['source'] }}",
+            "decision_maker_name": "={{ $json['decision_maker_name'] }}",
+            "decision_maker_first_name": "={{ $json['decision_maker_first_name'] }}",
+            "decision_maker_last_name": "={{ $json['decision_maker_last_name'] }}",
+            "decision_maker_job_title": "={{ $json['decision_maker_job_title'] }}",
+            "decision_maker_seniority": "={{ $json['decision_maker_seniority'] }}",
+            "decision_maker_department": "={{ $json['decision_maker_department'] }}",
+            "decision_maker_email": "={{ $json['decision_maker_email'] }}",
+            "decision_maker_email_status": "={{ $json['decision_maker_email_status'] }}",
+            "decision_maker_phone": "={{ $json['decision_maker_phone'] }}",
+            "decision_maker_linkedin_url": "={{ $json['decision_maker_linkedin_url'] }}",
+            "apollo_person_id": "={{ $json['apollo_person_id'] }}",
+            "apollo_organization_id": "={{ $json['apollo_organization_id'] }}",
+            "apollo_status": "={{ $json['apollo_status'] }}",
+            "apollo_error": "={{ $json['apollo_error'] }}",
+            "apollo_attempts": "={{ $json['apollo_attempts'] }}",
+            "apollo_last_checked_at": "={{ $json['apollo_last_checked_at'] }}",
+            "processed_at": "={{ $json['processed_at'] }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "company_domain",
+              "displayName": "company_domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "company_website",
+              "displayName": "company_website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "company_city",
+              "displayName": "company_city",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "company_country",
+              "displayName": "company_country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "company_sector",
+              "displayName": "company_sector",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "decision_maker_name",
+              "displayName": "decision_maker_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "decision_maker_first_name",
+              "displayName": "decision_maker_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "decision_maker_last_name",
+              "displayName": "decision_maker_last_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "decision_maker_job_title",
+              "displayName": "decision_maker_job_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "decision_maker_seniority",
+              "displayName": "decision_maker_seniority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "decision_maker_department",
+              "displayName": "decision_maker_department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "decision_maker_email",
+              "displayName": "decision_maker_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "decision_maker_email_status",
+              "displayName": "decision_maker_email_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "decision_maker_phone",
+              "displayName": "decision_maker_phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "decision_maker_linkedin_url",
+              "displayName": "decision_maker_linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "apollo_person_id",
+              "displayName": "apollo_person_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "apollo_organization_id",
+              "displayName": "apollo_organization_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "apollo_status",
+              "displayName": "apollo_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "apollo_error",
+              "displayName": "apollo_error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "apollo_attempts",
+              "displayName": "apollo_attempts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "apollo_last_checked_at",
+              "displayName": "apollo_last_checked_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED",
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "apollo-update-leads",
+      "name": "Google Sheets - actualitzar LEADS",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        540,
+        -20
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIALS",
+          "name": "GOOGLE_SHEETS_CREDENTIALS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst items = $input.all().map((item) => item.json || {});\n\nif (items.length === 1 && items[0].summary_only) {\n  return [{ json: items[0] }];\n}\n\nconst started = items\n  .map((item) => item.apollo_last_checked_at || item.processed_at)\n  .filter(Boolean)\n  .sort()[0] || new Date().toISOString();\n\nconst count = (status) => items.filter((item) => item.apollo_status === status).length;\nconst summary = {\n  total_rows: $('Llegir LEADS').all().length,\n  processed: items.length,\n  matched: count('matched'),\n  matched_without_email: count('matched_without_email'),\n  no_person_found: count('no_person_found'),\n  insufficient_company_data: count('insufficient_company_data'),\n  api_errors: count('api_error'),\n  rate_limited: count('rate_limited'),\n  credit_exhausted: count('credit_exhausted'),\n  skipped: count('skipped'),\n  execution_started_at: started,\n  execution_finished_at: new Date().toISOString(),\n  workflow_version: $('Normalitzar CONFIG').first().json.workflow_version,\n};\n\nreturn [{ json: summary }];\n"
+      },
+      "id": "apollo-summary",
+      "name": "Resum final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        80
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Inici manual": {
+      "main": [
+        [
+          {
+            "node": "Configuracio base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuracio base": {
+      "main": [
+        [
+          {
+            "node": "Llegir CONFIG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llegir CONFIG": {
+      "main": [
+        [
+          {
+            "node": "Normalitzar CONFIG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalitzar CONFIG": {
+      "main": [
+        [
+          {
+            "node": "Llegir LEADS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llegir LEADS": {
+      "main": [
+        [
+          {
+            "node": "Preparar cues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar cues": {
+      "main": [
+        [
+          {
+            "node": "Hi ha fila?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hi ha fila?": {
+      "main": [
+        [
+          {
+            "node": "Apollo - buscar i enriquir",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resum final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apollo - buscar i enriquir": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - actualitzar LEADS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - actualitzar LEADS": {
+      "main": [
+        [
+          {
+            "node": "Resum final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid",
+    "saveManualExecutions": true
+  },
+  "versionId": "apollo-decision-maker-enrichment-1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "AIMETOS_APOLLO_PLACEHOLDER"
+  },
+  "id": "AIMETOS_APOLLO_DECISION_MAKER_ENRICHMENT",
+  "tags": []
+}

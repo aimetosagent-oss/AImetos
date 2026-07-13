@@ -1,0 +1,9 @@
+KEY,VALUE,DESCRIPTION
+APOLLO_ENABLED,true,Activa o desactiva Apollo
+BATCH_SIZE,10,Files processades per execucio
+MAX_CANDIDATES_PER_COMPANY,10,Candidats maxims retornats
+OVERWRITE_EXISTING_CONTACT_DATA,false,Permet sobreescriure dades manuals
+RECHECK_AFTER_DAYS,90,Dies abans de tornar a consultar
+COUNTRY_DEFAULT,Spain,Pais per defecte
+APOLLO_API_KEY_ENV_VAR,APOLLO_API_KEY,Variable d'entorn segura
+WORKFLOW_VERSION,1.0.0,Versio del workflow
