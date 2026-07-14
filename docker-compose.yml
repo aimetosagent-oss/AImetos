@@ -1,0 +1,139 @@
+name: aimetos-crm
+
+x-app-image: &app-image
+  image: aimetos-crm:${IMAGE_TAG:-local}
+  build:
+    context: .
+    dockerfile: Dockerfile
+    target: runner
+    args:
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+
+x-app-environment: &app-environment
+  NODE_ENV: production
+  PORT: "3000"
+  HOSTNAME: 0.0.0.0
+  DATABASE_URL: ${DATABASE_URL:-postgresql://aimetos:aimetos@postgres:5432/aimetos_crm?schema=public}
+  DIRECT_DATABASE_URL: ${DIRECT_DATABASE_URL:-postgresql://aimetos:aimetos@postgres:5432/aimetos_crm?schema=public}
+  SHADOW_DATABASE_URL: ${SHADOW_DATABASE_URL:-postgresql://aimetos:aimetos@postgres:5432/aimetos_crm?schema=public}
+  AUTH_SECRET: ${AUTH_SECRET:-local-development-only-change-before-deploying}
+  AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+  AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@aimetos.local}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-CanviaAquestaContrasenya123!}
+  ADMIN_NAME: ${ADMIN_NAME:-Administrador AImetos}
+  APP_URL: ${APP_URL:-http://localhost:3000}
+  ORGANIZATION_TIMEZONE: ${ORGANIZATION_TIMEZONE:-Europe/Madrid}
+  ORGANIZATION_CURRENCY: ${ORGANIZATION_CURRENCY:-EUR}
+  PUBLIC_FORM_TRUSTED_PROXY_HOPS: ${PUBLIC_FORM_TRUSTED_PROXY_HOPS:-0}
+  AUTH_TRUSTED_PROXY_HOPS: ${AUTH_TRUSTED_PROXY_HOPS:-0}
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_FROM_NAME: ${SMTP_FROM_NAME:-AImetos CRM}
+  SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-crm@aimetos.local}
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:-}
+  WORKER_ID: ${WORKER_ID:-worker-compose}
+  WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-2000}
+  WORKER_LOCK_TIMEOUT_MINUTES: ${WORKER_LOCK_TIMEOUT_MINUTES:-10}
+  MIGRATE_ON_START: "false"
+  SEED_ON_START: "false"
+  SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aimetos_crm}
+      POSTGRES_USER: ${POSTGRES_USER:-aimetos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aimetos}
+    ports:
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:v1.30.0
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: ${MAILPIT_MAX_MESSAGES:-5000}
+    ports:
+      - "${MAILPIT_BIND_ADDRESS:-127.0.0.1}:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_BIND_ADDRESS:-127.0.0.1}:${MAILPIT_UI_PORT:-8025}:8025"
+    volumes:
+      - mailpit-data:/data
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  migrate:
+    <<: *app-image
+    environment: *app-environment
+    command: ["migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    <<: *app-image
+    environment: *app-environment
+    command: ["app"]
+    ports:
+      - "${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    stop_grace_period: 20s
+    restart: unless-stopped
+
+  worker:
+    <<: *app-image
+    environment: *app-environment
+    command: ["worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/aimetos-worker-ready && kill -0 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  mailpit-data:
