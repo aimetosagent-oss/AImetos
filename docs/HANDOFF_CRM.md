@@ -110,17 +110,27 @@ npm.cmd run test:e2e
 - Els pagaments i decisions de pressupost estan protegits contra concurrència.
 - No és una implementació completa de VeriFactu.
 
-## Abans de canviar d'ordinador
+## Estat de Git i bloquejos pendents
 
-En el moment de crear aquest document, el CRM encara apareix com a canvis nous
-o modificats sense commit. El procés d'“acabar” ha de fer, com a mínim:
+El 14 de juliol de 2026 s'ha comprovat que `main` està net i que el commit del
+CRM MVP és visible al remot `https://github.com/aimetosagent-oss/AImetos.git`.
+
+En aquesta màquina encara no es poden repetir totes les validacions perquè
+`node`, `npm` i `docker` no estan instal·lats al `PATH`, i tampoc hi ha un
+fitxer `.env` local. Quan l'entorn tingui Node/npm i Docker disponibles, la
+propera feina és:
 
 ```powershell
-git add .
-git commit -m "Add AImetos CRM MVP"
-git push origin main
+npm.cmd ci
+Copy-Item .env.example .env
+npm.cmd run lint
+npm.cmd run typecheck
+npm.cmd run test:unit
+npm.cmd run test:integration
+npm.cmd run build
+npm.cmd run test:e2e
+docker compose build
 ```
 
-Abans d'apagar, comprovar que `git status` no mostra canvis pendents i que el
-commit és visible al remot `https://github.com/aimetosagent-oss/AImetos.git`.
+El desplegament EasyPanel continua pendent de prova en una màquina amb Docker.
 
