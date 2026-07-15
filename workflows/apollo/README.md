@@ -1,6 +1,6 @@
 # Apollo decision maker enrichment
 
-Workflow n8n importable per llegir empreses de Google Sheets, buscar decisors a Apollo, seleccionar un sol candidat amb regles deterministes i escriure el resultat a la mateixa fila.
+Workflow n8n importable per llegir empreses de la pestanya existent `Hoja 1`, buscar decisors a Apollo, seleccionar un sol candidat amb regles deterministes i escriure el resultat a la pestanya nova `LEADS`.
 
 ## Fitxers
 
@@ -13,14 +13,15 @@ Workflow n8n importable per llegir empreses de Google Sheets, buscar decisors a 
 
 1. Trigger manual.
 2. Llegeix `CONFIG`.
-3. Llegeix `LEADS`.
-4. Processa nomes files pendents, `retry`, o caducades segons `RECHECK_AFTER_DAYS`.
-5. Normalitza domini i nom d'empresa sense deduir dades externes.
-6. Cerca persones a Apollo amb `POST https://api.apollo.io/api/v1/mixed_people/api_search`.
-7. Puntua candidats amb regles de carrec i seniority.
-8. Enriqueix nomes el millor candidat amb `POST https://api.apollo.io/api/v1/people/match`.
-9. Actualitza la mateixa fila per `row_number`.
-10. Retorna resum final.
+3. Llegeix la font `Hoja 1` en mode nomes lectura.
+4. Llegeix `LEADS` per saber que ja esta enriquit.
+5. Processa nomes leads nous, `retry`, o caducats segons `RECHECK_AFTER_DAYS`.
+6. Normalitza domini i nom d'empresa sense deduir dades externes.
+7. Cerca persones a Apollo amb `POST https://api.apollo.io/api/v1/mixed_people/api_search`.
+8. Puntua candidats amb regles de carrec i seniority.
+9. Enriqueix nomes el millor candidat amb `POST https://api.apollo.io/api/v1/people/match`.
+10. Escriu o actualitza el resultat a `LEADS` per `lead_id`.
+11. Retorna resum final.
 
 ## Que no fa
 
@@ -37,12 +38,29 @@ El spreadsheet configurat es:
 
 `https://docs.google.com/spreadsheets/d/1JBuVbNMQTpk9BBxT8Lar6XFKSlzsvmqRw4cppbuRmjo/edit`
 
+La font existent es:
+
+- `Hoja 1`: entrada amb uns 12.000 leads. El workflow nomes la llegeix.
+
 S'han creat nomes dues pestanyes noves:
 
 - `LEADS`
 - `CONFIG`
 
-Les pestanyes originals `Hoja 1`, `INPUT` i `CONTROL INPUT` no formen part del workflow Apollo.
+Les pestanyes originals `Hoja 1`, `INPUT` i `CONTROL INPUT` no es modifiquen.
+
+## Mapping de Hoja 1
+
+| Hoja 1 | LEADS |
+| --- | --- |
+| `id` | `lead_id` |
+| `company_name` | `company_name` |
+| `website` | `company_website` |
+| `city` | `company_city` |
+| `sector` o `target_type` | `company_sector` |
+| `source_url` | `source` |
+
+Els camps de contacte retornats per Apollo s'escriuen a les columnes `decision_maker_*` i `apollo_*` de `LEADS`.
 
 ## Credencials
 
@@ -78,20 +96,16 @@ Notes operatives:
 3. Revisa `Configuracio base`: spreadsheet ID, `LEADS`, `CONFIG`.
 4. Configura `APOLLO_API_KEY` com a variable d'entorn segura.
 5. A `CONFIG`, deixa `APOLLO_ENABLED=true` nomes quan vulguis permetre crides reals.
-6. Per la primera prova, posa una sola empresa a `LEADS`.
+6. Per la primera prova, deixa `BATCH_SIZE=1` a `CONFIG`.
 7. Executa manualment.
 
 No executis el workflow contra Apollo fins que el consum de credits estigui aprovat.
 
 ## Com provar amb una sola empresa
 
-Omple una fila de `LEADS` amb:
+El workflow llegira la primera fila util de `Hoja 1` segons `BATCH_SIZE=1` i escriura el resultat a `LEADS`.
 
-- `company_name`
-- `company_domain` o `company_website`
-- opcionalment `company_city`, `company_country`, `company_sector`, `source`
-
-Deixa buits els camps `decision_maker_*` i `apollo_*`, o posa `apollo_status=retry` si vols reprocessar una fila concreta.
+Per reprocessar un lead concret, busca el seu `lead_id` a `LEADS` i posa `apollo_status=retry`.
 
 ## Com desactivar-lo
 

@@ -4,6 +4,7 @@ La pestanya `CONFIG` te tres columnes: `KEY`, `VALUE`, `DESCRIPTION`.
 
 | KEY | Default | Description |
 | --- | --- | --- |
+| `SOURCE_SHEET_NAME` | `Hoja 1` | Pestanya existent amb empreses/leads. Nomes lectura. |
 | `APOLLO_ENABLED` | `true` | Activa o desactiva crides Apollo. |
 | `BATCH_SIZE` | `10` | Files maximes processades per execucio. |
 | `MAX_CANDIDATES_PER_COMPANY` | `10` | Resultats maxims retornats per empresa. |

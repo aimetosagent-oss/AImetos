@@ -1,6 +1,22 @@
 # Field mapping
 
-## LEADS input
+## Source input: Hoja 1
+
+`Hoja 1` es la pestanya existent amb els leads. El workflow no l'escriu ni la reordena.
+
+Mapping aplicat:
+
+| Hoja 1 | Camp intern |
+| --- | --- |
+| `id` | `lead_id` |
+| `company_name` | `company_name` |
+| `website` | `company_website` |
+| `city` | `company_city` |
+| `sector` | `company_sector` |
+| `target_type` | fallback de `company_sector` |
+| `source_url` | `source` |
+
+## Minimum input
 
 El workflow pot operar si existeix almenys un identificador:
 
@@ -16,7 +32,7 @@ El domini es normalitza aixi:
 - passa a minuscules;
 - no dedueix dominis amb cerques externes.
 
-## LEADS output
+## Output: LEADS
 
 Quan hi ha coincidencia, el workflow actualitza:
 

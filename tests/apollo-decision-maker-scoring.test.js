@@ -39,6 +39,7 @@ const requiredNodes = [
   "Configuracio base",
   "Llegir CONFIG",
   "Normalitzar CONFIG",
+  "Llegir font leads",
   "Llegir LEADS",
   "Preparar cues",
   "Hi ha fila?",
@@ -65,15 +66,19 @@ for (const node of workflow.nodes.filter((candidate) => candidate.type === "n8n-
 }
 
 const updateNode = workflow.nodes.find((node) => node.name === "Google Sheets - actualitzar LEADS");
-assert.deepEqual(updateNode.parameters.columns.matchingColumns, ["row_number"]);
+assert.equal(updateNode.parameters.operation, "appendOrUpdate");
+assert.deepEqual(updateNode.parameters.columns.matchingColumns, ["lead_id"]);
 assert.deepEqual(
-  updateNode.parameters.columns.schema.filter((column) => column.id !== "row_number").map((column) => column.id),
+  updateNode.parameters.columns.schema.map((column) => column.id),
   expectedHeaders,
   "LEADS schema matches contract",
 );
 
-const readLeads = workflow.nodes.find((node) => node.name === "Llegir LEADS");
-assert.equal(readLeads.parameters.sheetName.value, "={{ $('Normalitzar CONFIG').first().json.leads_sheet_name }}");
+const readSource = workflow.nodes.find((node) => node.name === "Llegir font leads");
+assert.equal(readSource.parameters.documentId.value, "={{ $json.google_sheet_id }}");
+assert.equal(readSource.parameters.sheetName.value, "={{ $json.source_sheet_name }}");
+const readOutput = workflow.nodes.find((node) => node.name === "Llegir LEADS");
+assert.equal(readOutput.parameters.sheetName.value, "={{ $('Normalitzar CONFIG').first().json.leads_sheet_name }}");
 
 const rawWorkflow = JSON.stringify(workflow);
 assert.match(rawWorkflow, /mixed_people\/api_search/, "People API Search endpoint present");
@@ -85,11 +90,13 @@ assert.doesNotMatch(rawWorkflow, /(sk-[A-Za-z0-9]|api[_-]?key["']?\s*[:=]\s*["']
 const apolloNode = workflow.nodes.find((node) => node.name === "Apollo - buscar i enriquir");
 const apolloCode = apolloNode.parameters.jsCode;
 const helperBlock = apolloCode.slice(0, apolloCode.indexOf("async function processRow"));
-const helpers = new Function(helperBlock + "\nreturn { normalizeDomain, chooseBestCandidate, minimumCompanyData, outputContact, classifyApiError, currentEmploymentMatches };")();
+const helpers = new Function(helperBlock + "\nreturn { normalizeDomain, chooseBestCandidate, minimumCompanyData, outputContact, classifyApiError, currentEmploymentMatches, buildSearchUrl, buildEnrichUrl };")();
 
 assert.equal(helpers.normalizeDomain("https://www.Acme.com/path?q=1"), "acme.com");
 assert.equal(helpers.normalizeDomain("www.example.es/"), "example.es");
 assert.equal(helpers.normalizeDomain("not a domain"), "");
+assert.match(helpers.buildSearchUrl({ normalized_domain: "acme.com" }, 5), /q_organization_domains_list%5B%5D=acme\.com/);
+assert.match(helpers.buildEnrichUrl({ candidate: { id: "person-1" } }, { normalized_domain: "acme.com" }), /people\/match\?id=person-1/);
 
 assert.deepEqual(
   helpers.minimumCompanyData({ company_website: "https://www.acme.com/demo" }, "Spain"),

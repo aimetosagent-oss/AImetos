@@ -51,6 +51,7 @@ const statusValues = [
 
 const configRows = [
   ["KEY", "VALUE", "DESCRIPTION"],
+  ["SOURCE_SHEET_NAME", "Hoja 1", "Pestanya existent amb empreses/leads. Nomes lectura."],
   ["APOLLO_ENABLED", "true", "Activa o desactiva Apollo"],
   ["BATCH_SIZE", 10, "Files processades per execucio"],
   ["MAX_CANDIDATES_PER_COMPANY", 10, "Candidats maxims retornats"],
@@ -82,7 +83,7 @@ leads.getRange("W:W").format.numberFormat = "0";
 leads.getRange("X:Y").format.numberFormat = "yyyy-mm-dd hh:mm";
 
 const config = workbook.worksheets.add("CONFIG");
-config.getRange("A1:C9").values = configRows;
+config.getRange("A1:C10").values = configRows;
 config.getRange("A1:C1").format = {
   fill: "#EEF0F3",
   font: { bold: true, color: "#111827" },
@@ -92,12 +93,12 @@ config.freezePanes.freezeRows(1);
 config.getRange("A:A").format.columnWidth = 34;
 config.getRange("B:B").format.columnWidth = 20;
 config.getRange("C:C").format.columnWidth = 58;
-config.getRange("A1:C9").format.borders = { preset: "all", style: "thin", color: "#D1D5DB" };
+config.getRange("A1:C10").format.borders = { preset: "all", style: "thin", color: "#D1D5DB" };
 
 if (process.env.RENDER_PREVIEWS === "1") {
   for (const [sheetName, range] of [
     ["LEADS", "A1:Y6"],
-    ["CONFIG", "A1:C9"],
+    ["CONFIG", "A1:C10"],
   ]) {
     const preview = await workbook.render({ sheetName, range, scale: 1, format: "png" });
     await fs.writeFile(

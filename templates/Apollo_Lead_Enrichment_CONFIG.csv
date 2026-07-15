@@ -1,4 +1,5 @@
 KEY,VALUE,DESCRIPTION
+SOURCE_SHEET_NAME,Hoja 1,Pestanya existent amb empreses/leads. Nomes lectura.
 APOLLO_ENABLED,true,Activa o desactiva Apollo
 BATCH_SIZE,10,Files processades per execucio
 MAX_CANDIDATES_PER_COMPANY,10,Candidats maxims retornats
