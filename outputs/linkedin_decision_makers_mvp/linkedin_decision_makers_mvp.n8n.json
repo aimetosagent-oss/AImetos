@@ -1,260 +1,114 @@
 {
-  "name": "AImetos | MVP decisors LinkedIn (Apify -> OpenAI -> Google Sheets)",
+  "name": "AImetos | LinkedIn Leads SIMPLE + missatge",
   "nodes": [
     {
       "parameters": {},
-      "id": "0f3c6321-ff2b-4bd1-85a8-e9cad3dbe701",
+      "id": "simple-manual",
       "name": "Inici manual",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [-1160, 120]
+      "position": [
+        -900,
+        0
+      ]
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            { "id": "f-sector", "name": "sector", "value": "SaaS B2B", "type": "string" },
-            { "id": "f-zona", "name": "zona", "value": "Barcelona, Spain", "type": "string" },
-            { "id": "f-carrecs", "name": "carrecs_objectiu", "value": "CEO, Founder, COO, Director/a d'Operacions", "type": "string" },
-            { "id": "f-keywords", "name": "paraules_clau", "value": "automatització, intel·ligència artificial", "type": "string" },
-            { "id": "f-limit", "name": "limit_resultats", "value": 25, "type": "number" },
-            { "id": "f-actor", "name": "apify_actor_id", "value": "APIFY_ACTOR_ID", "type": "string" },
-            { "id": "f-sheet", "name": "google_sheet_id", "value": "GOOGLE_SHEET_ID", "type": "string" },
-            { "id": "f-tab", "name": "google_sheet_tab", "value": "Leads", "type": "string" },
-            { "id": "f-model", "name": "openai_model", "value": "gpt-5-mini", "type": "string" }
-          ]
-        },
-        "options": {}
-      },
-      "id": "a8a22cc0-83ef-4289-b8f8-3f3fc7804b55",
-      "name": "Entrada i configuració",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [-940, 120]
-    },
-    {
-      "parameters": {
-        "jsCode": "const v = $input.first().json;\n\nconst splitList = (value) => (Array.isArray(value) ? value : String(value || '').split(/[,;\\n]/))\n  .map((part) => String(part).trim())\n  .filter(Boolean);\n\nconst sector = String(v.sector || '').trim();\nconst zona = String(v.zona || '').trim();\nconst carrecs = splitList(v.carrecs_objectiu);\nconst paraules = splitList(v.paraules_clau);\nconst limit = Math.max(1, Math.min(100, Math.floor(Number(v.limit_resultats) || 25)));\nlet actorId = String(v.apify_actor_id || '').trim().replace('/', '~');\nlet sheetId = String(v.google_sheet_id || '').trim();\nconst sheetUrlMatch = sheetId.match(/\\/spreadsheets\\/d\\/([a-zA-Z0-9_-]+)/);\nif (sheetUrlMatch) sheetId = sheetUrlMatch[1];\n\nif (!sector) throw new Error('Falta el sector.');\nif (!zona) throw new Error('Falta la zona/geografia.');\nif (!carrecs.length) throw new Error('Falta com a mínim un càrrec objectiu.');\nif (!actorId || actorId === 'APIFY_ACTOR_ID') throw new Error('Substitueix APIFY_ACTOR_ID. Recomanat: harvestapi~linkedin-profile-search');\nif (!sheetId || sheetId === 'GOOGLE_SHEET_ID') throw new Error('Substitueix GOOGLE_SHEET_ID per un identificador o URL del full.');\n\nreturn [{\n  json: {\n    sector,\n    zona,\n    carrecs_objectiu: carrecs,\n    paraules_clau: paraules,\n    limit_resultats: limit,\n    apify_actor_id: actorId,\n    google_sheet_id: sheetId,\n    google_sheet_tab: String(v.google_sheet_tab || 'Leads').trim() || 'Leads',\n    openai_model: String(v.openai_model || 'gpt-5-mini').trim(),\n    search_query: [sector, ...paraules].filter(Boolean).join(' '),\n    data_captura: new Date().toISOString()\n  }\n}];"
-      },
-      "id": "01e02ddf-a92f-46d2-9c20-51db5ee8f2ba",
-      "name": "Validar input",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-720, 120]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.apify.com/v2/actors/' + $json.apify_actor_id + '/runs' }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "Accept", "value": "application/json" }] },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "maxItems", "value": "={{ $json.limit_resultats }}" },
-            { "name": "timeout", "value": "600" }
-          ]
-        },
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ profileScraperMode: 'Full', searchQuery: $json.search_query, locations: [$json.zona], currentJobTitles: $json.carrecs_objectiu, maxItems: $json.limit_resultats, takePages: Math.max(1, Math.ceil($json.limit_resultats / 25)), startPage: 1, autoQuerySegmentation: false, profileDeduplicationMode: 'off' }) }}",
-        "options": { "timeout": 70000 }
-      },
-      "id": "ce09de1f-505c-4130-bf45-8105056633f5",
-      "name": "Executar actor Apify",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-500, 120],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "APIFY_API_TOKEN",
-          "name": "APIFY_API_TOKEN (Authorization Bearer)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "url": "={{ 'https://api.apify.com/v2/actor-runs/' + $json.data.id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "Accept", "value": "application/json" }] },
-        "sendQuery": true,
-        "queryParameters": { "parameters": [{ "name": "waitForFinish", "value": "60" }] },
-        "options": { "timeout": 70000 }
-      },
-      "id": "0299a2ad-d0bf-4db0-b2ed-69eb9beada75",
-      "name": "Consultar estat Apify",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-280, 120],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "APIFY_API_TOKEN",
-          "name": "APIFY_API_TOKEN (Authorization Bearer)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
-          "conditions": [
+        "rule": {
+          "interval": [
             {
-              "id": "is-succeeded",
-              "leftValue": "={{ $json.data.status }}",
-              "rightValue": "SUCCEEDED",
-              "operator": { "type": "string", "operation": "equals" }
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
             }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "326b4150-a56f-4c8f-939b-fea7517e1bc6",
-      "name": "Apify completat?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [-60, 120]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
-          "conditions": [
-            {
-              "id": "is-running",
-              "leftValue": "={{ ['READY', 'RUNNING', 'TIMING-OUT', 'ABORTING'].includes($json.data.status) }}",
-              "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "2f9de1f1-ec92-4688-bd54-c4a98fbd97cf",
-      "name": "Apify encara en curs?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [160, 240]
-    },
-    {
-      "parameters": {
-        "errorType": "errorMessage",
-        "errorMessage": "={{ 'Apify ha acabat amb estat ' + $json.data.status + ': ' + ($json.data.statusMessage || 'sense detall') }}"
-      },
-      "id": "27b57136-62b1-4fc3-919d-a8e2ad96c61e",
-      "name": "Aturar per error Apify",
-      "type": "n8n-nodes-base.stopAndError",
-      "typeVersion": 1,
-      "position": [380, 340]
-    },
-    {
-      "parameters": {
-        "url": "={{ 'https://api.apify.com/v2/datasets/' + $json.data.defaultDatasetId + '/items' }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "Accept", "value": "application/json" }] },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "clean", "value": "true" },
-            { "name": "limit", "value": "={{ $('Validar input').first().json.limit_resultats }}" }
           ]
+        }
+      },
+      "id": "simple-weekly-trigger",
+      "name": "Trigger setmanal",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -900,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1TQJGO7he2WAEyP67GpkD3ThT3bjeiVMhMdVlxGceRmA",
+          "mode": "id"
         },
-        "options": {
-          "response": { "response": { "fullResponse": true, "neverError": false, "responseFormat": "json" } },
-          "timeout": 70000
-        }
-      },
-      "id": "40a359e1-41aa-439f-9f97-b0c3072da92f",
-      "name": "Recuperar dataset Apify",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [160, 20],
-      "alwaysOutputData": true,
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "APIFY_API_TOKEN",
-          "name": "APIFY_API_TOKEN (Authorization Bearer)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const payload = $input.first().json;\nconst config = $('Validar input').first().json;\nlet rawItems = payload.body ?? payload;\nif (typeof rawItems === 'string') {\n  try { rawItems = JSON.parse(rawItems); } catch { rawItems = []; }\n}\nif (!Array.isArray(rawItems)) rawItems = Array.isArray(rawItems.items) ? rawItems.items : [];\n\nconst cleanText = (value) => {\n  if (value === null || value === undefined) return '';\n  if (typeof value === 'string' || typeof value === 'number') return String(value).trim();\n  if (Array.isArray(value)) return cleanText(value[0]);\n  return cleanText(value.linkedinText ?? value.text ?? value.name ?? value.title ?? value.value ?? '');\n};\nconst normalize = (value) => cleanText(value).toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/\\s+/g, ' ').trim();\nconst canonicalUrl = (value) => {\n  const url = cleanText(value).split('?')[0].replace(/\\/$/, '');\n  return url ? url.replace(/^http:/i, 'https:') : '';\n};\nconst hash53 = (text, seed = 0) => {\n  let h1 = 0xdeadbeef ^ seed;\n  let h2 = 0x41c6ce57 ^ seed;\n  for (let i = 0; i < text.length; i++) {\n    const ch = text.charCodeAt(i);\n    h1 = Math.imul(h1 ^ ch, 2654435761);\n    h2 = Math.imul(h2 ^ ch, 1597334677);\n  }\n  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);\n  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);\n  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36).toUpperCase();\n};\n\nconst seenUrls = new Set();\nconst seenPeople = new Set();\nconst output = [];\n\nfor (const raw of rawItems) {\n  if (!raw || typeof raw !== 'object' || raw.error) continue;\n  const first = cleanText(raw.firstName);\n  const lastRaw = cleanText(raw.lastName);\n  const last = normalize(lastRaw) === 'undefined' ? '' : lastRaw;\n  const name = cleanText(raw.fullName ?? raw.name) || [first, last].filter(Boolean).join(' ');\n  const url = canonicalUrl(raw.linkedinUrl ?? raw.profileUrl ?? raw.profileURL ?? raw.url ?? raw.profile?.linkedinUrl);\n  if (!name || !url) continue;\n\n  const current = Array.isArray(raw.currentPosition) ? (raw.currentPosition[0] || {}) : (raw.currentPosition || {});\n  const experience = Array.isArray(raw.experience)\n    ? (raw.experience.find((entry) => !entry?.endDate || /present|actualitat|actual/i.test(cleanText(entry.endDate))) || raw.experience[0] || {})\n    : {};\n  const position = cleanText(raw.jobTitle ?? raw.currentJobTitle ?? raw.title ?? raw.position ?? current.position ?? current.title ?? experience.position ?? raw.headline);\n  let company = cleanText(raw.companyName ?? raw.company ?? current.companyName ?? current.company?.name ?? experience.companyName);\n  if (!company && position) {\n    const match = position.match(/\\s(?:at|@)\\s([^|•]+?)(?:\\s[|•]|$)/i);\n    if (match) company = match[1].trim();\n  }\n  const location = cleanText(raw.location ?? raw.geoLocation ?? raw.addressWithCountry ?? raw.city);\n  const headline = cleanText(raw.headline ?? raw.position ?? raw.summary ?? raw.about).slice(0, 1000);\n\n  const urlKey = normalize(url);\n  const personKey = `${normalize(name)}|${normalize(company)}`;\n  if (seenUrls.has(urlKey) || (company && seenPeople.has(personKey))) continue;\n  seenUrls.add(urlKey);\n  if (company) seenPeople.add(personKey);\n\n  const stableKey = urlKey || personKey;\n  output.push({ json: {\n    'ID': `LEAD-${hash53(stableKey)}`,\n    'Data captura': config.data_captura,\n    'Sector': config.sector,\n    'Zona': config.zona,\n    'Nom': name,\n    'Càrrec': position,\n    'Empresa': company,\n    'URL LinkedIn': url,\n    'Ubicació': location,\n    'Headline': headline,\n    'Estat lead': '',\n    'Missatge LinkedIn suggerit': '',\n    'Notes': '',\n    'Font': `Apify: ${config.apify_actor_id}`,\n    'Duplicat?': 'No',\n    'Última actualització': config.data_captura\n  }});\n}\n\nreturn output;"
-      },
-      "id": "e5710d99-6841-44fd-bb1f-b7f89b763302",
-      "name": "Netejar i deduplicar",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [380, 20]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/responses",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ model: $('Validar input').first().json.openai_model, instructions: 'Ets copywriter B2B d\\'AImetos. Escriu només un missatge de LinkedIn en català, de màxim 300 caràcters. To professional, directe, humà i no agressiu. Personalitza només amb les dades facilitades. No inventis fets ni prometis resultats. Orienta el valor a automatitzar processos repetitius, estalviar temps, no perdre oportunitats comercials o agents IA. Acaba amb una invitació suau a parlar. Sense markdown, cometes, emojis ni salutacions genèriques llargues.', input: 'Nom: ' + $json['Nom'] + '\\nCàrrec: ' + ($json['Càrrec'] || 'no disponible') + '\\nEmpresa: ' + ($json['Empresa'] || 'no disponible') + '\\nSector: ' + $json['Sector'] + '\\nZona: ' + $json['Zona'] + '\\nHeadline: ' + ($json['Headline'] || 'no disponible'), max_output_tokens: 120 }) }}",
-        "options": { "timeout": 60000 }
-      },
-      "id": "070101ce-fb78-49a5-89bf-05f65629dafb",
-      "name": "OpenAI - generar missatge",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [600, -80],
-      "onError": "continueRegularOutput",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "OPENAI_API_KEY",
-          "name": "OPENAI_API_KEY (Authorization Bearer)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "mode": "combine",
-        "combineBy": "combineByPosition",
+        "sheetName": {
+          "__rl": true,
+          "value": "Input",
+          "mode": "name"
+        },
         "options": {}
       },
-      "id": "7b4f764d-cad2-4492-8450-5a91d504bd47",
-      "name": "Unir lead i missatge",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [820, 20]
+      "id": "simple-read-input",
+      "name": "Llegir Input",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -680,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const limitMessage = (value) => {\n  let text = String(value || '').replace(/^[\\s\\\"'“”]+|[\\s\\\"'“”]+$/g, '').replace(/\\s+/g, ' ').trim();\n  const chars = Array.from(text);\n  if (chars.length <= 300) return text;\n  const shortened = chars.slice(0, 299).join('');\n  const cut = shortened.lastIndexOf(' ');\n  return `${shortened.slice(0, cut > 240 ? cut : 299).trim()}…`;\n};\n\nreturn $input.all().map((item) => {\n  const j = item.json;\n  let generated = '';\n  if (Array.isArray(j.output)) {\n    for (const block of j.output) {\n      for (const content of (block.content || [])) {\n        if (content.type === 'output_text' && content.text) generated += content.text;\n      }\n    }\n  }\n  generated = generated || j.output_text || '';\n  const firstName = String(j['Nom'] || '').split(/\\s+/)[0] || 'hola';\n  const companyPart = j['Empresa'] ? ` a ${j['Empresa']}` : '';\n  const fallback = `Hola ${firstName}, he vist el teu rol${companyPart}. A AImetos ajudem empreses a automatitzar processos repetitius amb agents IA per estalviar temps i no perdre oportunitats. Té sentit parlar-ne?`;\n  const message = limitMessage(generated || fallback);\n\n  return { json: {\n    'ID': j['ID'],\n    'Data captura': j['Data captura'],\n    'Sector': j['Sector'],\n    'Zona': j['Zona'],\n    'Nom': j['Nom'],\n    'Càrrec': j['Càrrec'],\n    'Empresa': j['Empresa'],\n    'URL LinkedIn': j['URL LinkedIn'],\n    'Ubicació': j['Ubicació'],\n    'Headline': j['Headline'],\n    'Estat lead': j['Estat lead'] || '',\n    'Missatge LinkedIn suggerit': message,\n    'Notes': j['Notes'] || '',\n    'Font': j['Font'],\n    'Duplicat?': j['Duplicat?'],\n    'Última actualització': new Date().toISOString()\n  }};\n});"
+        "jsCode": "const items = $input.all();\nconst rows = items.map((item) => item.json || {});\nconst input = {};\nfor (const row of rows) {\n  const key = String(row.Camp ?? row.camp ?? '').trim();\n  if (!key || key.toLowerCase() === 'camp') continue;\n  input[key] = row.Valor ?? row.valor ?? '';\n}\n\nconst splitList = (value) => String(value || '').split(/[,;\\r\\n]+/).map((part) => part.trim()).filter(Boolean);\nconst quote = (value) => '\"' + String(value).replace(/\"/g, '').trim() + '\"';\nconst unique = (arr) => [...new Set(arr.map((v) => String(v || '').trim()).filter(Boolean))];\n\nconst sector = String(input.sector || 'SaaS B2B').trim();\nconst zona = String(input.zona || 'Barcelona').trim();\nconst carrecs = splitList(input.carrecs_objectiu || 'CEO, Founder');\nconst paraules = splitList(input.paraules_clau || 'software');\nconst limit = Math.max(1, Math.min(25, Math.floor(Number(input.limit_resultats) || 5)));\nconst apifyMaxItems = Math.min(50, Math.max(limit, limit * 5));\nconst actorId = String(input.apify_actor_id || 'harvestapi~linkedin-profile-search').trim().replace('/', '~');\nlet sheetId = String(input.google_sheet_id || '1TQJGO7he2WAEyP67GpkD3ThT3bjeiVMhMdVlxGceRmA').trim();\nconst match = sheetId.match(/\\/spreadsheets\\/d\\/([a-zA-Z0-9_-]+)/);\nif (match) sheetId = match[1];\n\n// Query m?s estricta: la zona va primer i els OR queden agrupats.\n// Abans: CEO OR Founder ... \"Barcelona\" => massa ampli.\nconst roleQuery = carrecs.length ? '(' + carrecs.map(quote).join(' OR ') + ')' : '';\nconst keywordTerms = unique([sector, ...paraules].flatMap((v) => String(v || '').split(/[,;]+/)));\nconst keywordQuery = keywordTerms.length ? '(' + keywordTerms.map(quote).join(' OR ') + ')' : '';\nconst negativeQuery = '-student -intern -trainee -recruiter -jobs';\nconst query = [quote(zona), roleQuery, keywordQuery, negativeQuery].filter(Boolean).join(' ');\n\nreturn [{ json: {\n  sector,\n  zona,\n  carrecs_objectiu: carrecs,\n  paraules_clau: paraules,\n  limit_resultats: limit,\n  apify_max_items: apifyMaxItems,\n  apify_actor_id: actorId,\n  google_sheet_id: sheetId,\n  google_sheet_tab: String(input.google_sheet_tab || 'Leads').trim() || 'Leads',\n  openai_model: String(input.openai_model || 'gpt-5-mini').trim(),\n  search_query: query,\n  data_captura: new Date().toISOString(),\n}}];"
       },
-      "id": "5726a677-116b-4218-b4cb-1fcd545e0cd9",
-      "name": "Preparar registre final",
+      "id": "simple-prepare",
+      "name": "Preparar cerca",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1040, 20]
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $input.first().json;\nconst tokenNames = ['APIFY_TOKEN_CLIENT_01', 'APIFY_TOKEN_CLIENT_02', 'APIFY_TOKEN_CLIENT_03', 'APIFY_TOKEN_CLIENT_04', 'APIFY_TOKEN_CLIENT_05', 'APIFY_TOKEN_CLIENT_06', 'APIFY_TOKEN_CLIENT_07', 'APIFY_TOKEN_CLIENT_08'];\nconst tokens = tokenNames.map((name) => ({ name, token: $env[name] })).filter((entry) => String(entry.token || '').trim());\nif (!tokens.length) throw new Error('No hi ha cap APIFY_TOKEN_CLIENT_01...08 visible a n8n. Revisa EasyPanel i reinicia n8n.');\n\nconst actorInput = {\n  profileScraperMode: 'Short',\n  searchQuery: cfg.search_query,\n  startPage: 1,\n  takePages: 1,\n  maxItems: cfg.apify_max_items || cfg.limit_resultats,\n};\n\nasync function apifyRequest(options) {\n  try {\n    const body = await this.helpers.httpRequest({\n      method: options.method || 'GET',\n      url: options.url,\n      qs: options.qs,\n      headers: options.headers || {},\n      body: options.body,\n      json: true,\n      timeout: 120000,\n    });\n    return { ok: true, body };\n  } catch (error) {\n    return {\n      ok: false,\n      status: error.statusCode || error.status || 0,\n      body: error.response?.body || error.error || error.message || 'request failed',\n    };\n  }\n}\n\nconst attempts = [];\nfor (const { name, token } of tokens) {\n  const run = await apifyRequest.call(this, {\n    method: 'POST',\n    url: 'https://api.apify.com/v2/acts/' + cfg.apify_actor_id + '/runs',\n    qs: { token, waitForFinish: 120 },\n    headers: { Accept: 'application/json' },\n    body: actorInput,\n  });\n\n  if (!run.ok) {\n    attempts.push({ token_env_var: name, stage: 'run', status: run.status, error: run.body });\n    continue;\n  }\n\n  const runData = run.body.data || run.body;\n  if (runData.status !== 'SUCCEEDED') {\n    attempts.push({ token_env_var: name, stage: 'run_status', status: runData.status, error: runData.statusMessage || '' });\n    continue;\n  }\n\n  const datasetId = runData.defaultDatasetId;\n  if (!datasetId) {\n    attempts.push({ token_env_var: name, stage: 'dataset', status: 'NO_DATASET', error: 'No defaultDatasetId' });\n    continue;\n  }\n\n  const dataset = await apifyRequest.call(this, {\n    method: 'GET',\n    url: 'https://api.apify.com/v2/datasets/' + datasetId + '/items',\n    qs: { token, clean: 'true', limit: cfg.apify_max_items || cfg.limit_resultats },\n    headers: { Accept: 'application/json' },\n  });\n\n  if (!dataset.ok) {\n    attempts.push({ token_env_var: name, stage: 'items', status: dataset.status, error: dataset.body });\n    continue;\n  }\n\n  return [{ json: { ...cfg, apify_token_env_var_used: name, apify_run_id: runData.id || '', raw_items: Array.isArray(dataset.body) ? dataset.body : [] } }];\n}\n\nthrow new Error('Cap token Apify ha funcionat. Detall: ' + JSON.stringify(attempts).slice(0, 3000));"
+      },
+      "id": "simple-apify",
+      "name": "Apify - buscar leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $input.first().json;\nconst rawItems = Array.isArray(cfg.raw_items) ? cfg.raw_items : [];\nconst clean = (value) => {\n  if (value === null || value === undefined) return '';\n  if (typeof value === 'string' || typeof value === 'number') return String(value).trim();\n  if (Array.isArray(value)) return clean(value[0]);\n  return clean(value.linkedinText ?? value.text ?? value.name ?? value.title ?? value.value ?? '');\n};\nconst norm = (value) => clean(value).toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/\\s+/g, ' ').trim();\nconst urlClean = (value) => clean(value).split('?')[0].replace(/\\/$/, '').replace(/^http:/i, 'https:');\nconst hash = (text) => {\n  let h = 2166136261;\n  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);\n  return (h >>> 0).toString(36).toUpperCase();\n};\nconst hasAny = (text, words) => {\n  const hay = norm(text);\n  return words.some((word) => word && hay.includes(norm(word)));\n};\nconst geoWords = String(cfg.zona || '').split(/[,;\\s]+/).map((w) => w.trim()).filter((w) => w.length >= 4);\nconst keywordWords = [...(cfg.paraules_clau || []), cfg.sector].flatMap((v) => String(v || '').split(/[,;\\s]+/)).map((w) => w.trim()).filter((w) => w.length >= 3);\nconst roleRules = [\n  ['CEO', /\\b(ceo|chief executive officer|director general)\\b/i],\n  ['Founder', /\\b(co-founder|founder|fundador|fundadora)\\b/i],\n  ['COO', /\\b(coo|chief operating officer)\\b/i],\n  ['Director/a d\\'Operacions', /\\b(operations director|director of operations|operacions|operaciones)\\b/i],\n  ['Director', /\\b(director|directora)\\b/i],\n];\n\nconst seen = new Set();\nconst out = [];\nfor (const raw of rawItems) {\n  const first = clean(raw.firstName);\n  const last = clean(raw.lastName);\n  const name = clean(raw.fullName ?? raw.name) || [first, last].filter(Boolean).join(' ');\n  const url = urlClean(raw.linkedinUrl ?? raw.profileUrl ?? raw.profileURL ?? raw.url);\n  if (!name || !url) continue;\n\n  const current = Array.isArray(raw.currentPosition) ? (raw.currentPosition[0] || {}) : (raw.currentPosition || {});\n  const headline = clean(raw.headline ?? raw.position ?? raw.summary ?? raw.about).slice(0, 800);\n  let title = clean(raw.position ?? raw.jobTitle ?? raw.title ?? current.position ?? current.title);\n  if (!title && headline) {\n    const found = roleRules.find(([, pattern]) => pattern.test(headline));\n    if (found) title = found[0];\n  }\n  const company = clean(raw.companyName ?? raw.company ?? current.companyName ?? current.company?.name);\n  const location = clean(raw.location ?? raw.geoLocation ?? raw.addressWithCountry ?? raw.city);\n\n  const geoOk = !geoWords.length || hasAny(location, geoWords);\n  if (!geoOk) continue;\n\n  const key = norm(url);\n  if (seen.has(key)) continue;\n  seen.add(key);\n\n  const relevanceText = [title, company, headline].join(' ');\n  const relevanceOk = !keywordWords.length || hasAny(relevanceText, keywordWords) || hasAny(relevanceText, cfg.carrecs_objectiu || []);\n  const notes = [];\n  if (!location) notes.push('Ubicacio no detectada');\n  if (!relevanceOk) notes.push('Revisar encaix: no coincideix clarament amb sector/keywords');\n  if (!title) notes.push('Carrec no detectat');\n  if (!company) notes.push('Empresa no detectada');\n\n  out.push({ json: {\n    'ID': 'LEAD-' + hash(key),\n    'Data captura': cfg.data_captura,\n    'Sector': cfg.sector,\n    'Zona': cfg.zona,\n    'Nom': name,\n    'C?rrec': title,\n    'Empresa': company,\n    'URL LinkedIn': url,\n    'Ubicaci?': location,\n    'Headline': headline,\n    'Estat lead': notes.length ? 'Revisar' : 'Nou',\n    'Missatge LinkedIn suggerit': '',\n    'Notes': notes.join(' | '),\n    'Font': 'Apify ' + cfg.apify_actor_id + ' via ' + cfg.apify_token_env_var_used,\n    'Duplicat?': 'No',\n    '?ltima actualitzaci?': new Date().toISOString(),\n  }});\n\n  if (out.length >= cfg.limit_resultats) break;\n}\nreturn out;"
+      },
+      "id": "simple-normalize",
+      "name": "Normalitzar leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ]
     },
     {
       "parameters": {
         "operation": "appendOrUpdate",
         "documentId": {
           "__rl": true,
-          "value": "={{ $('Validar input').first().json.google_sheet_id }}",
+          "value": "={{ $('Preparar cerca').first().json.google_sheet_id }}",
           "mode": "id"
         },
         "sheetName": {
           "__rl": true,
-          "value": "={{ $('Validar input').first().json.google_sheet_tab }}",
+          "value": "={{ $('Preparar cerca').first().json.google_sheet_tab }}",
           "mode": "name"
         },
         "columns": {
@@ -265,106 +119,387 @@
             "Sector": "={{ $json['Sector'] }}",
             "Zona": "={{ $json['Zona'] }}",
             "Nom": "={{ $json['Nom'] }}",
-            "Càrrec": "={{ $json['Càrrec'] }}",
+            "C?rrec": "={{ $json['C?rrec'] }}",
             "Empresa": "={{ $json['Empresa'] }}",
             "URL LinkedIn": "={{ $json['URL LinkedIn'] }}",
-            "Ubicació": "={{ $json['Ubicació'] }}",
+            "Ubicaci?": "={{ $json['Ubicaci?'] }}",
             "Headline": "={{ $json['Headline'] }}",
+            "Estat lead": "={{ $json['Estat lead'] }}",
             "Missatge LinkedIn suggerit": "={{ $json['Missatge LinkedIn suggerit'] }}",
+            "Notes": "={{ $json['Notes'] }}",
             "Font": "={{ $json['Font'] }}",
             "Duplicat?": "={{ $json['Duplicat?'] }}",
-            "Última actualització": "={{ $json['Última actualització'] }}"
+            "?ltima actualitzaci?": "={{ $json['?ltima actualitzaci?'] }}"
           },
-          "matchingColumns": ["ID"],
+          "matchingColumns": [
+            "ID"
+          ],
           "schema": [
-            { "id": "ID", "displayName": "ID", "required": false, "defaultMatch": true, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Data captura", "displayName": "Data captura", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Sector", "displayName": "Sector", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Zona", "displayName": "Zona", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Nom", "displayName": "Nom", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Càrrec", "displayName": "Càrrec", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Empresa", "displayName": "Empresa", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "URL LinkedIn", "displayName": "URL LinkedIn", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Ubicació", "displayName": "Ubicació", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Headline", "displayName": "Headline", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Estat lead", "displayName": "Estat lead", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Missatge LinkedIn suggerit", "displayName": "Missatge LinkedIn suggerit", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Notes", "displayName": "Notes", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Font", "displayName": "Font", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Duplicat?", "displayName": "Duplicat?", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Última actualització", "displayName": "Última actualització", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Data captura",
+              "displayName": "Data captura",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sector",
+              "displayName": "Sector",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Zona",
+              "displayName": "Zona",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Nom",
+              "displayName": "Nom",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "C?rrec",
+              "displayName": "C?rrec",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Empresa",
+              "displayName": "Empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "URL LinkedIn",
+              "displayName": "URL LinkedIn",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ubicaci?",
+              "displayName": "Ubicaci?",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Headline",
+              "displayName": "Headline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estat lead",
+              "displayName": "Estat lead",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Missatge LinkedIn suggerit",
+              "displayName": "Missatge LinkedIn suggerit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Font",
+              "displayName": "Font",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duplicat?",
+              "displayName": "Duplicat?",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "?ltima actualitzaci?",
+              "displayName": "?ltima actualitzaci?",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
           ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         },
-        "options": {}
+        "options": {
+          "cellFormat": "USER_ENTERED",
+          "handlingExtraData": "ignoreIt"
+        }
       },
-      "id": "3e290fef-1c80-4c0f-8503-d785da84a463",
-      "name": "Google Sheets - desar leads",
+      "id": "simple-save",
+      "name": "Guardar a Leads",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
-      "position": [1260, 20],
-      "alwaysOutputData": true,
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "GOOGLE_SHEETS_CREDENTIALS",
-          "name": "GOOGLE_SHEETS_CREDENTIALS"
-        }
-      }
+      "position": [
+        860,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const config = $('Validar input').first().json;\nconst leads = $('Preparar registre final').all();\nconst run = $('Executar actor Apify').first().json.data || {};\nreturn [{ json: {\n  estat: 'MVP completat',\n  perfils_deduplicats: leads.length,\n  sector: config.sector,\n  zona: config.zona,\n  carrecs_objectiu: config.carrecs_objectiu,\n  apify_run_id: run.id || '',\n  google_sheet: `https://docs.google.com/spreadsheets/d/${config.google_sheet_id}/edit`,\n  avis: 'Revisa manualment cada lead i missatge abans de contactar. Aquest workflow no envia missatges a LinkedIn.'\n}}];"
+        "jsCode": "return [{ json: { estat: 'OK', leads_escrits: $input.all().length, sheet: 'https://docs.google.com/spreadsheets/d/1TQJGO7he2WAEyP67GpkD3ThT3bjeiVMhMdVlxGceRmA/edit' } }];"
       },
-      "id": "80dc6d92-f3bb-4691-9cc7-b16806d8e846",
-      "name": "Resum final",
+      "id": "simple-summary",
+      "name": "Resum",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1480, 20]
+      "position": [
+        1080,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/responses",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: $('Preparar cerca').first().json.openai_model || 'gpt-5-mini', instructions: 'Escriu un missatge curt de LinkedIn en catala. Maxim 300 caracters. To professional, directe i no agressiu. No prometis resultats. Enfoc: automatitzar processos repetitius, estalviar temps i agents IA. Retorna nomes el missatge.', input: 'Nom: ' + $json['Nom'] + '\\nCarrec: ' + ($json['C?rrec'] || '') + '\\nEmpresa: ' + ($json['Empresa'] || '') + '\\nHeadline: ' + ($json['Headline'] || ''), max_output_tokens: 100 }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "simple-openai",
+      "name": "OpenAI - missatge",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        200,
+        -120
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "simple-merge",
+      "name": "Unir lead i missatge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        420,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const limitMessage = (value) => {\n  const text = String(value || '').replace(/^[\\s\\\"']+|[\\s\\\"']+$/g, '').replace(/\\s+/g, ' ').trim();\n  if (Array.from(text).length <= 300) return text;\n  return Array.from(text).slice(0, 297).join('').trim() + '...';\n};\n\nreturn $input.all().map((item) => {\n  const j = item.json || {};\n  let generated = '';\n  if (Array.isArray(j.output)) {\n    for (const block of j.output) {\n      for (const content of (block.content || [])) {\n        if (content.type === 'output_text' && content.text) generated += content.text;\n      }\n    }\n  }\n  generated = generated || j.output_text || '';\n  const firstName = String(j['Nom'] || '').split(/\\s+/)[0] || 'hola';\n  const company = j['Empresa'] ? ' a ' + j['Empresa'] : '';\n  const fallback = 'Hola ' + firstName + ', he vist el teu perfil' + company + '. A AImetos ajudem empreses a automatitzar processos repetitius amb agents IA per estalviar temps. T? sentit parlar-ne?';\n  return { json: {\n    'ID': j['ID'],\n    'Data captura': j['Data captura'],\n    'Sector': j['Sector'],\n    'Zona': j['Zona'],\n    'Nom': j['Nom'],\n    'C?rrec': j['C?rrec'],\n    'Empresa': j['Empresa'],\n    'URL LinkedIn': j['URL LinkedIn'],\n    'Ubicaci?': j['Ubicaci?'],\n    'Headline': j['Headline'],\n    'Estat lead': j['Estat lead'] || '',\n    'Missatge LinkedIn suggerit': limitMessage(generated || fallback),\n    'Notes': j['Notes'] || '',\n    'Font': j['Font'],\n    'Duplicat?': j['Duplicat?'],\n    '?ltima actualitzaci?': new Date().toISOString(),\n  }};\n});"
+      },
+      "id": "simple-final",
+      "name": "Preparar registre final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ]
     }
   ],
   "pinData": {},
   "connections": {
-    "Inici manual": { "main": [[{ "node": "Entrada i configuració", "type": "main", "index": 0 }]] },
-    "Entrada i configuració": { "main": [[{ "node": "Validar input", "type": "main", "index": 0 }]] },
-    "Validar input": { "main": [[{ "node": "Executar actor Apify", "type": "main", "index": 0 }]] },
-    "Executar actor Apify": { "main": [[{ "node": "Consultar estat Apify", "type": "main", "index": 0 }]] },
-    "Consultar estat Apify": { "main": [[{ "node": "Apify completat?", "type": "main", "index": 0 }]] },
-    "Apify completat?": {
+    "Inici manual": {
       "main": [
-        [{ "node": "Recuperar dataset Apify", "type": "main", "index": 0 }],
-        [{ "node": "Apify encara en curs?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Llegir Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Apify encara en curs?": {
+    "Llegir Input": {
       "main": [
-        [{ "node": "Consultar estat Apify", "type": "main", "index": 0 }],
-        [{ "node": "Aturar per error Apify", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Preparar cerca",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Recuperar dataset Apify": { "main": [[{ "node": "Netejar i deduplicar", "type": "main", "index": 0 }]] },
-    "Netejar i deduplicar": {
-      "main": [[
-        { "node": "OpenAI - generar missatge", "type": "main", "index": 0 },
-        { "node": "Unir lead i missatge", "type": "main", "index": 0 }
-      ]]
+    "Preparar cerca": {
+      "main": [
+        [
+          {
+            "node": "Apify - buscar leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "OpenAI - generar missatge": { "main": [[{ "node": "Unir lead i missatge", "type": "main", "index": 1 }]] },
-    "Unir lead i missatge": { "main": [[{ "node": "Preparar registre final", "type": "main", "index": 0 }]] },
-    "Preparar registre final": { "main": [[{ "node": "Google Sheets - desar leads", "type": "main", "index": 0 }]] },
-    "Google Sheets - desar leads": { "main": [[{ "node": "Resum final", "type": "main", "index": 0 }]] }
+    "Apify - buscar leads": {
+      "main": [
+        [
+          {
+            "node": "Normalitzar leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalitzar leads": {
+      "main": [
+        [
+          {
+            "node": "OpenAI - missatge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Unir lead i missatge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI - missatge": {
+      "main": [
+        [
+          {
+            "node": "Unir lead i missatge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Unir lead i missatge": {
+      "main": [
+        [
+          {
+            "node": "Preparar registre final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar registre final": {
+      "main": [
+        [
+          {
+            "node": "Guardar a Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar a Leads": {
+      "main": [
+        [
+          {
+            "node": "Resum",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger setmanal": {
+      "main": [
+        [
+          {
+            "node": "Llegir Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1",
-    "saveManualExecutions": true,
-    "callerPolicy": "workflowsFromSameOwner"
+    "saveManualExecutions": true
   },
-  "versionId": "d16e3cf5-0262-496a-b9ae-93e7c2da7910",
+  "versionId": "simple-linkedin-leads-weekly-softfilter-1",
   "meta": {
     "templateCredsSetupCompleted": false,
-    "instanceId": "AIMETOS_MVP_PLACEHOLDER"
+    "instanceId": "AIMETOS_SIMPLE"
   },
-  "id": "AIMETOS_LINKEDIN_DECISORS_MVP",
+  "id": "AIMETOS_LINKEDIN_LEADS_SIMPLE",
   "tags": []
 }
