@@ -1,0 +1,462 @@
+{
+  "name": "YOLANDA — 05 — Instantly events to Sheet and GHL",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yolanda-instantly-events-v1",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "131412b5-9a44-47671-87df4-f64de024c397",
+      "name": "Instantly Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -920,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "GOOGLE_SHEET_ID",
+              "value": "1_AjJJhspz_mM3VlTrVU6Jrynhz9PIfBWdZ0ydOesDsc",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "CONFIG_SHEET_NAME",
+              "value": "CONFIG_CAMPAIGNS",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "GHL_LOCATION_ID_YOLANDA",
+              "value": "REPLACE_WITH_GHL_LOCATION_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "bf9efc29-ab3c-4a4f1-84511-a3ce1551ef96",
+      "name": "SET — CONFIG",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('SET — CONFIG').first().json.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('SET — CONFIG').first().json.CONFIG_SHEET_NAME }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "08a3c376-e602-4e90d-871d2-7f42107918a0",
+      "name": "Read CONFIG_CAMPAIGNS",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "\nconst deploy = $('SET — CONFIG').first().json;\nconst secret = String($env.INSTANTLY_WEBHOOK_SECRET_YOLANDA ?? '').trim();\nif (!secret) throw new Error('Missing Easypanel environment variable INSTANTLY_WEBHOOK_SECRET_YOLANDA');\nconst headers = deploy.headers || {};\nconst receivedSecret = String(headers['x-yolanda-webhook-secret'] ?? headers['X-Yolanda-Webhook-Secret'] ?? '').trim();\nif (receivedSecret !== secret) throw new Error('Invalid Instantly webhook secret');\n\nconst payload = deploy.body && typeof deploy.body === 'object' ? deploy.body : deploy;\nconst clean = (value) => String(value ?? '').trim();\nconst campaignId = clean(payload.campaign_id || payload.campaignId || payload.campaign);\nconst eventType = clean(payload.event_type || payload.eventType || payload.type).toLowerCase();\nconst email = clean(payload.lead_email || payload.email || payload.lead?.email).toLowerCase();\nconst configs = $input.all().map((item) => item.json || {});\nconst cfg = configs.find((row) => clean(row.platform_campaign_id) === campaignId);\nif (!cfg || !email || !eventType) {\n  return [{ json: { write_row: false, reason: 'Unknown campaign, email, or event type', campaign_id: campaignId, event_type: eventType, email } }];\n}\n\nreturn [{ json: {\n  write_row: true,\n  _sheet_name: clean(cfg.sheet_name),\n  campaign_key: clean(cfg.campaign_key),\n  client_name: clean(cfg.client_name),\n  email,\n  event_type: eventType,\n  event_at: clean(payload.timestamp || payload.created_at || payload.event_at) || new Date().toISOString(),\n  first_name: clean(payload.first_name || payload.lead?.first_name),\n  last_name: clean(payload.last_name || payload.lead?.last_name),\n  company_name: clean(payload.company_name || payload.lead?.company_name),\n} }];\n"
+      },
+      "id": "252c0951-1388-49e74-83917-8b70e4930822",
+      "name": "Normalize event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "41a50a18-348a-42429-81de5-ca63fde074cb",
+              "leftValue": "={{ $json.write_row === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4c27c132-4c5c-491ff-8f1c2-a04e01653bed",
+      "name": "Known event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        40,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('SET — CONFIG').first().json.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Normalize event').first().json._sheet_name }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "b84e9c15-d0b9-4ee5a-8816e-c7e4bf3263f8",
+      "name": "Read target client sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        280,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "\nconst event = $('Normalize event').first().json;\nconst deploy = $('SET — CONFIG').first().json;\nconst rows = $input.all().map((item) => item.json || {});\nconst clean = (value) => String(value ?? '').trim();\nconst lower = (value) => clean(value).toLowerCase();\nconst row = rows.find((candidate) => lower(candidate.email) === lower(event.email));\nif (!row) return [{ json: { write_row: false, reason: 'Lead email not found in client sheet', email: event.email } }];\n\nconst sentEvents = new Set(['email_sent']);\nconst replyEvents = new Set(['reply_received', 'lead_neutral', 'lead_interested', 'lead_not_interested', 'lead_out_of_office', 'lead_wrong_person']);\nconst ghlEvents = new Set(['reply_received', 'lead_interested', 'lead_meeting_booked', 'lead_meeting_completed', 'lead_closed']);\nconst blockedEvents = new Set(['email_bounced', 'lead_unsubscribed']);\n\nlet outreachStatus = clean(row.outreach_status);\nlet leadStatus = clean(row.lead_status);\nlet replyStatus = clean(row.reply_status);\nlet lastContactDate = clean(row.last_contact_date);\nlet ghlContactId = clean(row.ghl_contact_id);\n\nif (sentEvents.has(event.event_type)) {\n  outreachStatus = 'sent';\n  lastContactDate = event.event_at;\n}\nif (replyEvents.has(event.event_type)) {\n  outreachStatus = 'replied';\n  replyStatus = event.event_type;\n  leadStatus = event.event_type === 'lead_interested' ? 'interested' : event.event_type === 'lead_not_interested' ? 'not_interested' : 'replied';\n  lastContactDate = event.event_at;\n}\nif (event.event_type === 'lead_meeting_booked') {\n  outreachStatus = 'meeting_booked';\n  replyStatus = 'meeting_booked';\n  leadStatus = 'meeting_booked';\n}\nif (event.event_type === 'lead_closed') leadStatus = 'closed';\nif (blockedEvents.has(event.event_type)) {\n  outreachStatus = 'stopped';\n  leadStatus = event.event_type === 'email_bounced' ? 'bounced' : 'unsubscribed';\n}\n\nif (ghlEvents.has(event.event_type)) {\n  const token = clean($env.GHL_PRIVATE_INTEGRATION_TOKEN_YOLANDA);\n  const locationId = clean(deploy.GHL_LOCATION_ID_YOLANDA);\n  if (!token) throw new Error('Missing Easypanel environment variable GHL_PRIVATE_INTEGRATION_TOKEN_YOLANDA');\n  if (!locationId || locationId.startsWith('REPLACE_')) throw new Error('Missing GHL_LOCATION_ID_YOLANDA in SET — CONFIG');\n  const response = await fetch('https://services.leadconnectorhq.com/contacts/upsert', {\n    method: 'POST',\n    headers: { accept: 'application/json', 'content-type': 'application/json', authorization: 'Bearer ' + token, version: '2021-04-15' },\n    body: JSON.stringify({\n      locationId,\n      email: event.email,\n      firstName: event.first_name || undefined,\n      lastName: event.last_name || undefined,\n      companyName: event.company_name || clean(row.company_name) || event.client_name,\n      tags: ['yolanda-outbound', event.campaign_key, event.event_type],\n    }),\n  });\n  const raw = await response.text();\n  let data = {};\n  try { data = raw ? JSON.parse(raw) : {}; } catch {}\n  if (!response.ok) throw new Error('GHL ' + response.status + ': ' + raw.slice(0, 300));\n  ghlContactId = clean(data.contact?.id || data.id || ghlContactId);\n}\n\nreturn [{ json: {\n  email: event.email,\n  platform_status: event.event_type,\n  platform_last_event: event.event_at,\n  outreach_status: outreachStatus,\n  last_contact_date: lastContactDate,\n  lead_status: leadStatus,\n  reply_status: replyStatus,\n  ghl_contact_id: ghlContactId,\n  _sheet_name: event._sheet_name,\n  write_row: true,\n} }];\n"
+      },
+      "id": "ddc69dd1-3a41-4092c-8777e-c882ca57081b",
+      "name": "Apply event and sync GHL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ccbd0f56-daef-414f3-8ff7d-a118df7e631e",
+              "leftValue": "={{ $json.write_row === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b8e20180-19c2-40063-82e90-2c54176a5655",
+      "name": "Lead found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        760,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('SET — CONFIG').first().json.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json._sheet_name }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.email }}",
+            "platform_status": "={{ $json.platform_status }}",
+            "platform_last_event": "={{ $json.platform_last_event }}",
+            "outreach_status": "={{ $json.outreach_status }}",
+            "last_contact_date": "={{ $json.last_contact_date }}",
+            "lead_status": "={{ $json.lead_status }}",
+            "reply_status": "={{ $json.reply_status }}",
+            "ghl_contact_id": "={{ $json.ghl_contact_id }}"
+          },
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "platform_status",
+              "displayName": "platform_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "platform_last_event",
+              "displayName": "platform_last_event",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "outreach_status",
+              "displayName": "outreach_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "last_contact_date",
+              "displayName": "last_contact_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "reply_status",
+              "displayName": "reply_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "ghl_contact_id",
+              "displayName": "ghl_contact_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED",
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "f5d8e2cb-8f42-4dddd-8e67f-51ce9dceeb5e",
+      "name": "Update lead event",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1000,
+        40
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "9b667b5a-bb5e-4e1be-8ddce-0ece46efec4a",
+      "name": "Ignored event",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        280,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "736d6a3d-2688-4c35a-804f4-32beda1e23ba",
+      "name": "Lead not found",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        200
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Instantly Webhook": {
+      "main": [
+        [
+          {
+            "node": "SET — CONFIG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SET — CONFIG": {
+      "main": [
+        [
+          {
+            "node": "Read CONFIG_CAMPAIGNS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read CONFIG_CAMPAIGNS": {
+      "main": [
+        [
+          {
+            "node": "Normalize event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize event": {
+      "main": [
+        [
+          {
+            "node": "Known event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Known event?": {
+      "main": [
+        [
+          {
+            "node": "Read target client sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignored event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read target client sheet": {
+      "main": [
+        [
+          {
+            "node": "Apply event and sync GHL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply event and sync GHL": {
+      "main": [
+        [
+          {
+            "node": "Lead found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead found?": {
+      "main": [
+        [
+          {
+            "node": "Update lead event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lead not found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": true
+  },
+  "versionId": "a72db00a-55c9-4576c-80d03-e92bc85bebae",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

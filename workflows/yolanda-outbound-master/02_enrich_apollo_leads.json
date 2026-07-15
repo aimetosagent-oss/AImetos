@@ -1,0 +1,486 @@
+{
+  "name": "YOLANDA — 02 — Enrich Apollo leads",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "5c91b8c7-5e31-42b25-87453-db4a87696ddf",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1080,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "58ffab2e-b22c-4c9fb-82494-ef74b71c4a84",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1080,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "GOOGLE_SHEET_ID",
+              "value": "1_AjJJhspz_mM3VlTrVU6Jrynhz9PIfBWdZ0ydOesDsc",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "CONFIG_SHEET_NAME",
+              "value": "CONFIG_CAMPAIGNS",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "bb962ad4-f80a-4c9e5-8a269-7cd3f7e5f00f",
+      "name": "SET — CONFIG",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -840,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('SET — CONFIG').first().json.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('SET — CONFIG').first().json.CONFIG_SHEET_NAME }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "394b2f49-9235-46ca7-8920a-7faef1256d0e",
+      "name": "Read CONFIG_CAMPAIGNS",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -600,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "\nconst truthy = (value) => value === true || ['true', '1', 'yes', 'si', 'sí'].includes(String(value ?? '').trim().toLowerCase());\nconst text = (value) => String(value ?? '').trim();\nconst number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;\n\nreturn $input.all()\n  .map((item) => item.json || {})\n  .filter((row) => truthy(row.active))\n  .filter((row) => text(row.source_type).toLowerCase() === 'apollo')\n  .map((row) => ({\n    json: {\n      ...row,\n      campaign_key: text(row.campaign_key),\n      sheet_name: text(row.sheet_name),\n      source_type: text(row.source_type).toLowerCase(),\n      sending_platform: text(row.sending_platform).toLowerCase(),\n      platform_campaign_id: text(row.platform_campaign_id),\n      batch_limit: Math.max(1, Math.floor(number(row.daily_limit_per_account, 1) * number(row.accounts_count, 1))),\n      requires_email_verification: truthy(row.requires_email_verification),\n    },\n  }));\n"
+      },
+      "id": "7ac81554-7ddc-42c5c-8b09d-60b523c63608",
+      "name": "Select campaigns",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -360,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "61ecca5d-58a2-495f6-83f16-3a9f329d5ed2",
+      "name": "Loop campaigns",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('SET — CONFIG').first().json.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Loop campaigns').first().json.sheet_name }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "e4034f3c-1118-46fb5-888d3-02d390779ed7",
+      "name": "Read client sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        120,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "\nconst cfg = $('Loop campaigns').first().json;\nconst rows = $input.all().map((item) => item.json || {});\nconst clean = (value) => String(value ?? '').trim();\nconst lower = (value) => clean(value).toLowerCase();\nconst normalizeDomain = (value) => lower(value).replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split(/[/?#]/)[0].replace(/\\.+$/, '');\nconst roles = (() => {\n  const raw = clean(cfg.apollo_roles);\n  if (!raw) return [];\n  try {\n    const parsed = JSON.parse(raw);\n    if (Array.isArray(parsed)) return parsed.map(clean).filter(Boolean);\n  } catch {}\n  return raw.split(/[,;\\n]/).map(clean).filter(Boolean);\n})();\nif (!roles.length) throw new Error('apollo_roles is empty in CONFIG_CAMPAIGNS for ' + cfg.campaign_key);\nconst apiKey = clean($env.APOLLO_API_KEY_YOLANDA);\nif (!apiKey) throw new Error('Missing Easypanel environment variable APOLLO_API_KEY_YOLANDA');\n\nasync function apolloPost(base, params) {\n  const url = new URL(base);\n  for (const [key, value] of params) url.searchParams.append(key, value);\n  for (let attempt = 0; attempt < 3; attempt++) {\n    const response = await fetch(url, {\n      method: 'POST',\n      headers: { accept: 'application/json', 'content-type': 'application/json', 'x-api-key': apiKey },\n    });\n    const raw = await response.text();\n    let data = {};\n    try { data = raw ? JSON.parse(raw) : {}; } catch {}\n    if (response.ok) return data;\n    const retryable = response.status === 429 || response.status >= 500;\n    if (retryable && attempt < 2) {\n      await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));\n      continue;\n    }\n    const error = new Error('Apollo ' + response.status + ': ' + raw.slice(0, 300));\n    error.status = response.status;\n    throw error;\n  }\n  throw new Error('Apollo request failed after retries');\n}\n\nconst eligible = rows.filter((row) => {\n  const status = lower(row.lead_status);\n  return !clean(row.email) && !clean(row.platform_lead_id) && ['', 'new', 'apollo_retry'].includes(status);\n}).slice(0, cfg.batch_limit);\n\nconst output = [];\nfor (const row of eligible) {\n  const rowNumber = Number(row.row_number || row.__row_number || row._rowNumber);\n  if (!rowNumber) continue;\n  const domain = normalizeDomain(row.website || row.source_url);\n  if (!domain) {\n    output.push({ json: { row_number: rowNumber, email: '', telefono: clean(row.telefono), email_verification_status: '', email_verification_provider: '', email_verified_at: '', outreach_status: 'missing_website', lead_status: 'apollo_no_domain', _sheet_name: cfg.sheet_name, write_row: true } });\n    continue;\n  }\n  try {\n    const searchParams = [['page', '1'], ['per_page', '10'], ['q_organization_domains_list[]', domain]];\n    for (const role of roles) searchParams.push(['person_titles[]', role]);\n    const search = await apolloPost('https://api.apollo.io/api/v1/mixed_people/api_search', searchParams);\n    const people = Array.isArray(search.people) ? search.people : [];\n    const candidate = people.find((person) => clean(person.id));\n    if (!candidate) {\n      output.push({ json: { row_number: rowNumber, email: '', telefono: clean(row.telefono), email_verification_status: '', email_verification_provider: '', email_verified_at: '', outreach_status: 'missing_email', lead_status: 'apollo_no_match', _sheet_name: cfg.sheet_name, write_row: true } });\n      continue;\n    }\n    const enriched = await apolloPost('https://api.apollo.io/api/v1/people/match', [['id', candidate.id], ['domain', domain], ['reveal_personal_emails', 'false'], ['reveal_phone_number', 'false']]);\n    const person = enriched.person || enriched.contact || {};\n    const email = lower(person.email);\n    const phone = clean(person.sanitized_phone || person.phone || row.telefono);\n    output.push({ json: {\n      row_number: rowNumber,\n      email,\n      telefono: phone,\n      email_verification_status: email ? 'pending' : '',\n      email_verification_provider: '',\n      email_verified_at: '',\n      outreach_status: email ? 'pending_verification' : 'missing_email',\n      lead_status: email ? 'new' : 'apollo_no_email',\n      _sheet_name: cfg.sheet_name,\n      write_row: true,\n    } });\n  } catch (error) {\n    if (error.status === 401 || error.status === 403) throw error;\n    output.push({ json: { row_number: rowNumber, email: '', telefono: clean(row.telefono), email_verification_status: '', email_verification_provider: '', email_verified_at: '', outreach_status: 'source_error', lead_status: 'apollo_error', _sheet_name: cfg.sheet_name, write_row: true } });\n  }\n}\n\nreturn output.length ? output : [{ json: { _sheet_name: cfg.sheet_name, write_row: false, reason: 'No Apollo rows eligible' } }];\n"
+      },
+      "id": "3e03c5bc-0ae1-4fc16-88218-bf935b79a7d8",
+      "name": "Search and enrich Apollo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "96a61a4e-11c9-458a6-8f75b-0f63e7b7e3f6",
+              "leftValue": "={{ $json.write_row === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "67c93fd9-b4dd-44ab8-89722-337f651cdeb2",
+      "name": "Has rows to write?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        600,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('SET — CONFIG').first().json.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json._sheet_name }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "email": "={{ $json.email }}",
+            "telefono": "={{ $json.telefono }}",
+            "email_verification_status": "={{ $json.email_verification_status }}",
+            "email_verification_provider": "={{ $json.email_verification_provider }}",
+            "email_verified_at": "={{ $json.email_verified_at }}",
+            "outreach_status": "={{ $json.outreach_status }}",
+            "lead_status": "={{ $json.lead_status }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "email_verification_status",
+              "displayName": "email_verification_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "email_verification_provider",
+              "displayName": "email_verification_provider",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "email_verified_at",
+              "displayName": "email_verified_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "outreach_status",
+              "displayName": "outreach_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED",
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "aa4d284a-9e76-41dc6-8c4cc-87c0e284a427",
+      "name": "Update Apollo result",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        840,
+        240
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1c802a66-34de-4fa96-88f26-6ff98bb11c91",
+      "name": "No rows",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        840,
+        400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b8350d32-516b-4b90d-817f3-fef05e937595",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        120,
+        80
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "SET — CONFIG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "SET — CONFIG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SET — CONFIG": {
+      "main": [
+        [
+          {
+            "node": "Read CONFIG_CAMPAIGNS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read CONFIG_CAMPAIGNS": {
+      "main": [
+        [
+          {
+            "node": "Select campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select campaigns": {
+      "main": [
+        [
+          {
+            "node": "Loop campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop campaigns": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read client sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read client sheet": {
+      "main": [
+        [
+          {
+            "node": "Search and enrich Apollo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search and enrich Apollo": {
+      "main": [
+        [
+          {
+            "node": "Has rows to write?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has rows to write?": {
+      "main": [
+        [
+          {
+            "node": "Update Apollo result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Apollo result": {
+      "main": [
+        [
+          {
+            "node": "Loop campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No rows": {
+      "main": [
+        [
+          {
+            "node": "Loop campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": true
+  },
+  "versionId": "ed56742c-dc21-49579-80223-dce649168c04",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
