@@ -4,7 +4,13 @@ export interface ClockifyHours {
 }
 
 interface ClockifyProject { id: string; name: string; archived?: boolean }
+<<<<<<< HEAD
 interface ClockifyEntry { projectId?: string; timeInterval?: { duration?: string; start?: string; end?: string } }\ninterface ClockifyUser { id: string; activeWorkspace?: string; defaultWorkspace?: string }\ninterface ClockifyWorkspace { id: string; name: string }
+=======
+interface ClockifyEntry { projectId?: string; timeInterval?: { duration?: string; start?: string; end?: string } }
+interface ClockifyUser { id: string; activeWorkspace?: string; defaultWorkspace?: string }
+interface ClockifyWorkspace { id: string; name: string }
+>>>>>>> aad9c04 (Auto-detect Clockify account IDs)
 
 function parseDuration(duration?: string) {
   if (!duration) return 0;
