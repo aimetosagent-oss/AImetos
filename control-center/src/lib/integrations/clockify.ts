@@ -4,7 +4,7 @@ export interface ClockifyHours {
 }
 
 interface ClockifyProject { id: string; name: string; archived?: boolean }
-interface ClockifyEntry { projectId?: string; timeInterval?: { duration?: string; start?: string; end?: string } }
+interface ClockifyEntry { projectId?: string; timeInterval?: { duration?: string; start?: string; end?: string } }\ninterface ClockifyUser { id: string; activeWorkspace?: string; defaultWorkspace?: string }\ninterface ClockifyWorkspace { id: string; name: string }
 
 function parseDuration(duration?: string) {
   if (!duration) return 0;
@@ -15,10 +15,27 @@ function parseDuration(duration?: string) {
 
 export async function getClockifyHours(): Promise<ClockifyHours> {
   const key = process.env.CLOCKIFY_API_KEY;
-  const workspace = process.env.CLOCKIFY_WORKSPACE_ID;
-  const user = process.env.CLOCKIFY_USER_ID;
-  if (!key || !workspace || !user) throw new Error("Clockify no està configurat");
+  let workspace = process.env.CLOCKIFY_WORKSPACE_ID;
+  let user = process.env.CLOCKIFY_USER_ID;
+  if (!key) throw new Error("Falta la clau API de Clockify");
   const headers = { "X-Api-Key": key };
+
+  if (!workspace || !user) {
+    const userResponse = await fetch("https://api.clockify.me/api/v1/user", { headers, next: { revalidate: 300 } });
+    if (!userResponse.ok) throw new Error(`Clockify no ha pogut identificar l'usuari (${userResponse.status})`);
+    const currentUser = (await userResponse.json()) as ClockifyUser;
+    user ||= currentUser.id;
+    workspace ||= currentUser.activeWorkspace || currentUser.defaultWorkspace;
+  }
+
+  if (!workspace) {
+    const workspacesResponse = await fetch("https://api.clockify.me/api/v1/workspaces", { headers, next: { revalidate: 300 } });
+    if (!workspacesResponse.ok) throw new Error(`Clockify no ha pogut llegir els espais de treball (${workspacesResponse.status})`);
+    const workspaces = (await workspacesResponse.json()) as ClockifyWorkspace[];
+    workspace = workspaces.find((item) => item.name.toLocaleLowerCase().includes("aimetos"))?.id || workspaces[0]?.id;
+  }
+
+  if (!workspace || !user) throw new Error("Clockify no ha pogut determinar l'usuari o l'espai de treball");
   const end = new Date();
   const start = new Date(end.getTime() - 31 * 86_400_000);
   const [projectsResponse, entriesResponse] = await Promise.all([
