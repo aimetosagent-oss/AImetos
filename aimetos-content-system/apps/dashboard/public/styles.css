@@ -316,6 +316,64 @@ article,
   padding: 16px;
 }
 
+.weekly-panel {
+  border-left: 4px solid var(--accent);
+}
+
+.weekly-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weekly-insights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.weekly-footnote {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.weekly-insights article {
+  padding: 12px;
+  background: #fbfcfd;
+}
+
+.weekly-insights span,
+.asset-pending {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.weekly-insights strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.weekly-insights p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.commercial-signal {
+  background: var(--accent-soft) !important;
+}
+
+.asset-pending {
+  margin-top: 8px;
+  font-weight: 750;
+}
+
 .details-panel {
   margin-top: 18px;
   border: 1px solid var(--line);
@@ -680,8 +738,13 @@ dd {
   .business-strip,
   .brief-grid,
   .channel-matrix,
-  .validation-cycle {
+  .validation-cycle,
+  .weekly-insights {
     grid-template-columns: 1fr;
+  }
+
+  .weekly-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .topbar,

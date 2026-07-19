@@ -68,6 +68,28 @@ function renderTopContent(items) {
   }
 }
 
+function renderWeeklyValidation(weekly) {
+  if (!weekly) return;
+  setText("weeklyPeriod", weekly.period);
+  setText("visibilityWinner", weekly.visibilityWinner.title);
+  setText("visibilityReason", weekly.visibilityWinner.reason);
+  setText("audienceWinner", weekly.audienceQualityWinner.title);
+  setText("audienceReason", weekly.audienceQualityWinner.reason);
+  setText("commercialSignal", weekly.commercialSignal);
+  setText("weeklyDecision", weekly.nextDecision);
+
+  const target = byId("weeklyMetrics");
+  target.innerHTML = "";
+  target.append(
+    metric("Publicacions", formatter.format(weekly.totals.posts)),
+    metric("Impressions", formatter.format(weekly.totals.impressions)),
+    metric("Abast*", formatter.format(weekly.totals.reach)),
+    metric("Visites al perfil", formatter.format(weekly.totals.profileVisits)),
+    metric("Reaccions", formatter.format(weekly.totals.reactions)),
+    metric("Invitacions probables", formatter.format(weekly.totals.probableInvitations))
+  );
+}
+
 function renderRecommendations(items) {
   const target = byId("recommendations");
   target.innerHTML = "";
@@ -76,7 +98,9 @@ function renderRecommendations(items) {
     const node = card("recommendation");
     const recommended = item.recommended ? " · Recomanada" : "";
     const why = item.recommended ? '<p class="why-recommended">' + item.whyRecommended + "</p>" : "";
-    const imageAsset = item.imageAsset || "/assets/linkedin-option-1-roi-agent-veu.png";
+    const imageLink = item.imageAsset
+      ? '<a class="asset-link" href="' + item.imageAsset + '" target="_blank" rel="noreferrer">Obrir PNG proposat</a>'
+      : '<span class="asset-pending">Imatge pendent de generar amb el prompt visual</span>';
     const metrics = (item.metricsToTrack || []).map((value) => "<span>" + value + "</span>").join("");
     node.innerHTML =
       '<div class="option-label">Opció ' +
@@ -102,9 +126,9 @@ function renderRecommendations(items) {
       "</div>" +
       '<div class="brief"><strong>Imatge recomanada</strong><p>' +
       item.visualBrief +
-      '</p><a class="asset-link" href="' +
-      imageAsset +
-      '" target="_blank" rel="noreferrer">Obrir PNG proposat</a></div>' +
+      "</p>" +
+      imageLink +
+      "</div>" +
       '<div class="brief"><strong>Prompt visual premium</strong><p>' +
       item.imagePrompt +
       "</p></div>" +
@@ -220,6 +244,7 @@ function render(report) {
   setText("workflows", report.technicalStatus.n8nWorkflowsValidated + " validats");
   setText("credentials", report.technicalStatus.credentialsRequiredNow ? "Pendents" : "No requerides ara");
 
+  renderWeeklyValidation(report.weeklyValidation);
   renderTopContent(report.topContent);
   renderRecommendations(report.recommendations);
   renderSocialDistribution(report.socialDistribution || []);

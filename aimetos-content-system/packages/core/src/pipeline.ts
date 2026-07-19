@@ -72,6 +72,29 @@ export type ClientMonthlyReport = {
     confidenceLabel: string;
     confidenceNote: string;
   };
+  weeklyValidation: {
+    period: string;
+    status: "initial_positive" | "needs_adjustment" | "validated";
+    summary: string;
+    totals: {
+      posts: number;
+      impressions: number;
+      reach: number;
+      profileVisits: number;
+      reactions: number;
+      comments: number;
+      shares: number;
+      saves: number;
+      newFollowers: number;
+      probableInvitations: number;
+      qualifiedLeads: number;
+      meetings: number;
+    };
+    visibilityWinner: { title: string; reason: string };
+    audienceQualityWinner: { title: string; reason: string };
+    commercialSignal: string;
+    nextDecision: string;
+  };
   topContent: Array<{
     rank: number;
     title: string;
@@ -236,6 +259,18 @@ type LinkedInPostInput = {
   };
 };
 
+type LinkedInWeeklyReportInput = {
+  period: string;
+  status: "initial_positive" | "needs_adjustment" | "validated";
+  summary: string;
+  totals: ClientMonthlyReport["weeklyValidation"]["totals"];
+  posts: Array<{ id: string; title: string; reading: string }>;
+  visibilityWinnerId: string;
+  audienceQualityWinnerId: string;
+  commercialSignal: string;
+  nextDecision: string;
+};
+
 function hasLinkedInMetrics(posts: LinkedInPostInput[]): boolean {
   return posts.every((post) => typeof post.manualMetrics.impressions === "number");
 }
@@ -280,6 +315,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
   const flow = await runMockContentFlow(overrides);
   const rawMetrics = readJson<MetricRecord[]>("data/fixtures/content-performance.json");
   const linkedInPosts = readJson<LinkedInPostInput[]>("data/fixtures/linkedin-posts.json");
+  const weeklyInput = readJson<LinkedInWeeklyReportInput>("data/fixtures/linkedin-weekly-report.json");
   const config = { ...loadConfig(), ...overrides };
   const metrics = applyScenario(rawMetrics, config.mockScenario);
   const topContent = hasLinkedInMetrics(linkedInPosts)
@@ -331,19 +367,19 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
 
   const insights = formatScores(metrics);
   const imageAssets = [
-    "/assets/linkedin-option-1-roi-agent-veu.png",
     "/assets/linkedin-option-2-errors-n8n.png",
-    "/assets/linkedin-option-3-dashboard-decisions.png"
+    "",
+    ""
   ];
   const visualBriefs = [
-    "Imatge simple tipus decisio: tres columnes amb 'Volum', 'Variabilitat' i 'Seguiment', amb una pregunta central: 'Te ROI automatitzar-ho?'. Inclou el logo AImetos en petit.",
     "Imatge tipus playbook operatiu: tres passos 'Error', 'Log' i 'Retry' per explicar que un workflow robust no nomes funciona una vegada. Inclou el logo AImetos en petit.",
-    "Imatge tipus dashboard executiu: tres blocs 'Mesura', 'Decideix' i 'Millora' per mostrar que les dades nomes serveixen si canvien una decisio. Inclou el logo AImetos en petit."
+    "Imatge tipus full de ruta: cinc passos ordenats 'Dades', 'Camps', 'Alertes', 'Workflows' i 'IA'. Inclou el logo AImetos en petit.",
+    "Imatge de decisió amb dues columnes: 'Quan sí' i 'Quan no' per a un agent de WhatsApp. Inclou el logo AImetos en petit."
   ];
   const imagePrompts = [
-    "Crea una imatge professional per LinkedIn, format 1200x627, estil B2B modern i net. Tema: abans de construir un agent de veu, valida si te ROI. Composicio: titular gran 'Te ROI automatitzar-ho?', subtitol 'Abans de construir un agent de veu, valida 3 criteris', tres blocs visuals: '1. Volum', '2. Variabilitat', '3. Seguiment'. Paleta clara: blanc, verd petrol, blau discret i gris. Inclou el logo AImetos en petit a una cantonada, sense modificar-lo. Sense persones, sense logos inventats, sense estil stock, sense massa text petit.",
     "Crea una imatge professional per LinkedIn, format 1200x627, estil B2B modern i net. Tema: automatitzacions n8n robustes. Titular: 'Un workflow no esta acabat quan funciona un cop'. Subtitol: 'Si no registra errors, no es pot escalar'. Tres blocs: 'Error', 'Log', 'Retry'. Paleta clara amb verd petrol, blau i gris. Inclou el logo AImetos en petit a una cantonada, sense modificar-lo. Sense persones artificials ni estil stock.",
-    "Crea una imatge professional per LinkedIn, format 1200x627, estil B2B modern i net. Tema: dashboards que ajuden a decidir. Titular: 'Un dashboard no serveix si no canvia cap decisio'. Subtitol: 'Primer decisio, despres metrica'. Tres blocs: 'Mesura', 'Decideix', 'Millora'. Paleta clara amb verd petrol, blau i gris. Inclou el logo AImetos en petit a una cantonada, sense modificar-lo. Sense persones artificials ni estil stock."
+    "Crea una imatge professional per LinkedIn, format 1200x627, estil de consultoria tecnològica B2B, net i sobri. Titular: 'Abans d'afegir IA al CRM, ordena això'. Mostra una seqüència clara de cinc passos: Dades, Camps, Alertes, Workflows i IA. Paleta blanca, verd petroli, blau i gris. Inclou el logo AImetos original en petit a una cantonada. Sense persones, sense estil stock i sense text petit.",
+    "Crea una imatge professional per LinkedIn, format 1200x627, estil de consultoria tecnològica B2B. Titular: 'Agent de WhatsApp: quan suma i quan afegeix soroll'. Composició comparativa amb dues columnes, 'Quan sí' i 'Quan no', i tres criteris breus per columna. Paleta blanca, verd petroli, blau i gris. Inclou el logo AImetos original en petit a una cantonada. Sense persones ni estil stock."
   ];
   const bestPublishTimes = [
     "Dimarts a les 08:40",
@@ -351,9 +387,9 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     "Dijous a les 08:50"
   ];
   const postCopies = [
-    "Abans de construir un agent de veu, jo validaria 3 coses.\n\n1. Volum: hi ha prou consultes repetitives per justificar l'automatitzacio?\n2. Variabilitat: les preguntes son previsibles o cada cas es massa diferent?\n3. Seguiment: podrem mesurar si realment estalvia temps o genera negoci?\n\nLa tecnologia no es el primer pas. El primer pas es saber si el proces mereix ser automatitzat.\n\nSi aquests 3 punts no encaixen, potser encara no cal un agent de veu. Si encaixen, llavors si que te sentit prototipar.\n\nSi vols, puc compartir una plantilla simple per validar si una automatitzacio te sentit abans de construir-la.",
     "Un workflow no esta acabat quan funciona un cop.\n\nEsta acabat quan tambe saps que passa quan falla.\n\nPer mi, una automatitzacio minimament robusta hauria de tenir 3 coses:\n\n1. Error clar: saber quin pas ha fallat.\n2. Log: guardar prou context per entendre el problema.\n3. Retry: poder repetir sense trencar el proces.\n\nAixo no es complicar el sistema. Es preparar-lo per treballar en condicions reals.\n\nSi vols, puc compartir una checklist basica per revisar automatitzacions abans de posar-les en produccio.",
-    "Un dashboard no serveix si no canvia cap decisio.\n\nMoltes empreses acumulen grafics, pero despres continuen decidint igual.\n\nUn bon dashboard hauria de respondre tres preguntes:\n\n1. Que esta passant?\n2. Que hauria de fer ara?\n3. Que hem apres per la propera vegada?\n\nPrimer decisio, despres metrica. No al reves.\n\nSi vols, puc compartir una estructura simple per convertir un dashboard en una eina de decisio."
+    "Afegir IA a un CRM desordenat no resol el problema. L'accelera.\n\nAbans d'incorporar un agent, jo revisaria cinc capes:\n\n1. Dades mínimes completes.\n2. Camps que reflecteixen el procés real.\n3. Alertes per als seguiments crítics.\n4. Workflows repetibles.\n5. IA per decidir o assistir on aporta valor.\n\nLa IA comercial funciona millor quan el sistema ja sap què ha de passar després.\n\nSi vols, puc compartir aquesta seqüència en format checklist.",
+    "Un agent de WhatsApp no arregla un procés comercial desordenat.\n\nTé sentit quan les consultes són repetitives, hi ha una resposta clara i cada conversa acaba registrada.\n\nAfegeix soroll quan ningú sap qui continua el lead, les dades queden disperses o cada cas necessita una decisió diferent.\n\nPrimer procés, després canal i finalment agent.\n\nSi vols, puc compartir un esquema simple per decidir si cal agent, CRM o redissenyar el procés."
   ];
   const displayFormats = [
     "Post LinkedIn",
@@ -370,12 +406,17 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     "Leads",
     "Reunions"
   ];
-  const recommendations = flow.selectedIdeas.map((idea, index): ClientContentRecommendation => {
-    const content = flow.contents[index];
+  const nextIdeaIds = ["idea_n8n_failures", "idea_crm_ai", "idea_whatsapp_agent"];
+  const nextIdeas = nextIdeaIds
+    .map((id) => flow.generatedIdeas.find((idea) => idea.id === id))
+    .filter((idea): idea is ContentIdea => Boolean(idea));
+  const nextContents = nextIdeas.map(generateContentForIdea);
+  const recommendations = nextIdeas.map((idea, index): ClientContentRecommendation => {
+    const content = nextContents[index];
     const reel = content?.adaptations.find((item) => item.channel === "reels");
     const visual = content?.adaptations.find((item) => item.channel === "visual");
     return {
-      title: idea.title,
+      title: index === 0 ? "Un workflow no està acabat quan funciona un cop" : idea.title,
       format: index === 0 ? "linkedin-post" : index === 1 ? "linkedin-carousel" : "linkedin-document",
       channel: "linkedin",
       displayFormat: displayFormats[index] || "Post LinkedIn",
@@ -384,8 +425,8 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       recommended: index === 0,
       whyRecommended:
         index === 0
-          ? "Es la millor opcio perque aprofita el patro que ara mateix dona mes senyal: IA/transformacio digital per a PIMEs, conversa i visites al perfil."
-          : "Opcio de suport per ampliar el tema si la primera publicacio valida el senyal.",
+          ? "És la millor opció perquè manté un problema empresarial concret i demostra robustesa tècnica, sense repetir els dos temes ja publicats."
+          : "Opció de suport per continuar provant angles de decisió empresarial amb autoritat tècnica.",
       hook: idea.pain,
       postCopy: postCopies[index] || postCopies[0],
       bestPublishTime: bestPublishTimes[index] || bestPublishTimes[0],
@@ -393,7 +434,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       publicationStatus: "pending_publish",
       productionBrief: reel?.content || visual?.content || idea.mainMessage,
       visualBrief: visualBriefs[index] || "Visual net, professional i relacionat amb el problema principal del post. Inclou el logo AImetos en petit.",
-      imageAsset: imageAssets[index] || imageAssets[0],
+      imageAsset: imageAssets[index] || "",
       imagePrompt: imagePrompts[index] || imagePrompts[0],
       cta: idea.cta,
       effort: idea.estimatedEffort <= 2 ? "low" : idea.estimatedEffort === 3 ? "medium" : "high"
@@ -407,8 +448,8 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       format: "Post amb imatge",
       publishTime: "Dimarts a les 08:40",
       status: "pending_publish",
-      adaptation: "Publicació reflexiva i professional: ROI, criteris de decisió i CTA suau cap a plantilla o conversa.",
-      coherenceRule: "Mantenir el concepte central: validar ROI abans de construir un agent de veu.",
+      adaptation: "Publicació reflexiva i professional: explicar per què una automatització també s'ha de dissenyar per fallar bé, amb CTA suau cap a una checklist.",
+      coherenceRule: "Mantenir el concepte central: un workflow no està acabat fins que gestiona errors, logs i reintents.",
       metricsToTrack
     },
     {
@@ -418,7 +459,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       format: "Carrusel 4-5 slides",
       publishTime: "Dimecres a les 12:30",
       status: "pending_publish",
-      adaptation: "Convertir els 3 criteris en slides molt visuals: portada, Volum, Variabilitat, Seguiment i tancament amb pregunta.",
+      adaptation: "Convertir Error, Log i Retry en slides visuals: portada, un criteri per slide i tancament amb checklist.",
       coherenceRule: "Mateix missatge i mateixa identitat visual, però menys text i més lectura ràpida.",
       metricsToTrack: ["Abast", "M'agrada", "Comentaris", "Desats", "Comparticions", "Visites al perfil", "Leads"]
     },
@@ -429,8 +470,8 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       format: "Post curt amb imatge",
       publishTime: "Dijous a les 18:15",
       status: "pending_publish",
-      adaptation: "Fer el text més directe i proper: explicar quan té sentit automatitzar trucades i quan és millor esperar.",
-      coherenceRule: "Mateixa imatge i mateixa promesa, amb to més divulgatiu i menys consultiu.",
+      adaptation: "Fer el text més directe i proper: explicar que una automatització fiable també preveu què passa quan alguna dada falla.",
+      coherenceRule: "Mateixa imatge i mateixa promesa, amb un to més divulgatiu i menys consultiu.",
       metricsToTrack: ["Abast", "Reaccions", "Comentaris", "Comparticions", "Clics", "Missatges", "Leads"]
     }
   ];
@@ -438,24 +479,39 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
   return {
     reportId: "client_report_" + Date.now(),
     clientName: "Client demo AImetos",
-    period: "Mes anterior",
+    period: "Setmana del 14 al 19 de juliol",
     generatedAt: new Date().toISOString(),
-    executiveSummary:
-      "Amb les dades reals disponibles, el millor senyal inicial ve de LinkedIn. Encara no hi ha leads ni reunions, per tant ara validarem si el tema guanyador pot generar conversa, visites al perfil i oportunitats comercials.",
+    executiveSummary: weeklyInput.summary,
     businessObjective: "Convertir autoritat a LinkedIn en converses comercials: visites al perfil, leads qualificats i reunions.",
     strategy: {
       quarterly: "Construir autoritat en automatitzacio, IA aplicada i sistemes de decisio per PIMEs.",
-      monthly: "Validar quin angle genera mes senyal comercial a LinkedIn abans d'escalar a altres xarxes.",
-      publication: "Publicar el post recomanat, mesurar-lo a 24h, 72h i 7 dies, i decidir si el patro queda validat."
+      monthly: "Validar quin angle genera més senyal comercial a LinkedIn abans d'escalar a altres xarxes.",
+      publication: "Mantenir dues peces setmanals: decisió empresarial i demostració tècnica, amb lectura a 24h, 72h i 7 dies."
     },
     decision: {
       nextBestFormat: "Post LinkedIn",
       nextBestChannel: "LinkedIn",
-      nextAction: "Crear una nova publicacio LinkedIn a partir del tema guanyador i mesurar si genera conversa o visites al perfil.",
-      confidence: hasLinkedInMetrics(linkedInPosts) ? "high" : "medium",
-      confidenceLabel: hasLinkedInMetrics(linkedInPosts) ? "Confiança inicial alta" : "Hipòtesi inicial",
+      nextAction: "Publicar una peça sobre els errors que fan fràgil una automatització, mantenint una CTA suau i mesurant també la qualitat de l'audiència.",
+      confidence: "medium",
+      confidenceLabel: "Hipòtesi amb senyal positiu",
       confidenceNote:
-        "Mostra petita: 3 posts reals. La recomanacio es valida com a hipotesi de negoci, no com a conclusio estadistica definitiva."
+        "Mostra petita: 2 publicacions de la nova línia. La direcció és prometedora, però el patró no quedarà validat fins que generi senyals repetibles de conversa o negoci."
+    },
+    weeklyValidation: {
+      period: weeklyInput.period,
+      status: weeklyInput.status,
+      summary: weeklyInput.summary,
+      totals: weeklyInput.totals,
+      visibilityWinner: {
+        title: weeklyInput.posts.find((post) => post.id === weeklyInput.visibilityWinnerId)?.title || "-",
+        reason: weeklyInput.posts.find((post) => post.id === weeklyInput.visibilityWinnerId)?.reading || "-"
+      },
+      audienceQualityWinner: {
+        title: weeklyInput.posts.find((post) => post.id === weeklyInput.audienceQualityWinnerId)?.title || "-",
+        reason: weeklyInput.posts.find((post) => post.id === weeklyInput.audienceQualityWinnerId)?.reading || "-"
+      },
+      commercialSignal: weeklyInput.commercialSignal,
+      nextDecision: weeklyInput.nextDecision
     },
     topContent,
     formatInsights: insights,
@@ -471,7 +527,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     })),
     technicalStatus: {
       mode: flow.mode,
-      dataSource: hasLinkedInMetrics(linkedInPosts) ? "LinkedIn manual: 3 posts reals" : "LinkedIn URLs pendents de metriques",
+      dataSource: hasLinkedInMetrics(linkedInPosts) ? "LinkedIn manual: 3 posts històrics + 2 posts setmanals" : "LinkedIn URLs pendents de mètriques",
       credentialsRequiredNow: false,
       n8nWorkflowsValidated: 28
     }

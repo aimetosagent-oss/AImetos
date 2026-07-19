@@ -1,0 +1,63 @@
+{
+  "period": "14-19 juliol 2026",
+  "status": "initial_positive",
+  "summary": "Resultat positiu, però encara inicial: hi ha visibilitat i visites al perfil, però encara no hi ha conversa ni oportunitats comercials confirmades.",
+  "totals": {
+    "posts": 2,
+    "impressions": 416,
+    "reach": 212,
+    "profileVisits": 12,
+    "reactions": 7,
+    "comments": 0,
+    "shares": 0,
+    "saves": 0,
+    "newFollowers": 0,
+    "probableInvitations": 2,
+    "qualifiedLeads": 0,
+    "meetings": 0
+  },
+  "posts": [
+    {
+      "id": "linkedin_voice_roi_2026_07_14",
+      "title": "ROI d'un agent de veu",
+      "publishedAt": "2026-07-14T08:22:00+02:00",
+      "impressions": 281,
+      "reach": 138,
+      "profileVisits": 9,
+      "reactions": 5,
+      "comments": 0,
+      "shares": 0,
+      "saves": 0,
+      "newFollowers": 0,
+      "probableInvitations": 1,
+      "engagementRate": 1.78,
+      "profileVisitRate": 3.2,
+      "frequency": 2.04,
+      "decisionMakerShare": 15,
+      "reading": "Guanya en visibilitat i en capacitat de portar persones al perfil. La interacció es concentra durant les primeres 24 hores i no hi ha una segona onada de conversa."
+    },
+    {
+      "id": "linkedin_dashboards_2026_07_16",
+      "title": "Mesura i dashboards després d'automatitzar",
+      "publishedAt": "2026-07-16T08:26:00+02:00",
+      "impressions": 135,
+      "reach": 74,
+      "profileVisits": 3,
+      "reactions": 2,
+      "comments": 0,
+      "shares": 0,
+      "saves": 0,
+      "newFollowers": 0,
+      "probableInvitations": 1,
+      "engagementRate": 1.48,
+      "profileVisitRate": 2.22,
+      "frequency": 1.82,
+      "decisionMakerShare": 24,
+      "reading": "Té menys volum, però arriba proporcionalment a més gerents i directors. És un senyal de qualitat potencial de l'audiència, no encara un resultat comercial."
+    }
+  ],
+  "visibilityWinnerId": "linkedin_voice_roi_2026_07_14",
+  "audienceQualityWinnerId": "linkedin_dashboards_2026_07_16",
+  "commercialSignal": "2 invitacions potencialment influïdes pel contingut; atribució probable, no confirmada. Leads qualificats i reunions: 0.",
+  "nextDecision": "Mantenir dues publicacions setmanals: una orientada a una decisió empresarial clara i una altra que demostri capacitat tècnica. El proper post ha d'abordar un problema concret nou, sense repetir dashboards."
+}
