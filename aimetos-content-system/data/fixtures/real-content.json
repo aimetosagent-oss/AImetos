@@ -1,0 +1,200 @@
+[
+  {
+    "id": "LI-01",
+    "platform": "linkedin",
+    "title": "¿Tiene sentido automatizar las llamadas de tu empresa? No siempre.",
+    "topic": "ROI abans d'automatitzar",
+    "editorialAngle": "criteri abans que tecnologia",
+    "format": "post_amb_imatge",
+    "publishedAt": "2026-07-15T08:30:00+02:00",
+    "status": "published",
+    "sourceType": "real_export",
+    "targetCustomer": "PIMEs amb trucades repetitives",
+    "funnelStage": "MOFU",
+    "snapshots": [
+      { "capturedAt": "2026-07-16T08:30:00+02:00", "period": "24h", "impressions": 176, "reach": 88, "profileViews": 7, "reactions": 5, "comments": 0, "shares": 0, "saves": 0, "sourceType": "real_export" },
+      { "capturedAt": "2026-07-17T08:30:00+02:00", "period": "48h", "impressions": 254, "reach": 127, "profileViews": 8, "reactions": 5, "comments": 0, "shares": 0, "saves": 0, "sourceType": "real_export" },
+      { "capturedAt": "2026-07-19T12:00:00+02:00", "period": "latest", "impressions": 281, "reach": 138, "profileViews": 9, "reactions": 5, "comments": 0, "shares": 0, "saves": 0, "followers": 0, "connectionRequestsReceived": 1, "connectionRequestsAttributed": 1, "attributionConfidence": "probable", "decisionMakerConnections": 1, "qualifiedLeads": 0, "meetings": 0, "proposals": 0, "opportunities": 0, "sourceType": "real_export" }
+    ],
+    "audience": {
+      "decisionMakersPercent": 15,
+      "prioritySectors": ["Fabricació de maquinària industrial"],
+      "companySizes": [{ "label": "11-50 treballadors", "percent": 22 }],
+      "locations": [{ "label": "Barcelona i voltants", "percent": 33 }, { "label": "Terrassa i voltants", "percent": 25 }]
+    },
+    "qualitativeSignals": ["Millor abast inicial", "Interacció concentrada en les primeres 24 hores", "Sense segona onada de conversa"]
+  },
+  {
+    "id": "LI-02",
+    "platform": "linkedin",
+    "title": "Muchas empresas automatizan procesos... pero pocas saben si realmente están obteniendo resultados.",
+    "topic": "Dashboards i mesura",
+    "editorialAngle": "sistemes que ajuden a decidir",
+    "format": "post_amb_imatge",
+    "publishedAt": "2026-07-16T08:26:00+02:00",
+    "status": "published",
+    "sourceType": "real_export",
+    "targetCustomer": "Gerents i responsables d'operacions",
+    "funnelStage": "MOFU",
+    "snapshots": [
+      { "capturedAt": "2026-07-19T12:00:00+02:00", "period": "latest", "impressions": 193, "reach": 101, "profileViews": 3, "reactions": 3, "comments": 0, "shares": 0, "saves": 0, "followers": 1, "connectionRequestsReceived": 1, "connectionRequestsAttributed": 1, "attributionConfidence": "probable", "qualifiedLeads": 0, "meetings": 0, "sourceType": "real_export" }
+    ],
+    "audience": {
+      "managersPercent": 15,
+      "directorsPercent": 14,
+      "decisionMakersPercent": 29,
+      "experiencedPercent": 30,
+      "inexperiencedPercent": 38,
+      "locations": [{ "label": "Barcelona i voltants", "percent": 34 }, { "label": "Terrassa i voltants", "percent": 20 }]
+    },
+    "qualitativeSignals": ["Menys volum que LI-01", "Primer seguidor atribuït", "Audiència més propera a decisors"]
+  },
+  {
+    "id": "LI-03",
+    "platform": "linkedin",
+    "title": "No todas las empresas necesitan automatizar sus llamadas.",
+    "topic": "Volum real de trucades",
+    "editorialAngle": "criteri abans que tecnologia",
+    "format": "post_amb_imatge",
+    "publishedAt": "2026-07-21T08:19:00+02:00",
+    "status": "published",
+    "sourceType": "real_manual",
+    "targetCustomer": "Empreses amb poc volum de trucades",
+    "funnelStage": "TOFU",
+    "snapshots": [
+      { "capturedAt": "2026-07-23T08:19:00+02:00", "period": "48h", "impressions": 117, "reach": 47, "profileViews": 3, "reactions": 2, "comments": 2, "shares": 0, "saves": 0, "sends": 0, "followers": 0, "qualifiedLeads": 0, "meetings": 0, "sourceType": "real_manual" }
+    ],
+    "audience": {
+      "managersPercent": 13,
+      "decisionMakersPercent": 13,
+      "experiencedPercent": 23,
+      "inexperiencedPercent": 38,
+      "companySizes": [{ "label": "51-200 treballadors", "percent": 32 }, { "label": "11-50 treballadors", "percent": 17 }, { "label": "201-500 treballadors", "percent": 13 }],
+      "locations": [{ "label": "Terrassa i voltants", "percent": 23 }]
+    },
+    "qualitativeSignals": ["Més conversa que LI-01", "Els comentaris reforcen el criteri humà", "L'equilibri persona-màquina genera credibilitat"]
+  },
+  {
+    "id": "LI-04",
+    "platform": "linkedin",
+    "title": "Automatizar no significa eliminar la atención humana.",
+    "topic": "Model híbrid",
+    "editorialAngle": "persones i agents",
+    "format": "post_amb_imatge",
+    "publishedAt": "2026-07-23T07:42:00+02:00",
+    "status": "published",
+    "sourceType": "real_manual",
+    "targetCustomer": "Indústria i empreses mitjanes",
+    "funnelStage": "MOFU",
+    "snapshots": [
+      { "capturedAt": "2026-07-25T07:42:00+02:00", "period": "48h", "impressions": 98, "reach": 45, "profileViews": 3, "reactions": 2, "comments": 2, "shares": 0, "saves": 0, "sends": 0, "followers": 0, "qualifiedLeads": 0, "meetings": 0, "sourceType": "real_manual" }
+    ],
+    "audience": {
+      "managersPercent": 20,
+      "decisionMakersPercent": 20,
+      "experiencedPercent": 29,
+      "inexperiencedPercent": 36,
+      "prioritySectors": ["Fabricació de maquinària industrial"],
+      "companySizes": [{ "label": "201-500 treballadors", "percent": 27 }, { "label": "11-50 treballadors", "percent": 24 }, { "label": "51-200 treballadors", "percent": 18 }],
+      "locations": [{ "label": "Terrassa", "percent": 24 }, { "label": "Barcelona", "percent": 20 }, { "label": "Sabadell", "percent": 13 }]
+    },
+    "qualitativeSignals": ["20% de gerents", "Alineació amb indústria", "Menys volum però millor senyal comercial potencial"]
+  },
+  {
+    "id": "LI-05",
+    "platform": "linkedin",
+    "title": "Una automatización no está terminada cuando funciona una vez.",
+    "topic": "Robustesa de workflows",
+    "editorialAngle": "error, log i retry",
+    "format": "post_amb_imatge",
+    "publishedAt": "2026-07-28T08:30:00+02:00",
+    "status": "low_performance_early_result",
+    "sourceType": "real_manual",
+    "targetCustomer": "Responsables tècnics i operatius",
+    "funnelStage": "MOFU",
+    "snapshots": [
+      { "capturedAt": "2026-07-30T08:30:00+02:00", "period": "48h", "impressions": 38, "reach": 9, "profileViews": 0, "reactions": 0, "comments": 0, "shares": 0, "saves": 0, "sends": 0, "followers": 0, "qualifiedLeads": 0, "meetings": 0, "sourceType": "real_manual", "notes": "Data de publicació aproximada; resultat primerenc, no concloent." }
+    ],
+    "qualitativeSignals": ["Pitjor rendiment inicial", "No concloure que el contingut tècnic no funciona amb una sola peça"]
+  },
+  {
+    "id": "LI-06",
+    "platform": "linkedin",
+    "title": "El conocimiento crítico no puede depender de una sola persona.",
+    "topic": "Coneixement crític",
+    "editorialAngle": "continuïtat operativa",
+    "format": "post_amb_imatge",
+    "publishedAt": "2026-07-30T08:30:00+02:00",
+    "status": "metrics_pending",
+    "sourceType": "pending",
+    "targetCustomer": "Empreses dependents de persones clau",
+    "funnelStage": "TOFU",
+    "snapshots": [],
+    "qualitativeSignals": ["Dades pendents"]
+  },
+  {
+    "id": "IG-01",
+    "platform": "instagram",
+    "title": "No todas las empresas necesitan automatizar sus llamadas",
+    "topic": "Volum real de trucades",
+    "editorialAngle": "criteri abans que tecnologia",
+    "format": "post_visual",
+    "status": "published",
+    "sourceType": "real_manual",
+    "targetCustomer": "PIMEs",
+    "funnelStage": "TOFU",
+    "snapshots": [{ "capturedAt": "2026-08-01T10:41:00+02:00", "period": "30d", "views": 12, "reactions": 1, "comments": 0, "shares": 0, "sends": 0, "sourceType": "real_manual" }]
+  },
+  {
+    "id": "IG-02",
+    "platform": "instagram",
+    "title": "Automatizar no significa eliminar la atención humana",
+    "topic": "Model híbrid",
+    "editorialAngle": "persones i agents",
+    "format": "post_visual",
+    "status": "published",
+    "sourceType": "real_manual",
+    "targetCustomer": "PIMEs i indústria",
+    "funnelStage": "MOFU",
+    "snapshots": [{ "capturedAt": "2026-08-01T10:41:00+02:00", "period": "30d", "views": 8, "reactions": 1, "comments": 0, "shares": 0, "sends": 0, "sourceType": "real_manual" }]
+  },
+  {
+    "id": "IG-03",
+    "platform": "instagram",
+    "title": "El mayor riesgo no es que se vaya una persona",
+    "topic": "Coneixement crític",
+    "editorialAngle": "continuïtat operativa",
+    "format": "post_visual",
+    "status": "published",
+    "sourceType": "real_manual",
+    "targetCustomer": "Empreses dependents de persones clau",
+    "funnelStage": "TOFU",
+    "snapshots": [{ "capturedAt": "2026-08-01T10:41:00+02:00", "period": "24h", "views": 7, "reactions": 3, "comments": 0, "shares": 0, "sends": 0, "sourceType": "real_manual", "notes": "Captura aproximadament 20 hores després." }]
+  },
+  {
+    "id": "IG-04",
+    "platform": "instagram",
+    "title": "Automatizar no es el fin",
+    "topic": "Dashboards i mesura",
+    "editorialAngle": "sistemes que ajuden a decidir",
+    "format": "post_visual",
+    "status": "published",
+    "sourceType": "real_manual",
+    "targetCustomer": "Responsables d'operacions",
+    "funnelStage": "MOFU",
+    "snapshots": [{ "capturedAt": "2026-08-01T10:41:00+02:00", "period": "30d", "views": 7, "reactions": 1, "comments": 0, "shares": 0, "sends": 0, "sourceType": "real_manual" }]
+  },
+  {
+    "id": "IG-05",
+    "platform": "instagram",
+    "title": "¿Tiene sentido automatizarlo?",
+    "topic": "ROI abans d'automatitzar",
+    "editorialAngle": "criteri abans que tecnologia",
+    "format": "post_visual",
+    "status": "published",
+    "sourceType": "real_manual",
+    "targetCustomer": "PIMEs",
+    "funnelStage": "MOFU",
+    "snapshots": [{ "capturedAt": "2026-08-01T10:41:00+02:00", "period": "30d", "views": 6, "reactions": 2, "comments": 0, "shares": 0, "sends": 0, "sourceType": "real_manual" }]
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "MS-01",
+    "signalType": "customer_objection",
+    "source": "Conversa amb responsable de negoci web",
+    "date": "2026-07-31",
+    "description": "Cansament davant trucades i correus de venedors d'agents; poc interès a automatitzar només deu trucades diàries.",
+    "affectedTopic": "agents de veu",
+    "strength": 5,
+    "confidence": "early_signal",
+    "editorialImplication": "Prioritzar criteris de volum real i explicar quan no convé automatitzar."
+  },
+  {
+    "id": "MS-02",
+    "signalType": "market_saturation",
+    "source": "Observació publicitària",
+    "date": "2026-07-31",
+    "description": "Missatges repetits que prometen trobar leads, enviar missatges i agendar reunions automàticament.",
+    "affectedTopic": "leads i automatització comercial",
+    "strength": 4,
+    "confidence": "developing_pattern",
+    "editorialImplication": "Diferenciar AImetos amb automatització mínima, criteri humà i resultats verificables."
+  },
+  {
+    "id": "MS-03",
+    "signalType": "audience_comment",
+    "source": "Comentaris LI-03",
+    "date": "2026-07-21",
+    "description": "L'audiència defensa processos clars, execució humana i equilibri entre persona i màquina.",
+    "affectedTopic": "model híbrid",
+    "strength": 4,
+    "confidence": "early_signal",
+    "editorialImplication": "Augmentar la prioritat de contingut sobre criteri abans que tecnologia i model híbrid."
+  }
+]

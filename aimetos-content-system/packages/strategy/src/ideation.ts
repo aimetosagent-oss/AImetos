@@ -20,17 +20,17 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
   const modifier = lowQuality ? -2 : analysis.weightedScore >= 4 ? 0.4 : 0;
   const ideas = [
     withScore({
-      id: "idea_voice_roi",
-      title: "Com saber si un agent de veu te ROI abans de construir-lo",
-      objective: "Filtrar oportunitats reals per a agents de veu B2B.",
-      audience: "Direccio comercial i operacions de PIMEs amb trucades repetitives.",
-      pain: "Volen automatitzar trucades pero no saben si el volum justifica la inversio.",
-      value: "Un model simple per decidir amb dades abans de desenvolupar.",
-      mainMessage: "L'agent de veu nomes te sentit quan resol volum, variabilitat i seguiment mesurable.",
-      cta: "Demanar una auditoria de processos automatitzables",
+      id: "idea_ai_criterion",
+      title: "La IA ho va dir. Ningú no ho va qüestionar",
+      objective: "Reforçar criteri humà i governança en decisions assistides per IA.",
+      audience: "Gerents i responsables d'operacions que incorporen IA a processos interns.",
+      pain: "Accepten resultats automàtics sense saber com revisar-los ni qui respon quan fallen.",
+      value: "Un criteri simple per decidir què pot suggerir la IA i què ha de validar una persona.",
+      mainMessage: "La IA pot accelerar una decisió, però no pot eliminar la responsabilitat ni la revisió humana.",
+      cta: "Descarregar una checklist de validació humana",
       priority: 1,
-      justification: "Connecta amb leads qualificats i evita promeses buides.",
-      relatedService: "Agents de veu",
+      justification: "Connecta amb el senyal qualitatiu de criteri abans que tecnologia i obre una línia nova sense repetir agents de veu.",
+      relatedService: "IA aplicada i governança",
       primaryChannel: "linkedin",
       estimatedEffort: 2,
       commercialImpact: score(5 + modifier),
@@ -38,7 +38,10 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       authority: score(5 + modifier),
       reusability: score(4 + modifier),
       category: "Estrategia",
-      language: "ca"
+      language: "ca",
+      funnelStage: "MOFU",
+      businessConsequence: "Una decisió automàtica no qüestionada pot escalar errors operatius i de negoci.",
+      proofOrExample: "Tres preguntes de validació abans d'acceptar una recomanació automàtica."
     }),
     withScore({
       id: "idea_n8n_failures",
@@ -59,7 +62,10 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       authority: score(5 + modifier),
       reusability: score(5 + modifier),
       category: "Error habitual",
-      language: "ca"
+      language: "ca",
+      funnelStage: "MOFU",
+      businessConsequence: "Un workflow fràgil genera incidències, retraball i dependència tècnica.",
+      proofOrExample: "Exemple operatiu amb error, registre i reintent segur."
     }),
     withScore({
       id: "idea_whatsapp_agent",
@@ -80,7 +86,10 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       authority: score(4 + modifier),
       reusability: score(4 + modifier),
       category: "Comparativa",
-      language: "ca"
+      language: "ca",
+      funnelStage: "MOFU",
+      businessConsequence: "Afegir un agent a un procés desordenat dispersa encara més els leads.",
+      proofOrExample: "Arbre de decisió entre agent, CRM i redisseny de procés."
     }),
     withScore({
       id: "idea_dashboard_decisions",
@@ -101,7 +110,10 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       authority: score(4 + modifier),
       reusability: score(5 + modifier),
       category: "Opinio tecnica",
-      language: "ca"
+      language: "ca",
+      funnelStage: "TOFU",
+      businessConsequence: "Mesurar sense activar decisions consumeix temps i retarda les correccions.",
+      proofOrExample: "Tres preguntes que converteixen una mètrica en una decisió."
     }),
     withScore({
       id: "idea_crm_ai",
@@ -122,7 +134,10 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       authority: score(4 + modifier),
       reusability: score(4 + modifier),
       category: "Estrategia",
-      language: "ca"
+      language: "ca",
+      funnelStage: "MOFU",
+      businessConsequence: "Aplicar IA sobre dades i seguiments incomplets accelera els errors comercials.",
+      proofOrExample: "Seqüència dades, camps, alertes, workflows i agent."
     })
   ];
   return ideas.map((idea) => ({ ...idea, globalScore: averageScore(idea) }));

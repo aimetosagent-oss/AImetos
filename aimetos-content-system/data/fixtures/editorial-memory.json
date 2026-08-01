@@ -1,0 +1,10 @@
+[
+  { "topic": "ROI abans d'automatitzar", "lastPublishedAt": "2026-07-15", "timesPublished": 2, "relatedContentIds": ["LI-01", "IG-05"], "saturationScore": 70, "reusePossible": true, "nextAllowedDate": "2026-08-12", "narrativeRole": "reframe_problem" },
+  { "topic": "Volum real de trucades", "lastPublishedAt": "2026-07-21", "timesPublished": 2, "relatedContentIds": ["LI-03", "IG-01"], "saturationScore": 75, "reusePossible": true, "nextAllowedDate": "2026-08-18", "narrativeRole": "answer_objection" },
+  { "topic": "Model híbrid", "lastPublishedAt": "2026-07-23", "timesPublished": 2, "relatedContentIds": ["LI-04", "IG-02"], "saturationScore": 65, "reusePossible": true, "nextAllowedDate": "2026-08-20", "narrativeRole": "show_solution" },
+  { "topic": "Dashboards i mesura", "lastPublishedAt": "2026-07-16", "timesPublished": 2, "relatedContentIds": ["LI-02", "IG-04"], "saturationScore": 45, "reusePossible": true, "nextAllowedDate": "2026-08-06", "narrativeRole": "show_solution" },
+  { "topic": "Robustesa de workflows", "lastPublishedAt": "2026-07-28", "timesPublished": 1, "relatedContentIds": ["LI-05"], "saturationScore": 20, "reusePossible": true, "nextAllowedDate": "2026-08-25", "narrativeRole": "demonstrate_technical_depth" },
+  { "topic": "Coneixement crític", "lastPublishedAt": "2026-07-30", "timesPublished": 2, "relatedContentIds": ["LI-06", "IG-03"], "saturationScore": 35, "reusePossible": true, "nextAllowedDate": "2026-08-13", "narrativeRole": "open_problem" },
+  { "topic": "IA i criteri humà", "timesPublished": 0, "relatedContentIds": [], "saturationScore": 0, "reusePossible": true, "nextAllowedDate": "2026-08-04", "narrativeRole": "reframe_problem" },
+  { "topic": "CRM abans d'afegir IA", "timesPublished": 0, "relatedContentIds": [], "saturationScore": 0, "reusePossible": true, "nextAllowedDate": "2026-08-06", "narrativeRole": "show_solution" }
+]

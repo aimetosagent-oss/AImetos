@@ -67,6 +67,71 @@
           </article>
         </section>
 
+        <section class="intelligence-grid" aria-label="Intel·ligència editorial real">
+          <article class="focus-panel intelligence-overview">
+            <div class="section-heading">
+              <h2>Rendiment global</h2>
+              <span id="dataConfidence">-</span>
+            </div>
+            <div id="overviewMetrics" class="overview-metrics"></div>
+            <div id="horizonWeights" class="horizon-weights"></div>
+            <p id="sampleWarning" class="warning-note"></p>
+          </article>
+
+          <article class="focus-panel">
+            <div class="section-heading">
+              <h2>Lectures clau</h2>
+              <span>Abast, conversa, audiència i negoci</span>
+            </div>
+            <div id="winnerGrid" class="winner-grid"></div>
+          </article>
+
+          <div class="split-panels">
+            <article class="focus-panel">
+              <div class="section-heading">
+                <h2>Qualitat de l'audiència</h2>
+                <span id="audienceFitScore">-</span>
+              </div>
+              <div id="audienceMetrics" class="detail-stack"></div>
+              <p id="audienceReading" class="note"></p>
+            </article>
+            <article class="focus-panel">
+              <div class="section-heading">
+                <h2>Senyals comercials</h2>
+                <span>Atribució controlada</span>
+              </div>
+              <div id="commercialMetrics" class="overview-metrics compact-metrics"></div>
+              <p id="attributionNote" class="warning-note"></p>
+            </article>
+          </div>
+
+          <div class="split-panels">
+            <article class="focus-panel">
+              <div class="section-heading">
+                <h2>Comparativa temporal</h2>
+                <span>24h · 72h · 7d · 30d</span>
+              </div>
+              <div id="temporalComparison" class="list"></div>
+            </article>
+            <article class="focus-panel">
+              <div class="section-heading">
+                <h2>Instagram real</h2>
+                <span>Últims 30 dies</span>
+              </div>
+              <div id="instagramSummary" class="detail-stack"></div>
+              <p id="instagramWarning" class="warning-note"></p>
+            </article>
+          </div>
+
+          <article class="focus-panel">
+            <div class="section-heading">
+              <h2>Senyals qualitatius</h2>
+              <span>Objeccions, comentaris i saturació</span>
+            </div>
+            <div id="marketSignals" class="signal-grid"></div>
+          </article>
+        </section>
+
         <section class="simple-flow" aria-label="Informe simplificat">
           <article class="focus-panel weekly-panel">
             <div class="section-heading">
@@ -138,6 +203,36 @@
       </section>
 
       <section id="adminPanel" class="tab-panel" aria-label="Perfil administrador tècnic">
+        <section class="linkedin-start" aria-label="Entrada manual de mètriques">
+          <div class="section-heading">
+            <h2>Entrada manual de mètriques</h2>
+            <span>Sense API ni credencials</span>
+          </div>
+          <form id="manualMetricsForm" class="manual-form">
+            <label>Plataforma<select name="platform" required><option value="linkedin">LinkedIn</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option></select></label>
+            <label>Content ID<input name="contentId" placeholder="LI-06" required /></label>
+            <label>Captura<input name="capturedAt" type="datetime-local" required /></label>
+            <label>Període<select name="period"><option value="24h">24h</option><option value="48h">48h</option><option value="72h">72h</option><option value="7d">7 dies</option><option value="30d">30 dies</option><option value="latest">Última</option></select></label>
+            <label>Impressions<input name="impressions" type="number" min="0" value="0" /></label>
+            <label>Visualitzacions<input name="views" type="number" min="0" value="0" /></label>
+            <label>Abast<input name="reach" type="number" min="0" value="0" /></label>
+            <label>Reaccions<input name="reactions" type="number" min="0" value="0" /></label>
+            <label>Comentaris<input name="comments" type="number" min="0" value="0" /></label>
+            <label>Comparticions<input name="shares" type="number" min="0" value="0" /></label>
+            <label>Guardats<input name="saves" type="number" min="0" value="0" /></label>
+            <label>Enviaments<input name="sends" type="number" min="0" value="0" /></label>
+            <label>Visites al perfil<input name="profileViews" type="number" min="0" value="0" /></label>
+            <label>Seguidors<input name="followers" type="number" min="0" value="0" /></label>
+            <label>Invitacions<input name="invites" type="number" min="0" value="0" /></label>
+            <label>Leads<input name="leads" type="number" min="0" value="0" /></label>
+            <label>Reunions<input name="meetings" type="number" min="0" value="0" /></label>
+            <label>Font<select name="sourceType"><option value="real_manual">real_manual</option><option value="real_export">real_export</option><option value="estimated">estimated</option><option value="pending">pending</option></select></label>
+            <label class="wide-field">Audiència<textarea name="audienceBreakdown" placeholder="Gerents 20%, indústria 18%..."></textarea></label>
+            <label class="wide-field">Notes<textarea name="notes"></textarea></label>
+            <div class="form-actions"><button type="submit">Desar captura</button><span id="manualFormStatus"></span></div>
+          </form>
+        </section>
+
         <section class="linkedin-start" aria-label="LinkedIn real">
           <div class="section-heading">
             <h2>LinkedIn real: punt de partida</h2>
@@ -149,6 +244,14 @@
             <strong>Què falta per ordenar aquests posts?</strong>
             <p id="requiredMetrics"></p>
           </div>
+        </section>
+
+        <section class="linkedin-start" aria-label="Scoring explicable">
+          <div class="section-heading">
+            <h2>Business Content Score</h2>
+            <span>0-100 · penalització per mostra</span>
+          </div>
+          <div id="contentScores" class="score-table"></div>
         </section>
 
         <section class="layout">
@@ -175,6 +278,7 @@
                 <div><dt>Workflows</dt><dd id="workflows">-</dd></div>
                 <div><dt>Credencials</dt><dd id="credentials">-</dd></div>
               </dl>
+              <div id="dataStates" class="data-states"></div>
             </div>
           </aside>
         </section>

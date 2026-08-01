@@ -34,7 +34,9 @@ export function validateIdea(idea: ContentIdea): ValidationResult {
     "mainMessage",
     "cta",
     "justification",
-    "relatedService"
+    "relatedService",
+    "businessConsequence",
+    "proofOrExample"
   ] as const;
   for (const field of textFields) {
     if (!idea[field] || idea[field].trim().length < 3) {
@@ -56,6 +58,15 @@ export function validateIdea(idea: ContentIdea): ValidationResult {
   }
   if (!validateContentStatus(idea.status)) {
     issues.push(issue("status", "Invalid content status"));
+  }
+  if (!["TOFU", "MOFU", "BOFU"].includes(idea.funnelStage)) {
+    issues.push(issue("funnelStage", "Funnel stage must be TOFU, MOFU or BOFU"));
+  }
+  if (idea.pain.trim().split(/\s+/).length < 5) {
+    issues.push(issue("pain", "Concrete problem is too generic"));
+  }
+  if (idea.cta.includes(" / ") || idea.cta.includes(";") || idea.cta.split("\n").filter(Boolean).length > 1) {
+    issues.push(issue("cta", "Idea must contain a single CTA"));
   }
   return { ok: issues.length === 0, issues };
 }

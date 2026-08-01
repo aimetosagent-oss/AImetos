@@ -34,7 +34,9 @@ function statusLabel(status) {
     published: "Publicat",
     metrics_24h: "Mètriques 24h",
     metrics_72h: "Mètriques 72h",
-    validated: "Validat"
+    validated: "Validat",
+    scheduled: "Programat",
+    not_planned: "No planificat"
   };
   return labels[status] || "Pendent de publicar";
 }
@@ -90,6 +92,103 @@ function renderWeeklyValidation(weekly) {
   );
 }
 
+function renderRealIntelligence(data) {
+  setText("dataConfidence", `${data.confidence.label} · ${data.confidence.comparablePosts} posts comparables`);
+  setText("sampleWarning", data.confidence.warning);
+
+  const overview = byId("overviewMetrics");
+  overview.innerHTML = "";
+  overview.append(
+    metric("LinkedIn", formatter.format(data.global.linkedinPosts)),
+    metric("Instagram", formatter.format(data.global.instagramPosts)),
+    metric("Impressions LI", formatter.format(data.global.impressions)),
+    metric("Abast LI*", formatter.format(data.global.reach)),
+    metric("Comentaris", formatter.format(data.global.comments)),
+    metric("Leads confirmats", formatter.format(data.global.confirmedLeads))
+  );
+
+  const horizons = byId("horizonWeights");
+  horizons.innerHTML = "";
+  for (const item of data.horizons) horizons.append(chip(`${item.label} ${item.weight}%`));
+
+  const winners = byId("winnerGrid");
+  winners.innerHTML = "";
+  for (const item of data.winners) {
+    const node = card(`winner-card winner-${item.key}`);
+    node.innerHTML = `<span>${item.label}</span><strong>${item.title}</strong><p>${item.reason}</p>`;
+    winners.appendChild(node);
+  }
+
+  setText("audienceFitScore", `Audience fit ${data.audience.audienceFitScore}/100`);
+  setText("audienceReading", data.audience.reading);
+  const audience = byId("audienceMetrics");
+  audience.innerHTML = "";
+  audience.append(
+    metric("Pic de decisors", `${data.audience.decisionMakerPeak}%`),
+    metric("Sectors", data.audience.sectors.join(", ") || "Sense dades"),
+    metric("Mides d'empresa", data.audience.companySizes.join(", ") || "Sense dades"),
+    metric("Ubicacions", data.audience.locations.join(", ") || "Sense dades")
+  );
+
+  const commercial = data.commercialSignals;
+  const commercialTarget = byId("commercialMetrics");
+  commercialTarget.innerHTML = "";
+  commercialTarget.append(
+    metric("Visites perfil", formatter.format(commercial.profileViews)),
+    metric("Invitacions rebudes", formatter.format(commercial.connectionRequestsReceived)),
+    metric("Atribució probable", formatter.format(commercial.probableAttributedConnections)),
+    metric("Missatges", formatter.format(commercial.messages)),
+    metric("Leads", formatter.format(commercial.leads)),
+    metric("Reunions", formatter.format(commercial.meetings)),
+    metric("Pressupostos", formatter.format(commercial.proposals)),
+    metric("Oportunitats", formatter.format(commercial.opportunities))
+  );
+  setText("attributionNote", commercial.attributionNote);
+
+  const temporal = byId("temporalComparison");
+  temporal.innerHTML = "";
+  for (const item of data.weeklyComparisons) {
+    const node = card("temporal-card");
+    node.innerHTML = `<div><strong>${item.period}</strong><p>${item.reading}</p></div><div class="temporal-numbers"><span>${formatter.format(item.impressions)} impressions</span><span>${formatter.format(item.comments)} comentaris</span><span>${formatter.format(item.profileViews)} visites perfil</span></div>`;
+    temporal.appendChild(node);
+  }
+
+  const instagram = byId("instagramSummary");
+  instagram.innerHTML = "";
+  instagram.append(
+    metric("Publicacions", formatter.format(data.instagram.posts)),
+    metric("Visualitzacions", formatter.format(data.instagram.views)),
+    metric("M'agrada", formatter.format(data.instagram.reactions)),
+    metric("Millor abast", data.instagram.bestReach),
+    metric("Millor interès relatiu", data.instagram.bestRelativeEngagement)
+  );
+  setText("instagramWarning", data.instagram.warning);
+
+  const signals = byId("marketSignals");
+  signals.innerHTML = "";
+  for (const item of data.marketSignals) {
+    const node = card("signal-card");
+    node.innerHTML = `<div><span>${item.signalType.replaceAll("_", " ")}</span><strong>${item.affectedTopic}</strong></div><p>${item.description}</p><em>${item.editorialImplication}</em>`;
+    signals.appendChild(node);
+  }
+
+  const states = byId("dataStates");
+  states.innerHTML = '<strong>Estat de les dades</strong>';
+  for (const item of data.dataStates) states.append(chip(`${item.sourceType}: ${item.count}`));
+
+  const scores = byId("contentScores");
+  scores.innerHTML = "";
+  for (const item of data.scoredContent) {
+    const node = card("score-row");
+    const snapshotPeriods = item.snapshots.map((snapshot) => snapshot.period).join(" · ") || "sense captures";
+    node.innerHTML =
+      `<div><span>${item.id} · ${item.platform} · ${item.sourceType}</span><strong>${item.title}</strong><p>${item.score.explanation}</p></div>` +
+      `<div class="score-main"><strong>${item.score.total}/100</strong><span>${item.score.confidence.replaceAll("_", " ")}</span><span>${item.score.comparablePosts} comparables</span><span>${snapshotPeriods}</span></div>` +
+      `<div class="score-breakdown"><span>Abast ${Math.round(item.score.breakdown.reach)}</span><span>Conversa ${Math.round(item.score.breakdown.conversation)}</span><span>Perfil ${Math.round(item.score.breakdown.profileInterest)}</span><span>Decisors ${Math.round(item.score.breakdown.decisionMaker)}</span><span>Comercial ${Math.round(item.score.breakdown.commercialSignal)}</span><span>Mostra ${Math.round(item.score.breakdown.sampleConfidence)}</span></div>`;
+    scores.appendChild(node);
+  }
+}
+
 function renderRecommendations(items) {
   const target = byId("recommendations");
   target.innerHTML = "";
@@ -132,6 +231,19 @@ function renderRecommendations(items) {
       '<div class="brief"><strong>Prompt visual premium</strong><p>' +
       item.imagePrompt +
       "</p></div>" +
+      '<div class="funnel-grid"><div><span>Client objectiu</span><strong>' +
+      item.targetCustomer +
+      '</strong></div><div><span>Problema concret</span><strong>' +
+      item.concreteProblem +
+      '</strong></div><div><span>Funnel</span><strong>' +
+      item.funnelStage +
+      '</strong></div><div><span>Objectiu únic</span><strong>' +
+      item.singleObjective +
+      '</strong></div><div><span>Conseqüència</span><strong>' +
+      item.businessConsequence +
+      '</strong></div><div><span>Prova</span><strong>' +
+      item.proofOrExample +
+      "</strong></div></div>" +
       '<div class="brief"><strong>Què mesurarem després</strong><div class="metric-tags">' +
       metrics +
       "</div></div>" +
@@ -155,7 +267,8 @@ function distributionLabel(value) {
   const labels = {
     publish_now: "Publicar ara",
     adapt_and_publish: "Adaptar i publicar",
-    reuse_and_publish: "Reutilitzar i publicar"
+    reuse_and_publish: "Reutilitzar i publicar",
+    not_recommended: "No recomanat"
   };
   return labels[value] || "Publicar";
 }
@@ -175,6 +288,11 @@ function renderSocialDistribution(items) {
       '</span></div><em>' +
       item.publishTime +
       "</em></div>" +
+      '<div class="channel-score"><strong>' +
+      item.recommendedScore +
+      '/100</strong><span>' +
+      item.reason +
+      "</span></div>" +
       '<div class="channel-meta"><span>' +
       item.format +
       '</span><span>' +
@@ -186,6 +304,13 @@ function renderSocialDistribution(items) {
       '<div class="coherence-rule"><strong>Coherència</strong><p>' +
       item.coherenceRule +
       "</p></div>" +
+      '<div class="channel-ops"><span>Adaptació: ' +
+      item.adaptationStatus.replaceAll("_", " ") +
+      '</span><span>Mètriques: ' +
+      item.metricsStatus.replaceAll("_", " ") +
+      '</span><span>Origen: ' +
+      item.sourceContentId +
+      "</span></div>" +
       '<div class="metric-tags">' +
       metrics +
       "</div>";
@@ -204,11 +329,11 @@ function renderSimpleList(id, items, mapper) {
 }
 
 function renderLinkedInStart(data) {
-  setText("linkedinStatus", data.posts.length + " URLs registrades");
+  setText("linkedinStatus", data.posts.length + " publicacions registrades");
   setText("linkedinReason", data.reason);
   setText(
     "requiredMetrics",
-    data.metricsComplete ? "Mètriques principals carregades. Leads i reunions marcats a 0." : data.requiredMetrics.join(", ")
+    data.metricsComplete ? "Mètriques principals carregades. Leads i reunions marcats a 0." : `Pendent LI-06 · camps: ${data.requiredMetrics.join(", ")}`
   );
 
   const target = byId("linkedinPosts");
@@ -217,11 +342,9 @@ function renderLinkedInStart(data) {
     const node = card("url-card");
     node.innerHTML =
       "<div><strong>" +
-      post.topic.replaceAll("-", " ") +
-      '</strong><a href="' +
-      post.url +
-      '" target="_blank" rel="noreferrer">Obrir post</a></div><span>' +
-      (data.metricsComplete ? "mètriques carregades" : post.status.replaceAll("_", " ")) +
+      (post.title || post.topic.replaceAll("-", " ")) +
+      `</strong><small>${post.id} · ${post.sourceType} · ${post.snapshots} captures</small></div><span>` +
+      post.status.replaceAll("_", " ") +
       "</span>";
     target.appendChild(node);
   }
@@ -244,6 +367,7 @@ function render(report) {
   setText("workflows", report.technicalStatus.n8nWorkflowsValidated + " validats");
   setText("credentials", report.technicalStatus.credentialsRequiredNow ? "Pendents" : "No requerides ara");
 
+  renderRealIntelligence(report.realIntelligence);
   renderWeeklyValidation(report.weeklyValidation);
   renderTopContent(report.topContent);
   renderRecommendations(report.recommendations);
@@ -287,6 +411,32 @@ function setupTabs() {
   }
 }
 
+function setupManualMetricsForm() {
+  const form = byId("manualMetricsForm");
+  const status = byId("manualFormStatus");
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    status.textContent = "Desant...";
+    const data = Object.fromEntries(new FormData(form).entries());
+    for (const field of ["impressions", "views", "reach", "reactions", "comments", "shares", "saves", "sends", "profileViews", "followers", "invites", "leads", "meetings"]) {
+      data[field] = Number(data[field] || 0);
+    }
+    try {
+      const response = await fetch("/api/manual-metrics", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No s'ha pogut desar");
+      status.textContent = `Captura desada: ${result.entry.id}`;
+      form.reset();
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  });
+}
+
 async function loadReport() {
   const button = byId("refreshReport");
   button.disabled = true;
@@ -304,6 +454,7 @@ async function loadReport() {
 }
 
 setupTabs();
+setupManualMetricsForm();
 byId("refreshReport").addEventListener("click", loadReport);
 loadReport().catch((error) => {
   setText("nextAction", "No s'ha pogut carregar l'informe");

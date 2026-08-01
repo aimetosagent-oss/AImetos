@@ -94,6 +94,131 @@ export type ContentIdea = {
   category: ContentCategory;
   language: Language;
   status: ContentStatus;
+  funnelStage: "TOFU" | "MOFU" | "BOFU";
+  businessConsequence: string;
+  proofOrExample: string;
+};
+
+export type DataSourceType = "real_manual" | "real_export" | "mock" | "estimated" | "pending";
+export type SnapshotPeriod = "24h" | "48h" | "72h" | "7d" | "30d" | "latest";
+export type ConfidenceLevel =
+  | "insufficient_data"
+  | "early_signal"
+  | "developing_pattern"
+  | "moderate_confidence"
+  | "high_confidence";
+export type AttributionConfidence = "confirmed" | "probable" | "unknown" | "unrelated";
+
+export type AudienceBreakdown = {
+  managersPercent?: number;
+  directorsPercent?: number;
+  decisionMakersPercent?: number;
+  experiencedPercent?: number;
+  inexperiencedPercent?: number;
+  prioritySectors?: string[];
+  companySizes?: Array<{ label: string; percent: number }>;
+  locations?: Array<{ label: string; percent: number }>;
+};
+
+export type MetricSnapshot = {
+  capturedAt: string;
+  period: SnapshotPeriod;
+  impressions?: number;
+  views?: number;
+  reach?: number;
+  reactions?: number;
+  comments?: number;
+  shares?: number;
+  saves?: number;
+  sends?: number;
+  profileViews?: number;
+  followers?: number;
+  connectionRequestsReceived?: number;
+  connectionRequestsAttributed?: number;
+  attributionConfidence?: AttributionConfidence;
+  decisionMakerConnections?: number;
+  messagesReceived?: number;
+  qualifiedLeads?: number;
+  meetings?: number;
+  proposals?: number;
+  opportunities?: number;
+  sourceType: DataSourceType;
+  notes?: string;
+};
+
+export type RealContentRecord = {
+  id: string;
+  platform: "linkedin" | "instagram" | "facebook";
+  title: string;
+  topic: string;
+  editorialAngle: string;
+  format: string;
+  publishedAt?: string;
+  status: "published" | "metrics_pending" | "low_performance_early_result";
+  sourceType: DataSourceType;
+  targetCustomer: string;
+  funnelStage: "TOFU" | "MOFU" | "BOFU";
+  snapshots: MetricSnapshot[];
+  audience?: AudienceBreakdown;
+  qualitativeSignals?: string[];
+};
+
+export type BusinessContentScore = {
+  total: number;
+  confidence: ConfidenceLevel;
+  comparablePosts: number;
+  breakdown: {
+    reach: number;
+    engagement: number;
+    profileInterest: number;
+    decisionMaker: number;
+    audienceFit: number;
+    conversation: number;
+    commercialSignal: number;
+    authority: number;
+    differentiation: number;
+    reusability: number;
+    marketSignal: number;
+    sampleConfidence: number;
+  };
+  explanation: string;
+};
+
+export type MarketSignal = {
+  id: string;
+  signalType:
+    | "customer_objection"
+    | "sales_conversation"
+    | "market_saturation"
+    | "competitor_message"
+    | "recurring_pain"
+    | "audience_comment"
+    | "commercial_feedback";
+  source: string;
+  date: string;
+  description: string;
+  affectedTopic: string;
+  strength: 1 | 2 | 3 | 4 | 5;
+  confidence: ConfidenceLevel;
+  editorialImplication: string;
+};
+
+export type EditorialMemoryItem = {
+  topic: string;
+  lastPublishedAt?: string;
+  timesPublished: number;
+  relatedContentIds: string[];
+  saturationScore: number;
+  reusePossible: boolean;
+  nextAllowedDate?: string;
+  narrativeRole:
+    | "open_problem"
+    | "reframe_problem"
+    | "show_solution"
+    | "demonstrate_technical_depth"
+    | "case_study"
+    | "answer_objection"
+    | "conversion";
 };
 
 export type MetricRecord = {

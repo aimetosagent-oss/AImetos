@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { extname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../../../packages/config/src/env.ts";
@@ -38,6 +38,25 @@ function serveStatic(req, res) {
   return true;
 }
 
+async function readJsonBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  if (chunks.length === 0) return {};
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+
+function validateManualMetric(input) {
+  const issues = [];
+  if (!["linkedin", "instagram", "facebook"].includes(input.platform)) issues.push("platform");
+  if (!input.contentId || String(input.contentId).trim().length < 2) issues.push("contentId");
+  if (!Date.parse(input.capturedAt || "")) issues.push("capturedAt");
+  if (!["real_manual", "real_export", "estimated", "pending"].includes(input.sourceType)) issues.push("sourceType");
+  for (const field of ["impressions", "views", "reach", "reactions", "comments", "shares", "saves", "sends", "profileViews", "followers", "invites", "leads", "meetings"]) {
+    if (input[field] !== undefined && (!Number.isFinite(Number(input[field])) || Number(input[field]) < 0)) issues.push(field);
+  }
+  return issues;
+}
+
 export function createAimetosServer() {
   const config = loadConfig();
   return createServer(async (req, res) => {
@@ -69,22 +88,70 @@ export function createAimetosServer() {
       if (url.pathname === "/api/client-report") {
         return json(res, 200, await buildClientMonthlyReport());
       }
+      if (url.pathname === "/api/manual-metrics" && req.method === "GET") {
+        const target = join(root, "data", "fixtures", "manual-metric-entries.json");
+        return json(res, 200, JSON.parse(readFileSync(target, "utf8")));
+      }
+      if (url.pathname === "/api/manual-metrics" && req.method === "POST") {
+        const input = await readJsonBody(req);
+        const issues = validateManualMetric(input);
+        const knownContent = JSON.parse(readFileSync(join(root, "data", "fixtures", "real-content.json"), "utf8"));
+        if (!knownContent.some((item) => item.id === input.contentId)) issues.push("contentId_unknown");
+        if (issues.length > 0) return json(res, 400, { ok: false, error: "Camps invàlids", fields: issues });
+        const target = join(root, "data", "fixtures", "manual-metric-entries.json");
+        const entries = JSON.parse(readFileSync(target, "utf8"));
+        const entry = {
+          id: `manual_${Date.now()}`,
+          platform: input.platform,
+          contentId: String(input.contentId).trim(),
+          capturedAt: input.capturedAt,
+          period: input.period || "latest",
+          impressions: Number(input.impressions || 0),
+          views: Number(input.views || 0),
+          reach: Number(input.reach || 0),
+          reactions: Number(input.reactions || 0),
+          comments: Number(input.comments || 0),
+          shares: Number(input.shares || 0),
+          saves: Number(input.saves || 0),
+          sends: Number(input.sends || 0),
+          profileViews: Number(input.profileViews || 0),
+          followers: Number(input.followers || 0),
+          invites: Number(input.invites || 0),
+          leads: Number(input.leads || 0),
+          meetings: Number(input.meetings || 0),
+          audienceBreakdown: input.audienceBreakdown || "",
+          notes: input.notes || "",
+          sourceType: input.sourceType
+        };
+        entries.push(entry);
+        writeFileSync(target, JSON.stringify(entries, null, 2) + "\n", "utf8");
+        return json(res, 201, { ok: true, entry });
+      }
       if (url.pathname === "/api/linkedin-start") {
-        const posts = JSON.parse(readFileSync(join(root, "data", "fixtures", "linkedin-posts.json"), "utf8"));
-        const metricsComplete = posts.every((post) => typeof post.manualMetrics?.impressions === "number");
+        const posts = JSON.parse(readFileSync(join(root, "data", "fixtures", "real-content.json"), "utf8"))
+          .filter((post) => post.platform === "linkedin")
+          .map((post) => ({
+            id: post.id,
+            title: post.title,
+            topic: post.topic,
+            status: post.status,
+            sourceType: post.sourceType,
+            snapshots: post.snapshots.length
+          }));
+        const metricsComplete = posts.every((post) => post.snapshots > 0);
         return json(res, 200, {
           clientName: "Roger Arnau / AImetos",
           source: "LinkedIn",
-          mode: "url-first",
+          mode: "manual-first",
           canReadPublicUrl: false,
           reason:
-            "LinkedIn no exposa de forma fiable el text complet ni les mètriques privades sense sessió/API. Les URLs queden registrades i només falten les mètriques mínimes.",
+            "Sis publicacions reals registrades. Cinc tenen mètriques i LI-06 està pendent de captura.",
           posts,
-          requiredMetrics: ["impressions", "reactions", "comments", "shares", "clicks", "profileVisits", "leads", "meetings"],
+          requiredMetrics: ["impressions/views", "reach", "reactions", "comments", "shares", "saves", "profileViews", "followers", "invites", "leads", "meetings"],
           metricsComplete,
           nextStep: metricsComplete
-            ? "Ja podem comparar aquests 3 posts. El següent pas és crear una nova publicació LinkedIn basada en el patró guanyador i mesurar-la."
-            : "Afegir les mètriques privades de cada post. Amb això el sistema podrà ordenar quin ha funcionat millor i recomanar què publicar ara sense inventar dades."
+            ? "Totes les peces tenen com a mínim una captura manual o exportada."
+            : "Afegir la primera captura de LI-06 mitjançant el formulari manual."
         });
       }
       if (serveStatic(req, res)) return;
