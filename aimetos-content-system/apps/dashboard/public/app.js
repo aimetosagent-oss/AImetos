@@ -45,6 +45,10 @@ function confidenceLabel(report) {
   return report.decision.confidenceLabel || (report.decision.confidence === "high" ? "Confiança inicial alta" : "Hipòtesi inicial");
 }
 
+function effortLabel(effort) {
+  return { low: "baixa", medium: "mitjana", high: "alta" }[effort] || effort;
+}
+
 function renderTopContent(items) {
   const target = byId("topContent");
   const template = byId("topContentTemplate");
@@ -189,6 +193,43 @@ function renderRealIntelligence(data) {
   }
 }
 
+function renderExecutiveReading(items) {
+  const target = byId("executiveReading");
+  target.innerHTML = "";
+  for (const item of items.slice(0, 4)) {
+    const node = document.createElement("li");
+    node.textContent = item;
+    target.appendChild(node);
+  }
+}
+
+function recommendationDetail(item) {
+  const imageLink = item.imageAsset
+    ? '<a class="asset-link" href="' + item.imageAsset + '" target="_blank" rel="noreferrer">Obrir PNG proposat</a>'
+    : '<span class="asset-pending">Imatge pendent de generar amb el prompt visual</span>';
+  const metrics = (item.metricsToTrack || []).map((value) => "<span>" + value + "</span>").join("");
+  const articleAction = item.expandToArticle
+    ? '<button class="article-action" type="button">Ampliar a article</button><span class="article-action-note" hidden>Aquesta ampliació només es prepararà després d\'aprovar-la.</span>'
+    : "";
+  return (
+    '<div class="brief"><strong>Text del post</strong><p>' + item.postCopy + "</p></div>" +
+    '<div class="brief-grid"><div class="brief"><strong>Millor moment per publicar</strong><p>' + item.bestPublishTime +
+    '</p></div><div class="brief"><strong>Estat</strong><p>' + statusLabel(item.publicationStatus) + "</p></div></div>" +
+    '<div class="brief"><strong>Imatge recomanada</strong><p>' + item.visualBrief + "</p>" + imageLink + "</div>" +
+    '<div class="brief"><strong>Prompt visual premium</strong><p>' + item.imagePrompt + "</p></div>" +
+    '<div class="funnel-grid"><div><span>Client objectiu</span><strong>' + item.targetCustomer +
+    '</strong></div><div><span>Problema concret</span><strong>' + item.concreteProblem +
+    '</strong></div><div><span>Funnel</span><strong>' + item.funnelStage +
+    '</strong></div><div><span>Objectiu únic</span><strong>' + item.singleObjective +
+    '</strong></div><div><span>Conseqüència</span><strong>' + item.businessConsequence +
+    '</strong></div><div><span>Prova</span><strong>' + item.proofOrExample + "</strong></div></div>" +
+    '<div class="brief"><strong>Què mesurarem després</strong><div class="metric-tags">' + metrics + "</div></div>" +
+    articleAction +
+    '<div class="footer-line"><span>' + item.displayChannel + " · " + item.displayFormat +
+    "</span><strong>Dificultat " + effortLabel(item.effort) + "</strong></div>"
+  );
+}
+
 function renderRecommendations(items) {
   const target = byId("recommendations");
   target.innerHTML = "";
@@ -196,70 +237,22 @@ function renderRecommendations(items) {
   for (const [index, item] of items.entries()) {
     const node = card("recommendation");
     const recommended = item.recommended ? " · Recomanada" : "";
-    const why = item.recommended ? '<p class="why-recommended">' + item.whyRecommended + "</p>" : "";
-    const imageLink = item.imageAsset
-      ? '<a class="asset-link" href="' + item.imageAsset + '" target="_blank" rel="noreferrer">Obrir PNG proposat</a>'
-      : '<span class="asset-pending">Imatge pendent de generar amb el prompt visual</span>';
-    const metrics = (item.metricsToTrack || []).map((value) => "<span>" + value + "</span>").join("");
-    node.innerHTML =
-      '<div class="option-label">Opció ' +
-      (index + 1) +
-      recommended +
-      "</div><div><h3>" +
-      item.title +
-      "</h3><p>" +
-      item.reason +
-      "</p>" +
-      why +
-      "</div>" +
-      '<div class="brief"><strong>Text del post</strong><p>' +
-      item.postCopy +
-      "</p></div>" +
-      '<div class="brief-grid">' +
-      '<div class="brief"><strong>Millor moment per publicar</strong><p>' +
-      item.bestPublishTime +
-      "</p></div>" +
-      '<div class="brief"><strong>Estat</strong><p>' +
-      statusLabel(item.publicationStatus) +
-      "</p></div>" +
-      "</div>" +
-      '<div class="brief"><strong>Imatge recomanada</strong><p>' +
-      item.visualBrief +
-      "</p>" +
-      imageLink +
-      "</div>" +
-      '<div class="brief"><strong>Prompt visual premium</strong><p>' +
-      item.imagePrompt +
-      "</p></div>" +
-      '<div class="funnel-grid"><div><span>Client objectiu</span><strong>' +
-      item.targetCustomer +
-      '</strong></div><div><span>Problema concret</span><strong>' +
-      item.concreteProblem +
-      '</strong></div><div><span>Funnel</span><strong>' +
-      item.funnelStage +
-      '</strong></div><div><span>Objectiu únic</span><strong>' +
-      item.singleObjective +
-      '</strong></div><div><span>Conseqüència</span><strong>' +
-      item.businessConsequence +
-      '</strong></div><div><span>Prova</span><strong>' +
-      item.proofOrExample +
-      "</strong></div></div>" +
-      '<div class="brief"><strong>Què mesurarem després</strong><div class="metric-tags">' +
-      metrics +
-      "</div></div>" +
-      '<div class="admin-only"><div class="brief"><strong>Hook intern</strong><p>' +
-      item.hook +
-      '</p></div><div class="brief"><strong>Peça a produir</strong><p>' +
-      item.productionBrief +
-      "</p></div></div>" +
-      '<div class="footer-line"><span>' +
-      item.displayChannel +
-      " · " +
-      item.displayFormat +
-      "</span><strong>Dificultat " +
-      item.effort +
-      "</strong></div>";
+    const priorityReason = item.recommended ? '<p class="why-recommended">' + item.whyRecommended + "</p>" : "";
+    const heading = '<div class="option-label">Opció ' + (index + 1) + recommended +
+      '</div><div><h3>' + item.title + '</h3><p>' + item.reason + "</p>" + priorityReason + "</div>";
+    node.innerHTML = index === 0
+      ? heading + recommendationDetail(item)
+      : '<details class="idea-details"><summary><span>' + heading +
+        '<span class="idea-summary-meta">' + item.singleObjective + ' · ' + item.funnelStage +
+        '</span><span class="detail-action">Veure detall</span></span></summary>' + recommendationDetail(item) + "</details>";
     target.appendChild(node);
+  }
+
+  for (const button of target.querySelectorAll(".article-action")) {
+    button.addEventListener("click", () => {
+      const note = button.nextElementSibling;
+      note.hidden = !note.hidden;
+    });
   }
 }
 
@@ -275,7 +268,9 @@ function distributionLabel(value) {
 
 function renderSocialDistribution(items) {
   const target = byId("socialDistribution");
+  const otherTarget = byId("otherChannels");
   target.innerHTML = "";
+  otherTarget.innerHTML = "";
 
   for (const item of items) {
     const node = card("channel-card");
@@ -288,11 +283,7 @@ function renderSocialDistribution(items) {
       '</span></div><em>' +
       item.publishTime +
       "</em></div>" +
-      '<div class="channel-score"><strong>' +
-      item.recommendedScore +
-      '/100</strong><span>' +
-      item.reason +
-      "</span></div>" +
+      '<div class="channel-reason"><span>' + item.reason + "</span></div>" +
       '<div class="channel-meta"><span>' +
       item.format +
       '</span><span>' +
@@ -304,17 +295,10 @@ function renderSocialDistribution(items) {
       '<div class="coherence-rule"><strong>Coherència</strong><p>' +
       item.coherenceRule +
       "</p></div>" +
-      '<div class="channel-ops"><span>Adaptació: ' +
-      item.adaptationStatus.replaceAll("_", " ") +
-      '</span><span>Mètriques: ' +
-      item.metricsStatus.replaceAll("_", " ") +
-      '</span><span>Origen: ' +
-      item.sourceContentId +
-      "</span></div>" +
       '<div class="metric-tags">' +
       metrics +
       "</div>";
-    target.appendChild(node);
+    (item.channel === "linkedin" || item.channel === "meta" ? target : otherTarget).appendChild(node);
   }
 }
 
@@ -353,10 +337,12 @@ function renderLinkedInStart(data) {
 function render(report) {
   setText("period", report.period);
   setText("nextAction", report.decision.nextAction);
-  setText("summary", report.executiveSummary);
-  setText("bestFormat", report.decision.nextBestFormat);
-  setText("bestChannel", report.decision.nextBestChannel);
+  setText("decisionJustification", report.decision.justification);
+  setText("recommendationLevel", report.decision.recommendationLevel[0].toUpperCase() + report.decision.recommendationLevel.slice(1));
   setText("confidence", confidenceLabel(report));
+  setText("comparablePosts", formatter.format(report.decision.comparablePosts));
+  setText("publishDate", report.decision.publishDate);
+  setText("decisionChannels", report.decision.channels.join(" + "));
   setText("confidenceNote", report.decision.confidenceNote);
   setText("businessObjective", report.businessObjective);
   setText("strategyQuarter", report.strategy.quarterly);
@@ -368,8 +354,7 @@ function render(report) {
   setText("credentials", report.technicalStatus.credentialsRequiredNow ? "Pendents" : "No requerides ara");
 
   renderRealIntelligence(report.realIntelligence);
-  renderWeeklyValidation(report.weeklyValidation);
-  renderTopContent(report.topContent);
+  renderExecutiveReading(report.executiveReading || [report.executiveSummary]);
   renderRecommendations(report.recommendations);
   renderSocialDistribution(report.socialDistribution || []);
   renderSimpleList(
@@ -458,5 +443,5 @@ setupManualMetricsForm();
 byId("refreshReport").addEventListener("click", loadReport);
 loadReport().catch((error) => {
   setText("nextAction", "No s'ha pogut carregar l'informe");
-  setText("summary", error.message);
+  setText("decisionJustification", error.message);
 });

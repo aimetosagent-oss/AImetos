@@ -7,6 +7,8 @@ export type RuntimeConfig = {
   port: number;
   logLevel: "debug" | "info" | "warn" | "error";
   defaultLanguage: Language;
+  uiLanguage: Language;
+  contentLanguage: Language;
   temporalWeights: {
     last30Days: number;
     last90Days: number;
@@ -66,6 +68,8 @@ export function loadConfig(): RuntimeConfig {
     port: numberFromEnv("PORT", 4317),
     logLevel: pick("LOG_LEVEL", ["debug", "info", "warn", "error"], "info"),
     defaultLanguage: pick("DEFAULT_LANGUAGE", languages, "ca"),
+    uiLanguage: pick("UI_LANGUAGE", languages, "ca"),
+    contentLanguage: pick("CONTENT_LANGUAGE", languages, "es"),
     temporalWeights: {
       last30Days: numberFromEnv("TEMPORAL_WEIGHT_30_DAYS", 0.6),
       last90Days: numberFromEnv("TEMPORAL_WEIGHT_90_DAYS", 0.3),

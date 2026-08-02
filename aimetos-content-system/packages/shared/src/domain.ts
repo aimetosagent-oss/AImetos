@@ -61,6 +61,16 @@ export type ContentCategory =
   | "Estrategia"
   | "Tendencia amb impacte empresarial";
 
+export type EditorialFamily =
+  | "agents_i_canals"
+  | "criteri_huma_i_governanca"
+  | "integracions_i_dades"
+  | "processos_i_operacions"
+  | "coneixement_i_continuitat"
+  | "dashboards_i_mesura"
+  | "robustesa_tecnica"
+  | "casos_reals";
+
 export type Platform =
   | "blog"
   | "linkedin"
@@ -97,6 +107,12 @@ export type ContentIdea = {
   funnelStage: "TOFU" | "MOFU" | "BOFU";
   businessConsequence: string;
   proofOrExample: string;
+  editorialFamily: EditorialFamily;
+  lastUsedAt?: string;
+  appearancesLast4Posts: number;
+  repetitionPenalty: number;
+  diversityBonus: number;
+  expandToArticle: boolean;
 };
 
 export type DataSourceType = "real_manual" | "real_export" | "mock" | "estimated" | "pending";

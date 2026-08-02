@@ -62,6 +62,15 @@ export function validateIdea(idea: ContentIdea): ValidationResult {
   if (!["TOFU", "MOFU", "BOFU"].includes(idea.funnelStage)) {
     issues.push(issue("funnelStage", "Funnel stage must be TOFU, MOFU or BOFU"));
   }
+  if (!idea.editorialFamily) {
+    issues.push(issue("editorialFamily", "Editorial family is required"));
+  }
+  if (!inRange(idea.appearancesLast4Posts, 0, 4)) {
+    issues.push(issue("appearancesLast4Posts", "Recent appearances must be between 0 and 4"));
+  }
+  if (!inRange(idea.repetitionPenalty, 0, 5) || !inRange(idea.diversityBonus, 0, 5)) {
+    issues.push(issue("editorialVariety", "Editorial variety factors must be between 0 and 5"));
+  }
   if (idea.pain.trim().split(/\s+/).length < 5) {
     issues.push(issue("pain", "Concrete problem is too generic"));
   }

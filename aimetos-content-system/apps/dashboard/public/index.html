@@ -26,150 +26,75 @@
 
     <main>
       <section id="clientPanel" class="tab-panel active" aria-label="Perfil client">
-        <section class="hero" aria-label="Decisió principal">
+        <section class="hero decision-hero" aria-label="Decisió principal">
           <div>
-            <p class="eyebrow">Decisió recomanada</p>
+            <p class="eyebrow">1. Decisió recomanada</p>
             <h1 id="nextAction">Carregant informe...</h1>
-            <p id="summary" class="summary"></p>
+            <p id="decisionJustification" class="summary"></p>
           </div>
-          <div class="decision-grid">
+          <div class="decision-facts">
             <article>
-              <span>Format</span>
-              <strong id="bestFormat">-</strong>
-            </article>
-            <article>
-              <span>Canal</span>
-              <strong id="bestChannel">-</strong>
+              <span>Recomanació</span>
+              <strong id="recommendationLevel">-</strong>
             </article>
             <article>
               <span>Confiança</span>
               <strong id="confidence">-</strong>
             </article>
-          </div>
-        </section>
-
-        <section class="business-strip" aria-label="Estratègia de negoci">
-          <article>
-            <span>Objectiu comercial</span>
-            <strong id="businessObjective">-</strong>
-          </article>
-          <article>
-            <span>Trimestre</span>
-            <p id="strategyQuarter">-</p>
-          </article>
-          <article>
-            <span>Mes</span>
-            <p id="strategyMonth">-</p>
-          </article>
-          <article>
-            <span>Publicació</span>
-            <p id="strategyPublication">-</p>
-          </article>
-        </section>
-
-        <section class="intelligence-grid" aria-label="Intel·ligència editorial real">
-          <article class="focus-panel intelligence-overview">
-            <div class="section-heading">
-              <h2>Rendiment global</h2>
-              <span id="dataConfidence">-</span>
-            </div>
-            <div id="overviewMetrics" class="overview-metrics"></div>
-            <div id="horizonWeights" class="horizon-weights"></div>
-            <p id="sampleWarning" class="warning-note"></p>
-          </article>
-
-          <article class="focus-panel">
-            <div class="section-heading">
-              <h2>Lectures clau</h2>
-              <span>Abast, conversa, audiència i negoci</span>
-            </div>
-            <div id="winnerGrid" class="winner-grid"></div>
-          </article>
-
-          <div class="split-panels">
-            <article class="focus-panel">
-              <div class="section-heading">
-                <h2>Qualitat de l'audiència</h2>
-                <span id="audienceFitScore">-</span>
-              </div>
-              <div id="audienceMetrics" class="detail-stack"></div>
-              <p id="audienceReading" class="note"></p>
+            <article>
+              <span>Publicacions comparables</span>
+              <strong id="comparablePosts">-</strong>
             </article>
-            <article class="focus-panel">
-              <div class="section-heading">
-                <h2>Senyals comercials</h2>
-                <span>Atribució controlada</span>
-              </div>
-              <div id="commercialMetrics" class="overview-metrics compact-metrics"></div>
-              <p id="attributionNote" class="warning-note"></p>
+            <article>
+              <span>Data</span>
+              <strong id="publishDate">-</strong>
+            </article>
+            <article>
+              <span>Canals</span>
+              <strong id="decisionChannels">-</strong>
             </article>
           </div>
-
-          <div class="split-panels">
-            <article class="focus-panel">
-              <div class="section-heading">
-                <h2>Comparativa temporal</h2>
-                <span>24h · 72h · 7d · 30d</span>
-              </div>
-              <div id="temporalComparison" class="list"></div>
-            </article>
-            <article class="focus-panel">
-              <div class="section-heading">
-                <h2>Instagram real</h2>
-                <span>Últims 30 dies</span>
-              </div>
-              <div id="instagramSummary" class="detail-stack"></div>
-              <p id="instagramWarning" class="warning-note"></p>
-            </article>
-          </div>
-
-          <article class="focus-panel">
-            <div class="section-heading">
-              <h2>Senyals qualitatius</h2>
-              <span>Objeccions, comentaris i saturació</span>
-            </div>
-            <div id="marketSignals" class="signal-grid"></div>
-          </article>
         </section>
 
         <section class="simple-flow" aria-label="Informe simplificat">
-          <article class="focus-panel weekly-panel">
+          <article class="focus-panel executive-panel">
             <div class="section-heading">
-              <h2>Resultat de la setmana</h2>
-              <span id="weeklyPeriod">-</span>
+              <h2>2. Resum de resultats</h2>
+              <span id="dataConfidence">-</span>
             </div>
-            <div id="weeklyMetrics" class="weekly-metrics"></div>
-            <p class="weekly-footnote">* L'abast és la suma de les dues publicacions i pot incloure persones repetides.</p>
-            <div class="weekly-insights">
-              <article>
-                <span>Guanyador per visibilitat</span>
-                <strong id="visibilityWinner">-</strong>
-                <p id="visibilityReason">-</p>
-              </article>
-              <article>
-                <span>Millor qualitat d'audiència</span>
-                <strong id="audienceWinner">-</strong>
-                <p id="audienceReason">-</p>
-              </article>
-              <article class="commercial-signal">
-                <span>Senyal comercial</span>
-                <strong id="commercialSignal">-</strong>
-                <p id="weeklyDecision">-</p>
-              </article>
-            </div>
+            <ol id="executiveReading" class="executive-reading"></ol>
+            <details class="data-details">
+              <summary>Veure dades de rendiment</summary>
+              <div id="overviewMetrics" class="overview-metrics"></div>
+              <div id="horizonWeights" class="horizon-weights"></div>
+              <p id="sampleWarning" class="warning-note"></p>
+              <div id="winnerGrid" class="winner-grid"></div>
+            </details>
+            <details class="data-details">
+              <summary>Veure audiència, negoci i evolució</summary>
+              <div class="split-panels detail-panels">
+                <div><strong id="audienceFitScore">-</strong><div id="audienceMetrics" class="detail-stack"></div><p id="audienceReading" class="note"></p></div>
+                <div><strong>Senyals comercials</strong><div id="commercialMetrics" class="overview-metrics compact-metrics"></div><p id="attributionNote" class="warning-note"></p></div>
+              </div>
+              <div id="temporalComparison" class="list detail-list"></div>
+              <div id="instagramSummary" class="detail-stack"></div>
+              <p id="instagramWarning" class="warning-note"></p>
+              <div id="marketSignals" class="signal-grid"></div>
+            </details>
+            <details class="data-details">
+              <summary>Veure estratègia</summary>
+              <div class="strategy-details">
+                <p><strong>Objectiu comercial</strong><span id="businessObjective">-</span></p>
+                <p><strong>Trimestre</strong><span id="strategyQuarter">-</span></p>
+                <p><strong>Mes</strong><span id="strategyMonth">-</span></p>
+                <p><strong>Publicació</strong><span id="strategyPublication">-</span></p>
+              </div>
+            </details>
           </article>
 
           <article class="focus-panel">
             <div class="section-heading">
-              <h2>1. Què ha funcionat</h2>
-              <span>Contingut anterior</span>
-            </div>
-            <div id="topContent" class="list"></div>
-          </article>
-
-          <article class="focus-panel">
-            <div class="section-heading">
-              <h2>2. Què publicar ara</h2>
+              <h2>3. Tres idees per aprovar</h2>
               <span>3 opcions per aprovar</span>
             </div>
             <div id="recommendations" class="list"></div>
@@ -177,18 +102,22 @@
 
           <article class="focus-panel">
             <div class="section-heading">
-              <h2>3. Distribució per xarxes</h2>
+              <h2>4. Distribució per canals</h2>
               <span>Mateixa idea, adaptada a cada canal</span>
             </div>
             <p class="note">
-              La campanya manté el mateix missatge central a LinkedIn, Instagram i Facebook perquè qualsevol persona que entri per una xarxa vegi una proposta coherent.
+              LinkedIn i Meta mantenen el mateix missatge. Instagram i Facebook empresa comparteixen contingut, creativitat, data i hora.
             </p>
             <div id="socialDistribution" class="channel-matrix"></div>
+            <details class="data-details other-channels">
+              <summary>Altres canals</summary>
+              <div id="otherChannels" class="channel-matrix"></div>
+            </details>
           </article>
 
           <article class="focus-panel">
             <div class="section-heading">
-              <h2>4. Com validar-ho</h2>
+              <h2>5. Validació posterior</h2>
               <span>Després de publicar</span>
             </div>
             <div class="validation-cycle">

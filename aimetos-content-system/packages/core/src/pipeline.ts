@@ -64,6 +64,14 @@ export type ClientContentRecommendation = {
   singleObjective: string;
   businessConsequence: string;
   proofOrExample: string;
+  editorialFamily: ContentIdea["editorialFamily"];
+  editorialVariety: {
+    lastUsedAt?: string;
+    appearancesLast4Posts: number;
+    repetitionPenalty: number;
+    diversityBonus: number;
+  };
+  expandToArticle: boolean;
 };
 
 export type ClientMonthlyReport = {
@@ -72,6 +80,7 @@ export type ClientMonthlyReport = {
   period: string;
   generatedAt: string;
   executiveSummary: string;
+  executiveReading: string[];
   businessObjective: string;
   strategy: {
     quarterly: string;
@@ -85,6 +94,11 @@ export type ClientMonthlyReport = {
     confidence: ReturnType<typeof confidenceFromSample>;
     confidenceLabel: string;
     confidenceNote: string;
+    recommendationLevel: "alta" | "mitjana" | "baixa";
+    publishDate: string;
+    channels: string[];
+    justification: string;
+    comparablePosts: number;
   };
   realIntelligence: {
     confidence: {
@@ -211,7 +225,7 @@ export type ClientMonthlyReport = {
   }>;
   recommendations: ClientContentRecommendation[];
   socialDistribution: Array<{
-    channel: "linkedin" | "instagram" | "facebook_business" | "facebook_personal" | "blog" | "newsletter" | "youtube";
+    channel: "linkedin" | "meta" | "facebook_personal" | "blog" | "newsletter" | "youtube";
     label: string;
     recommendedScore: number;
     recommended: boolean;
@@ -228,6 +242,10 @@ export type ClientMonthlyReport = {
     adaptation: string;
     coherenceRule: string;
     metricsToTrack: string[];
+    platformMetrics?: {
+      instagram: string[];
+      facebookBusiness: string[];
+    };
   }>;
   calendar: Array<{
     day: string;
@@ -638,14 +656,14 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     ""
   ];
   const visualBriefs = [
-    "Imatge de decisió amb una resposta automàtica al centre i tres filtres humans: context, risc i responsable. Inclou el logo AImetos en petit.",
-    "Imatge tipus full de ruta: cinc passos ordenats 'Dades', 'Camps', 'Alertes', 'Workflows' i 'IA'. Inclou el logo AImetos en petit.",
-    "Imatge de decisió amb dues columnes: 'Quan sí' i 'Quan no' per a un agent de WhatsApp. Inclou el logo AImetos en petit."
+    "Diagrama visual d'un procés B2B amb CRM, Excel, correo i WhatsApp connectats a una única font de veritat. Inclou el logo AImetos en petit.",
+    "Esquema tècnic d'un workflow robust amb validació, log, retry i alerta. Inclou el logo AImetos en petit.",
+    "Dashboard de decisió amb una mètrica, una alerta, un responsable i una acció. Inclou el logo AImetos en petit."
   ];
   const imagePrompts = [
-    "Crea una imatge professional per LinkedIn, format 1200x627, estil de consultoria tecnològica B2B. Titular: 'La IA ho va dir. Ningú no ho va qüestionar.' Subtítol: 'Automatitzar una resposta no elimina la responsabilitat'. Mostra tres filtres visuals: Context, Risc i Responsable. Paleta blanca, verd petroli, blau i gris. Inclou el logo AImetos original en petit. Sense persones, sense estil stock i sense text petit.",
-    "Crea una imatge professional per LinkedIn, format 1200x627, estil de consultoria tecnològica B2B, net i sobri. Titular: 'Abans d'afegir IA al CRM, ordena això'. Mostra una seqüència clara de cinc passos: Dades, Camps, Alertes, Workflows i IA. Paleta blanca, verd petroli, blau i gris. Inclou el logo AImetos original en petit a una cantonada. Sense persones, sense estil stock i sense text petit.",
-    "Crea una imatge professional per LinkedIn, format 1200x627, estil de consultoria tecnològica B2B. Titular: 'Agent de WhatsApp: quan suma i quan afegeix soroll'. Composició comparativa amb dues columnes, 'Quan sí' i 'Quan no', i tres criteris breus per columna. Paleta blanca, verd petroli, blau i gris. Inclou el logo AImetos original en petit a una cantonada. Sense persones ni estil stock."
+    "Crea una imagen profesional para LinkedIn, formato 1200x627, estilo de consultoría tecnológica B2B de primer nivel. Titular: 'Tu empresa no necesita otra herramienta'. Subtítulo: 'Necesita que las que ya tiene se hablen'. Representa CRM, Excel, correo y WhatsApp conectados a una única fuente de verdad, con jerarquía visual limpia. Paleta blanca, verde petróleo, azul y gris. Incluye el logo AImetos original en pequeño. Sin personas, sin estilo stock y sin texto pequeño.",
+    "Crea una imagen profesional para LinkedIn, formato 1200x627, estilo de consultoría tecnológica B2B. Titular: 'Una automatización robusta también sabe fallar'. Muestra cuatro etapas claras: Validación, Log, Retry y Alerta. Paleta blanca, verde petróleo, azul y gris. Incluye el logo AImetos original en pequeño. Sin personas ni estilo stock.",
+    "Crea una imagen profesional para LinkedIn, formato 1200x627, estilo de consultoría tecnológica B2B. Titular: 'Un dashboard no sirve si no cambia una decisión'. Muestra una secuencia visual: Métrica, Alerta, Responsable y Acción. Paleta blanca, verde petróleo, azul y gris. Incluye el logo AImetos original en pequeño. Sin personas ni estilo stock."
   ];
   const bestPublishTimes = [
     "Dimarts a les 08:40",
@@ -653,9 +671,9 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     "Dijous a les 08:50"
   ];
   const postCopies = [
-    "La IA ho va dir. Ningú no ho va qüestionar.\n\nAquest és un dels riscos més silenciosos quan incorporem IA a un procés intern.\n\nAbans d'acceptar una resposta automàtica, jo faria tres preguntes:\n\n1. Té prou context per decidir?\n2. Quin és el cost si s'equivoca?\n3. Qui valida el resultat i n'assumeix la responsabilitat?\n\nLa IA pot accelerar una decisió. No hauria d'eliminar el criteri humà.\n\nSi et serveix, puc compartir una checklist breu per definir quines decisions pot assistir la IA i quines han de continuar validades per una persona.",
-    "Afegir IA a un CRM desordenat no resol el problema. L'accelera.\n\nAbans d'incorporar un agent, jo revisaria cinc capes:\n\n1. Dades mínimes completes.\n2. Camps que reflecteixen el procés real.\n3. Alertes per als seguiments crítics.\n4. Workflows repetibles.\n5. IA per decidir o assistir on aporta valor.\n\nLa IA comercial funciona millor quan el sistema ja sap què ha de passar després.\n\nSi vols, puc compartir aquesta seqüència en format checklist.",
-    "Un agent de WhatsApp no arregla un procés comercial desordenat.\n\nTé sentit quan les consultes són repetitives, hi ha una resposta clara i cada conversa acaba registrada.\n\nAfegeix soroll quan ningú sap qui continua el lead, les dades queden disperses o cada cas necessita una decisió diferent.\n\nPrimer procés, després canal i finalment agent.\n\nSi vols, puc compartir un esquema simple per decidir si cal agent, CRM o redissenyar el procés."
+    "Tu empresa no necesita otra herramienta. Necesita que las que ya tiene se hablen.\n\nEn muchas empresas, el mismo dato vive a la vez en el CRM, un Excel, el correo y WhatsApp.\n\nCada actualización manual añade una oportunidad de error: un seguimiento que no llega, una versión distinta o una decisión tomada con información incompleta.\n\nAntes de añadir IA, conecta el proceso que ya existe.\n\nUna integración útil no empieza por la tecnología. Empieza por decidir cuál es la fuente de verdad, qué evento actualiza el dato y quién debe actuar después.\n\n¿En cuántos sitios vive hoy el mismo dato en tu empresa?",
+    "Una automatización robusta no es la que nunca falla. Es la que sabe qué hacer cuando falla.\n\nAntes de poner un workflow en producción, revisaría cuatro puntos: validar los datos de entrada, registrar el error, reintentar sin duplicar acciones y alertar a la persona responsable.\n\nAutomatizar no es unir nodos. Es diseñar un sistema que resista la realidad.\n\n¿Qué ocurre hoy cuando falla uno de tus procesos automáticos?",
+    "Un dashboard no sirve si no cambia ninguna decisión.\n\nUna métrica solo aporta valor cuando activa una alerta, tiene un responsable y conduce a una acción concreta.\n\nSi el equipo mira el informe pero nadie sabe qué hacer después, no falta otro gráfico: falta diseñar la decisión.\n\n¿Qué decisión debería activar hoy tu dashboard?"
   ];
   const displayFormats = [
     "Post LinkedIn",
@@ -672,36 +690,38 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     "Leads",
     "Reunions"
   ];
-  const nextIdeaIds = ["idea_ai_criterion", "idea_crm_ai", "idea_whatsapp_agent"];
-  const nextIdeas = nextIdeaIds
-    .map((id) => flow.generatedIdeas.find((idea) => idea.id === id))
-    .filter((idea): idea is ContentIdea => Boolean(idea));
+  const nextIdeas = flow.selectedIdeas.slice(0, 3);
   const nextContents = nextIdeas.map(generateContentForIdea);
   const recommendations = nextIdeas.map((idea, index): ClientContentRecommendation => {
     const content = nextContents[index];
+    const detailIndex = {
+      idea_integrations_data: 0,
+      idea_n8n_failures: 1,
+      idea_dashboard_decisions: 2
+    }[idea.id] ?? index;
     const reel = content?.adaptations.find((item) => item.channel === "reels");
     const visual = content?.adaptations.find((item) => item.channel === "visual");
     return {
       title: idea.title,
-      format: index === 0 ? "linkedin-post" : index === 1 ? "linkedin-carousel" : "linkedin-document",
+      format: detailIndex === 0 ? "linkedin-post" : detailIndex === 1 ? "linkedin-carousel" : "linkedin-document",
       channel: "linkedin",
-      displayFormat: displayFormats[index] || "Post LinkedIn",
+      displayFormat: displayFormats[detailIndex] || "Post LinkedIn",
       displayChannel: "LinkedIn",
       reason: idea.justification,
       recommended: index === 0,
       whyRecommended:
         index === 0
-          ? "És la millor opció perquè aprofita el senyal qualitatiu de criteri abans que tecnologia, evita repetir agents de veu i obre una línia de governança de la IA."
-          : "Opció de suport per continuar provant angles de decisió empresarial amb autoritat tècnica.",
+          ? "És la millor opció perquè obre la família d'integracions i dades, manté rellevància comercial i evita repetir els temes de les últimes publicacions."
+          : idea.justification,
       hook: idea.pain,
-      postCopy: postCopies[index] || postCopies[0],
-      bestPublishTime: bestPublishTimes[index] || bestPublishTimes[0],
+      postCopy: postCopies[detailIndex] || postCopies[0],
+      bestPublishTime: bestPublishTimes[detailIndex] || bestPublishTimes[0],
       metricsToTrack,
       publicationStatus: "pending_publish",
       productionBrief: reel?.content || visual?.content || idea.mainMessage,
-      visualBrief: visualBriefs[index] || "Visual net, professional i relacionat amb el problema principal del post. Inclou el logo AImetos en petit.",
-      imageAsset: imageAssets[index] || "",
-      imagePrompt: imagePrompts[index] || imagePrompts[0],
+      visualBrief: visualBriefs[detailIndex] || "Visual net, professional i relacionat amb el problema principal del post. Inclou el logo AImetos en petit.",
+      imageAsset: imageAssets[detailIndex] || "",
+      imagePrompt: imagePrompts[detailIndex] || imagePrompts[0],
       cta: idea.cta,
       effort: idea.estimatedEffort <= 2 ? "low" : idea.estimatedEffort === 3 ? "medium" : "high",
       targetCustomer: idea.audience,
@@ -709,14 +729,22 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       funnelStage: idea.funnelStage,
       singleObjective: idea.objective,
       businessConsequence: idea.businessConsequence,
-      proofOrExample: idea.proofOrExample
+      proofOrExample: idea.proofOrExample,
+      editorialFamily: idea.editorialFamily,
+      editorialVariety: {
+        lastUsedAt: idea.lastUsedAt,
+        appearancesLast4Posts: idea.appearancesLast4Posts,
+        repetitionPenalty: idea.repetitionPenalty,
+        diversityBonus: idea.diversityBonus
+      },
+      expandToArticle: idea.expandToArticle
     };
   });
   const socialDistribution: ClientMonthlyReport["socialDistribution"] = [
     {
       channel: "linkedin",
       label: "LinkedIn",
-      recommendedScore: 95,
+      recommendedScore: 92,
       recommended: true,
       recommendation: "publish_now",
       format: "Post amb imatge",
@@ -725,44 +753,31 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       adaptationStatus: "ready",
       metricsStatus: "pending",
       reason: "Canal principal B2B i única xarxa amb senyals de conversa i qualitat d'audiència.",
-      sourceContentId: "idea_ai_criterion",
-      adaptation: "Publicació de criteri: tres filtres humans abans d'acceptar una resposta automàtica.",
+      sourceContentId: "idea_integrations_data",
+      adaptation: "Post de decisió empresarial sobre eines desconnectades i una única font de veritat.",
       coherenceRule: "Un client, un problema, una fase MOFU, un objectiu i un CTA.",
       metricsToTrack
     },
     {
-      channel: "instagram",
-      label: "Instagram",
+      channel: "meta",
+      label: "Meta",
       recommendedScore: 70,
       recommended: true,
       recommendation: "adapt_and_publish",
-      format: "Carrusel de 4 slides",
+      format: "Instagram + Facebook empresa",
       publishTime: "Dimecres a les 12:30",
       status: "pending_publish",
       adaptationStatus: "draft_needed",
       metricsStatus: "pending",
-      reason: "Aparador de marca i reforç visual; la mostra actual encara és insuficient per prioritzar-lo per rendiment.",
-      sourceContentId: "idea_ai_criterion",
-      adaptation: "Portada i tres slides: context, risc i responsable. CTA de guardar la checklist.",
-      coherenceRule: "Mateix problema i mateixa conclusió, amb menys text i lectura ràpida.",
-      metricsToTrack: ["Abast", "M'agrada", "Comentaris", "Desats", "Comparticions", "Visites al perfil", "Leads"]
-    },
-    {
-      channel: "facebook_business",
-      label: "Facebook empresa",
-      recommendedScore: 55,
-      recommended: true,
-      recommendation: "reuse_and_publish",
-      format: "Post curt amb imatge",
-      publishTime: "Dijous a les 18:15",
-      status: "pending_publish",
-      adaptationStatus: "ready",
-      metricsStatus: "pending",
-      reason: "Repositori actiu i suport de credibilitat; publicació sincronitzada amb Instagram.",
-      sourceContentId: "idea_ai_criterion",
-      adaptation: "Reutilitzar la peça Meta amb text més directe i divulgatiu.",
-      coherenceRule: "Mateixa imatge i mateixa promesa, amb un to més divulgatiu i menys consultiu.",
-      metricsToTrack: ["Abast", "Reaccions", "Comentaris", "Comparticions", "Clics", "Missatges", "Leads"]
+      reason: "Instagram i Facebook empresa es publiquen sincronitzats amb una única acció.",
+      sourceContentId: "idea_integrations_data",
+      adaptation: "Mateix text, creativitat, data i hora per a Instagram i Facebook empresa.",
+      coherenceRule: "Una única peça Meta coherent amb la idea principal de LinkedIn.",
+      metricsToTrack: ["Visualitzacions", "Abast", "Interaccions", "Clics", "Missatges"],
+      platformMetrics: {
+        instagram: ["Visualitzacions", "M'agrada", "Comentaris", "Comparticions", "Desats"],
+        facebookBusiness: ["Abast", "Reaccions", "Comentaris", "Comparticions", "Clics", "Missatges"]
+      }
     },
     {
       channel: "facebook_personal",
@@ -776,7 +791,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       adaptationStatus: "not_required",
       metricsStatus: "not_applicable",
       reason: "Ús ocasional; no és canal principal de màrqueting.",
-      sourceContentId: "idea_ai_criterion",
+      sourceContentId: "idea_integrations_data",
       adaptation: "Cap adaptació prevista.",
       coherenceRule: "Publicar només quan hi hagi context personal rellevant.",
       metricsToTrack: []
@@ -793,8 +808,8 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       adaptationStatus: "draft_needed",
       metricsStatus: "pending",
       reason: "Permet aprofundir en governança i responsabilitat sense carregar el post social.",
-      sourceContentId: "idea_ai_criterion",
-      adaptation: "Article amb matriu de risc i exemples de decisions assistides.",
+      sourceContentId: "idea_integrations_data",
+      adaptation: "Article opcional sobre font única de veritat i integracions útils.",
       coherenceRule: "Ampliar la prova, no canviar la conclusió editorial.",
       metricsToTrack: ["Lectures", "Temps de lectura", "Clics", "Leads"]
     },
@@ -810,7 +825,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       adaptationStatus: "not_required",
       metricsStatus: "not_applicable",
       reason: "Encara no hi ha una cadència ni base suficient per prioritzar aquest canal.",
-      sourceContentId: "idea_ai_criterion",
+      sourceContentId: "idea_integrations_data",
       adaptation: "Reservar com a bloc d'una futura edició.",
       coherenceRule: "No obrir un canal nou sense procés de seguiment.",
       metricsToTrack: []
@@ -827,7 +842,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       adaptationStatus: "not_required",
       metricsStatus: "not_applicable",
       reason: "Cost de producció alt per al senyal disponible; ajornar fins que l'angle es validi.",
-      sourceContentId: "idea_ai_criterion",
+      sourceContentId: "idea_integrations_data",
       adaptation: "Cap adaptació prevista.",
       coherenceRule: "Produir només després de validar interès en canals de menor cost.",
       metricsToTrack: []
@@ -841,6 +856,12 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     generatedAt: new Date().toISOString(),
     executiveSummary:
       "Les dades reals mostren dos senyals diferents: ROI aporta més abast, mentre criteri abans que tecnologia aporta més conversa i millor alineació qualitativa. Encara no hi ha leads ni reunions confirmades i la mostra continua sent petita.",
+    executiveReading: [
+      "ROI continua sent el millor angle per visibilitat i visites al perfil.",
+      "Dashboards i model híbrid han arribat proporcionalment a més decisors.",
+      "Encara no hi ha leads ni reunions confirmades; les invitacions són senyals probables.",
+      "La mostra és petita: la propera publicació provarà integracions i dades per guanyar varietat editorial."
+    ],
     businessObjective: "Convertir autoritat a LinkedIn en converses comercials: visites al perfil, leads qualificats i reunions.",
     strategy: {
       quarterly: "Construir autoritat en automatitzacio, IA aplicada i sistemes de decisio per PIMEs.",
@@ -849,12 +870,17 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     },
     decision: {
       nextBestFormat: "Post LinkedIn",
-      nextBestChannel: "LinkedIn",
-      nextAction: "Publicar «La IA ho va dir. Ningú no ho va qüestionar» com a peça MOFU de criteri humà, amb un únic CTA de checklist.",
+      nextBestChannel: "LinkedIn + Meta",
+      nextAction: "Tu empresa no necesita otra herramienta. Necesita que las que ya tiene se hablen.",
       confidence: realIntelligence.confidence.level,
       confidenceLabel: realIntelligence.confidence.label,
       confidenceNote:
-        realIntelligence.confidence.warning
+        realIntelligence.confidence.warning,
+      recommendationLevel: "alta",
+      publishDate: "Dimarts 4 d'agost · 08:40",
+      channels: ["LinkedIn", "Meta"],
+      justification: "Obre una família editorial no tractada recentment, resol un problema B2B concret i evita repetir agents, trucades o criteri humà.",
+      comparablePosts: realIntelligence.confidence.comparablePosts
     },
     realIntelligence,
     weeklyValidation: {
