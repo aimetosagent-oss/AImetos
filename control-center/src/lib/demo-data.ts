@@ -24,6 +24,15 @@ export function getDemoData(): ControlCenterData {
         { label: "LinkedIn", value: 25 },
         { label: "Grasshopper", value: 12 },
       ],
+      recentBySource: [
+        { label: "Outbound", value: 72 },
+        { label: "LinkedIn", value: 25 },
+        { label: "Grasshopper", value: 12 },
+      ],
+      highlights: [
+        { source: "Grasshopper", title: "1 lead nou interessant", detail: "Revisa el lead qualificat més recent.", href: "/demo" },
+        { source: "LinkedIn", title: "5 leads nous", detail: "Nous registres capturats aquesta setmana.", href: "/demo" },
+      ],
       trend: [
         { label: "Dl", value: 12 }, { label: "Dt", value: 18 }, { label: "Dc", value: 14 },
         { label: "Dj", value: 21 }, { label: "Dv", value: 17 }, { label: "Ds", value: 10 }, { label: "Dg", value: 17 },
@@ -31,6 +40,7 @@ export function getDemoData(): ControlCenterData {
     },
     projects: {
       active: 14,
+      completedTotal: 6,
       completedPreviousWeek: 3,
       blocked: 2,
       hours31Days: 47.5,

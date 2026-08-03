@@ -38,13 +38,22 @@ async function resolveClockifyIds(headers: { "X-Api-Key": string }) {
   return { workspace, user };
 }
 
-export async function getClockifyHours(): Promise<ClockifyHours> {
+export type ClockifyPeriod = "7d" | "31d" | "month" | "previous-month";
+
+export async function getClockifyHours(period: ClockifyPeriod = "31d"): Promise<ClockifyHours> {
   const key = process.env.CLOCKIFY_API_KEY;
   if (!key) throw new Error("Falta la clau API de Clockify");
   const headers = { "X-Api-Key": key };
   const { workspace, user } = await resolveClockifyIds(headers);
-  const end = new Date();
-  const start = new Date(end.getTime() - 31 * 86_400_000);
+  const now = new Date();
+  const end = period === "previous-month"
+    ? new Date(now.getFullYear(), now.getMonth(), 1)
+    : now;
+  const start = period === "month"
+    ? new Date(now.getFullYear(), now.getMonth(), 1)
+    : period === "previous-month"
+      ? new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      : new Date(end.getTime() - (period === "7d" ? 7 : 31) * 86_400_000);
   const [projectsResponse, entriesResponse] = await Promise.all([
     fetch(`https://api.clockify.me/api/v1/workspaces/${workspace}/projects?page-size=1000`, { headers, next: { revalidate: 300 } }),
     fetch(`https://api.clockify.me/api/v1/workspaces/${workspace}/user/${user}/time-entries?start=${start.toISOString()}&end=${end.toISOString()}&page-size=1000&hydrated=false`, { headers, next: { revalidate: 300 } }),

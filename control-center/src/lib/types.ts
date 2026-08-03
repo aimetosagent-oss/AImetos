@@ -34,6 +34,8 @@ export interface LeadSummary {
   replies: number;
   enrichmentErrors: number;
   bySource: Array<{ label: string; value: number }>;
+  recentBySource: Array<{ label: string; value: number }>;
+  highlights: Array<{ source: string; title: string; detail: string; href?: string }>;
   trend: LeadTrendPoint[];
 }
 
@@ -52,6 +54,7 @@ export interface ProjectRow {
 
 export interface ProjectSummary {
   active: number;
+  completedTotal: number;
   completedPreviousWeek: number | null;
   completedMetricNote?: string;
   blocked: number;

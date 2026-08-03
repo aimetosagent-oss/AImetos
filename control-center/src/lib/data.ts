@@ -1,8 +1,8 @@
 import { getDemoData } from "./demo-data";
-import { getClockifyHours } from "./integrations/clockify";
+import { getClockifyHours, type ClockifyPeriod } from "./integrations/clockify";
 import { readSheetRange, rowsToRecords } from "./integrations/google-sheets";
 import { getN8nAgents } from "./integrations/n8n";
-import type { ControlCenterData, Incident, ProjectRow, SourceState } from "./types";
+import type { ControlCenterData, Incident, LeadSummary, ProjectRow, SourceState } from "./types";
 
 const text = (value: unknown) => String(value ?? "").trim();
 const number = (value: unknown) => {
@@ -49,6 +49,7 @@ async function loadProjects(base: ControlCenterData) {
     };
   });
   const activeRows = rows.filter((row) => !inactive.has(row.status.toLowerCase()));
+  const completedTotal = rows.filter((row) => row.status.toLowerCase() === "finalitzat").length;
   const hasCompletionDates = rows.some((row) => row.completedAt);
   const { start, end } = previousWeekBounds();
   const completedPreviousWeek = hasCompletionDates
@@ -57,6 +58,7 @@ async function loadProjects(base: ControlCenterData) {
   base.projects = {
     ...base.projects,
     active: activeRows.length,
+    completedTotal,
     completedPreviousWeek,
     completedMetricNote: hasCompletionDates ? undefined : `Afegeix la columna “${completionHeader}” per calcular-ho amb exactitud.`,
     blocked: activeRows.filter((row) => row.blocked).length,
@@ -81,6 +83,16 @@ async function loadLeads(base: ControlCenterData) {
   const replies = outbound.filter((row) => !["", "pending_reply", "pending"].includes(text(row.reply_status).toLowerCase())).length;
   const enrichmentErrors = outbound.filter((row) => text(row.apollo_status).toLowerCase().includes("error")).length;
   const total = outbound.length + linkedin.length + gh.length;
+  const recentBySource = [
+    { label: "Outbound", value: recentOutbound },
+    { label: "LinkedIn", value: recentLinkedin },
+    { label: "Grasshopper", value: recentGh },
+  ];
+  const highlights = [
+    recentGh > 0 ? { source: "Grasshopper", title: `${recentGh} lead${recentGh === 1 ? " nou" : "s nous"}`, detail: "Revisa els leads qualificats de l’última setmana.", href: "/leads?source=grasshopper" } : null,
+    recentLinkedin > 0 ? { source: "LinkedIn", title: `${recentLinkedin} lead${recentLinkedin === 1 ? " nou" : "s nous"}`, detail: "Nous registres capturats durant els últims 7 dies.", href: "/leads?source=linkedin" } : null,
+    recentOutbound > 0 ? { source: "Outbound", title: `${recentOutbound} activitat${recentOutbound === 1 ? " nova" : "s noves"}`, detail: "Contactes actualitzats durant els últims 7 dies.", href: "/leads?source=outbound" } : null,
+  ].filter(Boolean) as LeadSummary["highlights"];
   base.leads = {
     total,
     newLast7Days: recentOutbound + recentLinkedin + recentGh,
@@ -93,6 +105,8 @@ async function loadLeads(base: ControlCenterData) {
       { label: "LinkedIn", value: linkedin.length },
       { label: "Grasshopper", value: gh.length },
     ],
+    recentBySource,
+    highlights,
     trend: base.leads.trend,
   };
 }
@@ -158,21 +172,22 @@ function deriveIncidents(data: ControlCenterData) {
   return incidents.slice(0, 8);
 }
 
-export async function getControlCenterData(forceDemo = false): Promise<ControlCenterData> {
+export async function getControlCenterData(options: { forceDemo?: boolean; clockifyPeriod?: ClockifyPeriod } | boolean = false): Promise<ControlCenterData> {
+  const config = typeof options === "boolean" ? { forceDemo: options } : options;
   const data = getDemoData();
-  if (forceDemo) return data;
+  if (config.forceDemo) return data;
   const allowDemoFallback = process.env.ALLOW_DEMO_FALLBACK === "true";
   data.mode = "live";
   const sources: SourceState[] = [];
   const tasks = [
     {
       id: "projects", label: "Projectes", task: () => loadProjects(data), onFailure: () => {
-        data.projects = { ...data.projects, active: 0, completedPreviousWeek: null, completedMetricNote: "Font de projectes no disponible.", blocked: 0, projects: [] };
+        data.projects = { ...data.projects, active: 0, completedTotal: 0, completedPreviousWeek: null, completedMetricNote: "Font de projectes no disponible.", blocked: 0, projects: [] };
       },
     },
     {
       id: "leads", label: "Leads", task: () => loadLeads(data), onFailure: () => {
-        data.leads = { total: 0, newLast7Days: 0, qualified: 0, contacted: 0, replies: 0, enrichmentErrors: 0, bySource: [], trend: [] };
+        data.leads = { total: 0, newLast7Days: 0, qualified: 0, contacted: 0, replies: 0, enrichmentErrors: 0, bySource: [], recentBySource: [], highlights: [], trend: [] };
       },
     },
     {
@@ -189,7 +204,7 @@ export async function getControlCenterData(forceDemo = false): Promise<ControlCe
       id: "n8n", label: "n8n", task: async () => { data.agents = await getN8nAgents(); }, onFailure: () => { data.agents = []; },
     },
     {
-      id: "clockify", label: "Clockify", task: async () => { const hours = await getClockifyHours(); data.projects.hours31Days = hours.total; data.projects.hoursByProject = hours.byProject; }, onFailure: () => {
+      id: "clockify", label: "Clockify", task: async () => { const hours = await getClockifyHours(config.clockifyPeriod || "31d"); data.projects.hours31Days = hours.total; data.projects.hoursByProject = hours.byProject; }, onFailure: () => {
         data.projects.hours31Days = null;
         data.projects.hoursByProject = [];
       },
