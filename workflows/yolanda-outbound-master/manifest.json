@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-07-15T17:41:48.528Z",
+  "google_sheet_id": "1_AjJJhspz_mM3VlTrVU6Jrynhz9PIfBWdZ0ydOesDsc",
+  "config_sheet": "CONFIG_CAMPAIGNS",
+  "workflows": [
+    "01_import_apify_datasets.json",
+    "02_enrich_apollo_leads.json",
+    "03_verify_emails_neverbounce.json",
+    "04_push_verified_leads_to_instantly.json",
+    "05_instantly_events_to_sheet_ghl.json"
+  ],
+  "future_error_workflow": "99 — reserved; not generated"
+}

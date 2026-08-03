@@ -4,13 +4,9 @@ export interface ClockifyHours {
 }
 
 interface ClockifyProject { id: string; name: string; archived?: boolean }
-<<<<<<< HEAD
-interface ClockifyEntry { projectId?: string; timeInterval?: { duration?: string; start?: string; end?: string } }\ninterface ClockifyUser { id: string; activeWorkspace?: string; defaultWorkspace?: string }\ninterface ClockifyWorkspace { id: string; name: string }
-=======
 interface ClockifyEntry { projectId?: string; timeInterval?: { duration?: string; start?: string; end?: string } }
 interface ClockifyUser { id: string; activeWorkspace?: string; defaultWorkspace?: string }
 interface ClockifyWorkspace { id: string; name: string }
->>>>>>> aad9c04 (Auto-detect Clockify account IDs)
 
 function parseDuration(duration?: string) {
   if (!duration) return 0;
@@ -19,12 +15,9 @@ function parseDuration(duration?: string) {
   return (Number(match[1] || 0) * 3600 + Number(match[2] || 0) * 60 + Number(match[3] || 0)) / 3600;
 }
 
-export async function getClockifyHours(): Promise<ClockifyHours> {
-  const key = process.env.CLOCKIFY_API_KEY;
+async function resolveClockifyIds(headers: { "X-Api-Key": string }) {
   let workspace = process.env.CLOCKIFY_WORKSPACE_ID;
   let user = process.env.CLOCKIFY_USER_ID;
-  if (!key) throw new Error("Falta la clau API de Clockify");
-  const headers = { "X-Api-Key": key };
 
   if (!workspace || !user) {
     const userResponse = await fetch("https://api.clockify.me/api/v1/user", { headers, next: { revalidate: 300 } });
@@ -42,6 +35,14 @@ export async function getClockifyHours(): Promise<ClockifyHours> {
   }
 
   if (!workspace || !user) throw new Error("Clockify no ha pogut determinar l'usuari o l'espai de treball");
+  return { workspace, user };
+}
+
+export async function getClockifyHours(): Promise<ClockifyHours> {
+  const key = process.env.CLOCKIFY_API_KEY;
+  if (!key) throw new Error("Falta la clau API de Clockify");
+  const headers = { "X-Api-Key": key };
+  const { workspace, user } = await resolveClockifyIds(headers);
   const end = new Date();
   const start = new Date(end.getTime() - 31 * 86_400_000);
   const [projectsResponse, entriesResponse] = await Promise.all([
