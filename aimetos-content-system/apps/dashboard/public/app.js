@@ -416,10 +416,18 @@ function setupManualMetricsForm() {
       if (!response.ok) throw new Error(result.error || "No s'ha pogut desar");
       status.textContent = `Captura desada: ${result.entry.id}`;
       form.reset();
+      setDefaultCaptureTime();
+      await loadReport();
     } catch (error) {
       status.textContent = error.message;
     }
   });
+}
+
+function setDefaultCaptureTime() {
+  const input = byId("manualMetricsForm").elements.namedItem("capturedAt");
+  const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000);
+  input.value = now.toISOString().slice(0, 16);
 }
 
 async function loadReport() {
@@ -440,6 +448,7 @@ async function loadReport() {
 
 setupTabs();
 setupManualMetricsForm();
+setDefaultCaptureTime();
 byId("refreshReport").addEventListener("click", loadReport);
 loadReport().catch((error) => {
   setText("nextAction", "No s'ha pogut carregar l'informe");

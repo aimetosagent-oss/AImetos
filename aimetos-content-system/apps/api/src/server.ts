@@ -57,6 +57,41 @@ function validateManualMetric(input) {
   return issues;
 }
 
+export function buildLinkedInStartData(content, manualEntries) {
+  const posts = content
+    .filter((post) => post.platform === "linkedin")
+    .map((post) => {
+      const entries = manualEntries.filter((entry) => entry.contentId === post.id);
+      const latestEntry = entries.at(-1);
+      const snapshots = post.snapshots.length + entries.length;
+      return {
+        id: post.id,
+        title: post.title,
+        topic: post.topic,
+        status: snapshots > 0 && post.status === "metrics_pending" ? "published" : post.status,
+        sourceType: latestEntry?.sourceType || post.sourceType,
+        snapshots
+      };
+    });
+  const metricsComplete = posts.every((post) => post.snapshots > 0);
+
+  return {
+    clientName: "Roger Arnau / AImetos",
+    source: "LinkedIn",
+    mode: "manual-first",
+    canReadPublicUrl: false,
+    reason: metricsComplete
+      ? "Totes les publicacions registrades tenen com a mínim una captura de mètriques."
+      : "Sis publicacions reals registrades. Cinc tenen mètriques i LI-06 està pendent de captura.",
+    posts,
+    requiredMetrics: ["impressions/views", "reach", "reactions", "comments", "shares", "saves", "profileViews", "followers", "invites", "leads", "meetings"],
+    metricsComplete,
+    nextStep: metricsComplete
+      ? "Totes les peces tenen com a mínim una captura manual o exportada."
+      : "Afegir la primera captura de LI-06 mitjançant el formulari manual."
+  };
+}
+
 export function createAimetosServer() {
   const config = loadConfig();
   return createServer(async (req, res) => {
@@ -96,7 +131,9 @@ export function createAimetosServer() {
         const input = await readJsonBody(req);
         const issues = validateManualMetric(input);
         const knownContent = JSON.parse(readFileSync(join(root, "data", "fixtures", "real-content.json"), "utf8"));
-        if (!knownContent.some((item) => item.id === input.contentId)) issues.push("contentId_unknown");
+        const matchedContent = knownContent.find((item) => item.id === input.contentId);
+        if (!matchedContent) issues.push("contentId_unknown");
+        else if (matchedContent.platform !== input.platform) issues.push("platform_content_mismatch");
         if (issues.length > 0) return json(res, 400, { ok: false, error: "Camps invàlids", fields: issues });
         const target = join(root, "data", "fixtures", "manual-metric-entries.json");
         const entries = JSON.parse(readFileSync(target, "utf8"));
@@ -128,30 +165,20 @@ export function createAimetosServer() {
         return json(res, 201, { ok: true, entry });
       }
       if (url.pathname === "/api/linkedin-start") {
-        const posts = JSON.parse(readFileSync(join(root, "data", "fixtures", "real-content.json"), "utf8"))
-          .filter((post) => post.platform === "linkedin")
-          .map((post) => ({
-            id: post.id,
-            title: post.title,
-            topic: post.topic,
-            status: post.status,
-            sourceType: post.sourceType,
-            snapshots: post.snapshots.length
-          }));
-        const metricsComplete = posts.every((post) => post.snapshots > 0);
+        const content = JSON.parse(readFileSync(join(root, "data", "fixtures", "real-content.json"), "utf8"));
+        const entries = JSON.parse(readFileSync(join(root, "data", "fixtures", "manual-metric-entries.json"), "utf8"));
+        const summary = buildLinkedInStartData(content, entries);
+        const { posts, metricsComplete } = summary;
         return json(res, 200, {
           clientName: "Roger Arnau / AImetos",
           source: "LinkedIn",
           mode: "manual-first",
           canReadPublicUrl: false,
-          reason:
-            "Sis publicacions reals registrades. Cinc tenen mètriques i LI-06 està pendent de captura.",
+          reason: summary.reason,
           posts,
           requiredMetrics: ["impressions/views", "reach", "reactions", "comments", "shares", "saves", "profileViews", "followers", "invites", "leads", "meetings"],
           metricsComplete,
-          nextStep: metricsComplete
-            ? "Totes les peces tenen com a mínim una captura manual o exportada."
-            : "Afegir la primera captura de LI-06 mitjançant el formulari manual."
+          nextStep: summary.nextStep
         });
       }
       if (serveStatic(req, res)) return;
