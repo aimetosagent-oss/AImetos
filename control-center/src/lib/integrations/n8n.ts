@@ -15,19 +15,22 @@ export async function getN8nAgents(): Promise<AgentRow[]> {
   const key = process.env.N8N_API_KEY;
   if (!base || !key) throw new Error("n8n no està configurat");
   const headers = { "X-N8N-API-KEY": key };
-  const [workflowResponse, executionResponse] = await Promise.all([
-    fetch(`${base}/api/v1/workflows?limit=100`, { headers, next: { revalidate: 300 } }),
-    fetch(`${base}/api/v1/executions?limit=100&includeData=false`, { headers, next: { revalidate: 300 } }),
-  ]);
-  if (!workflowResponse.ok || !executionResponse.ok) throw new Error(`n8n ha respost ${workflowResponse.status}/${executionResponse.status}`);
+  const workflowResponse = await fetch(`${base}/api/v1/workflows?limit=100`, { headers, next: { revalidate: 300 } });
+  if (!workflowResponse.ok) throw new Error(`n8n ha respost ${workflowResponse.status}`);
   const workflowJson = (await workflowResponse.json()) as { data?: N8nWorkflow[] };
-  const executionJson = (await executionResponse.json()) as { data?: N8nExecution[] };
   const trackedIds = new Set((process.env.N8N_TRACKED_WORKFLOW_IDS || "").split(",").map((id) => id.trim()).filter(Boolean));
   const keywords = ["lead", "outbound", "linkedin", "grasshopper", "email"];
   const selected = (workflowJson.data || []).filter((workflow) => trackedIds.size ? trackedIds.has(workflow.id) : workflow.active && keywords.some((word) => workflow.name.toLowerCase().includes(word)));
+  const executions = await Promise.all(selected.map(async (workflow) => {
+    const response = await fetch(`${base}/api/v1/executions?workflowId=${encodeURIComponent(workflow.id)}&limit=10&includeData=false`, { headers, next: { revalidate: 300 } });
+    if (!response.ok) throw new Error(`n8n execucions ha respost ${response.status}`);
+    const json = (await response.json()) as { data?: N8nExecution[] };
+    return [workflow.id, json.data || []] as const;
+  }));
+  const executionMap = new Map(executions);
   return selected.map((workflow) => {
     const rule = cadence(workflow.name);
-    const latest = (executionJson.data || []).filter((run) => run.workflowId === workflow.id).sort((a, b) => new Date(b.startedAt || 0).getTime() - new Date(a.startedAt || 0).getTime())[0];
+    const latest = (executionMap.get(workflow.id) || []).sort((a, b) => new Date(b.startedAt || 0).getTime() - new Date(a.startedAt || 0).getTime())[0];
     const ageHours = latest?.startedAt ? (Date.now() - new Date(latest.startedAt).getTime()) / 3_600_000 : Infinity;
     const failed = latest?.status === "error" || latest?.status === "crashed";
     const stale = ageHours > rule.maxGapHours;
