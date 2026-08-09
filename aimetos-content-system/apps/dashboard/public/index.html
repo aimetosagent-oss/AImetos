@@ -18,8 +18,10 @@
       <div class="topbar-actions">
         <nav class="tabs" aria-label="Perfil">
           <button class="tab-button active" data-tab="client" type="button">Client</button>
+          <button class="tab-button" data-tab="agents" type="button">Activitat dels agents</button>
           <button class="tab-button" data-tab="admin" type="button">Administrador tècnic</button>
         </nav>
+        <button id="openContentDirector" class="secondary-button" type="button">Director de contingut</button>
         <button id="refreshReport" type="button">Actualitzar informe</button>
       </div>
     </header>
@@ -31,6 +33,7 @@
             <p class="eyebrow">1. Decisió recomanada</p>
             <h1 id="nextAction">Carregant informe...</h1>
             <p id="decisionJustification" class="summary"></p>
+            <span id="temporalBadge" class="temporal-badge" hidden></span>
           </div>
           <div class="decision-facts">
             <article>
@@ -155,7 +158,7 @@
             <label>Invitacions<input name="invites" type="number" min="0" value="0" /></label>
             <label>Leads<input name="leads" type="number" min="0" value="0" /></label>
             <label>Reunions<input name="meetings" type="number" min="0" value="0" /></label>
-            <label>Font<select name="sourceType"><option value="real_manual">real_manual</option><option value="real_export">real_export</option><option value="estimated">estimated</option><option value="pending">pending</option></select></label>
+            <label>Font<select name="sourceType"><option value="manual_user_report">manual_user_report</option><option value="real_export">real_export</option><option value="real_screenshot">real_screenshot</option><option value="dashboard_derived">dashboard_derived</option><option value="pending">pending</option></select></label>
             <label class="wide-field">Audiència<textarea name="audienceBreakdown" placeholder="Gerents 20%, indústria 18%..."></textarea></label>
             <label class="wide-field">Notes<textarea name="notes"></textarea></label>
             <div class="form-actions"><button type="submit">Desar captura</button><span id="manualFormStatus"></span></div>
@@ -206,13 +209,70 @@
                 <div><dt>Font dades</dt><dd id="dataSource">-</dd></div>
                 <div><dt>Workflows</dt><dd id="workflows">-</dd></div>
                 <div><dt>Credencials</dt><dd id="credentials">-</dd></div>
+                <div><dt>Xat</dt><dd id="chatStatus">-</dd></div>
               </dl>
               <div id="dataStates" class="data-states"></div>
             </div>
           </aside>
         </section>
       </section>
+
+      <section id="agentsPanel" class="tab-panel" aria-label="Activitat dels agents">
+        <section class="agent-overview">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Control operatiu</p>
+              <h1>Què ha passat amb els agents</h1>
+            </div>
+            <span id="agentActivityUpdated">Carregant activitat...</span>
+          </div>
+          <div id="agentSummary" class="agent-summary"></div>
+        </section>
+
+        <section class="agent-layout">
+          <article class="focus-panel">
+            <div class="section-heading">
+              <h2>Important ara</h2>
+              <span>Errors, avisos i decisions</span>
+            </div>
+            <div id="agentImportant" class="agent-feed"></div>
+          </article>
+
+          <article class="focus-panel">
+            <div class="section-heading">
+              <h2>Activitat recent</h2>
+              <span>Últims esdeveniments</span>
+            </div>
+            <div id="agentRecent" class="agent-feed"></div>
+          </article>
+        </section>
+      </section>
     </main>
+
+    <div id="chatBackdrop" class="chat-backdrop" hidden></div>
+    <aside id="contentDirector" class="chat-drawer" aria-labelledby="contentDirectorTitle" aria-hidden="true">
+      <div class="chat-header">
+        <div>
+          <span>Assistent especialitzat</span>
+          <h2 id="contentDirectorTitle">Director de contingut</h2>
+        </div>
+        <button id="closeContentDirector" class="icon-button" type="button" aria-label="Tancar Director de contingut" title="Tancar">×</button>
+      </div>
+      <div id="chatMessages" class="chat-messages" aria-live="polite">
+        <article class="chat-message assistant">Puc ajudar-te a interpretar la recomanació, les dades, la temporalitat, el funnel, els canals o el blog.</article>
+      </div>
+      <div class="chat-suggestions" aria-label="Consultes suggerides">
+        <button type="button" data-chat-question="Per què recomanes aquesta idea?">Per què aquesta idea?</button>
+        <button type="button" data-chat-question="Quins resultats comercials tenim?">Resultats comercials</button>
+        <button type="button" data-chat-question="Quines dades estan pendents o en conflicte?">Qualitat de dades</button>
+      </div>
+      <form id="contentDirectorForm" class="chat-form">
+        <label for="contentDirectorInput">Pregunta editorial</label>
+        <textarea id="contentDirectorInput" maxlength="2000" placeholder="Pregunta sobre idees, mètriques, CTA, temporalitat..."></textarea>
+        <button type="submit">Enviar</button>
+      </form>
+      <p class="chat-mode">Mode mock · sense crides externes</p>
+    </aside>
 
     <template id="topContentTemplate">
       <article class="content-row">

@@ -45,7 +45,10 @@ export function scoreRealContent(
   marketSignals: MarketSignal[] = []
 ): BusinessContentScore {
   const snapshot = latestSnapshot(record);
-  const snapshots = comparable.map(latestSnapshot).filter((item): item is MetricSnapshot => Boolean(item));
+  const snapshots = comparable
+    .filter((item) => item.comparable !== false)
+    .map(latestSnapshot)
+    .filter((item): item is MetricSnapshot => Boolean(item));
   const exposure = snapshot?.impressions || snapshot?.views || 0;
   const maxExposure = Math.max(0, ...snapshots.map((item) => item.impressions || item.views || 0));
   const maxProfileViews = Math.max(0, ...snapshots.map((item) => item.profileViews || 0));
@@ -128,7 +131,7 @@ export function scoreRealContent(
 }
 
 export function rankRealContent(records: RealContentRecord[], marketSignals: MarketSignal[] = []) {
-  const measured = records.filter((record) => latestSnapshot(record));
+  const measured = records.filter((record) => record.comparable !== false && latestSnapshot(record));
   return measured
     .map((record) => ({ record, score: scoreRealContent(record, measured.filter((item) => item.platform === record.platform), marketSignals) }))
     .sort((a, b) => b.score.total - a.score.total);

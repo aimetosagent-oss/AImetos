@@ -4,6 +4,8 @@ import { extname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../../../packages/config/src/env.ts";
 import { buildClientMonthlyReport, runMockContentFlow, writeReport } from "../../../packages/core/src/pipeline.ts";
+import { createChatProvider } from "../../../packages/core/src/content-director.ts";
+import { buildAgentActivity, normalizeAgentEvent, validateAgentEvent } from "../../../packages/operations/src/agent-activity.ts";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 const dashboardDir = join(root, "apps", "dashboard", "public");
@@ -50,7 +52,7 @@ function validateManualMetric(input) {
   if (!["linkedin", "instagram", "facebook"].includes(input.platform)) issues.push("platform");
   if (!input.contentId || String(input.contentId).trim().length < 2) issues.push("contentId");
   if (!Date.parse(input.capturedAt || "")) issues.push("capturedAt");
-  if (!["real_manual", "real_export", "estimated", "pending"].includes(input.sourceType)) issues.push("sourceType");
+  if (!["manual_user_report", "real_export", "real_screenshot", "dashboard_derived", "pending"].includes(input.sourceType)) issues.push("sourceType");
   for (const field of ["impressions", "views", "reach", "reactions", "comments", "shares", "saves", "sends", "profileViews", "followers", "invites", "leads", "meetings"]) {
     if (input[field] !== undefined && (!Number.isFinite(Number(input[field])) || Number(input[field]) < 0)) issues.push(field);
   }
@@ -74,6 +76,7 @@ export function buildLinkedInStartData(content, manualEntries) {
       };
     });
   const metricsComplete = posts.every((post) => post.snapshots > 0);
+  const pendingIds = posts.filter((post) => post.snapshots === 0).map((post) => post.id);
 
   return {
     clientName: "Roger Arnau / AImetos",
@@ -82,13 +85,13 @@ export function buildLinkedInStartData(content, manualEntries) {
     canReadPublicUrl: false,
     reason: metricsComplete
       ? "Totes les publicacions registrades tenen com a mínim una captura de mètriques."
-      : "Sis publicacions reals registrades. Cinc tenen mètriques i LI-06 està pendent de captura.",
+      : `${posts.length} publicacions reals registrades. Pendents de captura: ${pendingIds.join(", ")}.`,
     posts,
     requiredMetrics: ["impressions/views", "reach", "reactions", "comments", "shares", "saves", "profileViews", "followers", "invites", "leads", "meetings"],
     metricsComplete,
     nextStep: metricsComplete
       ? "Totes les peces tenen com a mínim una captura manual o exportada."
-      : "Afegir la primera captura de LI-06 mitjançant el formulari manual."
+      : `Afegir la primera captura de ${pendingIds.join(" i ")} mitjançant el formulari manual.`
   };
 }
 
@@ -104,7 +107,12 @@ export function createAimetosServer() {
         return json(res, 200, { ok: true, status: "ready", mode: config.appMode });
       }
       if (url.pathname === "/api/config") {
-        return json(res, 200, { mode: config.appMode, scenario: config.mockScenario, thresholds: config.thresholds });
+        return json(res, 200, {
+          mode: config.appMode,
+          scenario: config.mockScenario,
+          thresholds: config.thresholds,
+          chat: { enabled: config.chatEnabled, provider: config.chatProvider }
+        });
       }
       if (url.pathname === "/api/run-mock-flow") {
         const report = await runMockContentFlow();
@@ -122,6 +130,60 @@ export function createAimetosServer() {
       }
       if (url.pathname === "/api/client-report") {
         return json(res, 200, await buildClientMonthlyReport());
+      }
+      if (url.pathname === "/api/content-director" && req.method === "POST") {
+        if (!config.chatEnabled) return json(res, 503, { ok: false, error: "El Director de contingut està desactivat." });
+        const input = await readJsonBody(req);
+        const question = String(input.message || "").trim();
+        if (question.length < 2 || question.length > 2000) {
+          return json(res, 400, { ok: false, error: "La consulta ha de tenir entre 2 i 2.000 caràcters." });
+        }
+        const report = await buildClientMonthlyReport();
+        const provider = createChatProvider(config.chatProvider);
+        const reply = await provider.reply(
+          [{ role: "user", content: question }],
+          {
+            recommendedIdea: report.decision.nextAction,
+            recommendationReason: report.decision.justification,
+            confidence: report.decision.confidenceLabel,
+            comparablePosts: report.decision.comparablePosts,
+            temporalContext: report.decision.temporalContext,
+            executiveReading: report.executiveReading,
+            commercialSignals: {
+              leads: report.realIntelligence.commercialSignals.leads,
+              meetings: report.realIntelligence.commercialSignals.meetings,
+              probableAttributedConnections: report.realIntelligence.commercialSignals.probableAttributedConnections
+            },
+            dataConflicts: report.realIntelligence.dataQuality.conflicts,
+            pendingContentIds: report.realIntelligence.dataQuality.pendingContentIds,
+            snapshotInventory: report.realIntelligence.dataQuality.snapshotInventory,
+            marketSignals: report.realIntelligence.marketSignals.map((signal) => signal.description),
+            editorialMemory: report.realIntelligence.editorialMemory.map((item) => item.topic),
+            candidateIdeas: report.recommendations.map((idea) => ({
+              title: idea.title,
+              family: idea.editorialFamily,
+              recommended: idea.recommended
+            }))
+          }
+        );
+        return json(res, 200, { ok: true, provider: provider.name, reply });
+      }
+      if (url.pathname === "/api/agent-activity" && req.method === "GET") {
+        const target = join(root, "data", "fixtures", "agent-events.json");
+        const events = JSON.parse(readFileSync(target, "utf8"));
+        return json(res, 200, buildAgentActivity(events));
+      }
+      if (url.pathname === "/api/agent-events" && req.method === "POST") {
+        const input = await readJsonBody(req);
+        const issues = validateAgentEvent(input);
+        if (issues.length > 0) return json(res, 400, { ok: false, error: "Esdeveniment invàlid", fields: issues });
+        const target = join(root, "data", "fixtures", "agent-events.json");
+        const events = JSON.parse(readFileSync(target, "utf8"));
+        const event = normalizeAgentEvent(input);
+        if (events.some((item) => item.id === event.id)) return json(res, 200, { ok: true, duplicate: true, event });
+        events.push(event);
+        writeFileSync(target, JSON.stringify(events, null, 2) + "\n", "utf8");
+        return json(res, 201, { ok: true, duplicate: false, event });
       }
       if (url.pathname === "/api/manual-metrics" && req.method === "GET") {
         const target = join(root, "data", "fixtures", "manual-metric-entries.json");

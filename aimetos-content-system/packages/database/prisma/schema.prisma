@@ -244,6 +244,32 @@ model AutomationRun {
   createdAt  DateTime @default(now())
 }
 
+model AgentEvent {
+  id                String   @id
+  agentId           String
+  agentName         String
+  workflowId        String
+  workflowName      String
+  executionId       String
+  correlationId     String
+  status            String
+  severity          String
+  title             String
+  summary           String
+  occurredAt        DateTime
+  durationMs        Int?
+  retryCount        Int      @default(0)
+  requiresAttention Boolean  @default(false)
+  actionUrl         String?
+  metadata          Json
+  createdAt         DateTime @default(now())
+
+  @@index([occurredAt])
+  @@index([agentId, occurredAt])
+  @@index([executionId, occurredAt])
+  @@index([requiresAttention, occurredAt])
+}
+
 model AuditLog {
   id             String   @id @default(uuid())
   user           String

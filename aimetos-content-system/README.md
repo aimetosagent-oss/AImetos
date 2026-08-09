@@ -13,6 +13,8 @@ pnpm run dev
 
 The local API serves the dashboard and the mock endpoints at [http://localhost:4317](http://localhost:4317).
 
+The dashboard also includes an **Activitat dels agents** view backed by normalized mock events. See `docs/agent-activity.md` for the ingestion contract and production boundary.
+
 ## Main flow
 
 ```text

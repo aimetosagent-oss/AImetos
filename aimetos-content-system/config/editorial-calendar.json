@@ -1,0 +1,63 @@
+{
+  "locale": "es-ES",
+  "region": "ES-CT",
+  "contentLanguage": "es",
+  "uiLanguage": "ca",
+  "events": [
+    {
+      "id": "summer-holidays-2026",
+      "name": "Vacances d'agost",
+      "validFrom": "2026-08-01",
+      "validUntil": "2026-08-31",
+      "businessRelevance": 0.9,
+      "relatedEditorialFamilies": ["processes_operations", "knowledge_continuity"],
+      "possibleBusinessPains": ["aprovacions aturades", "consultes sense responsable", "traspàs d'informació incomplet", "seguiments dependents de memòria"],
+      "maxPriorityBonus": 0.65,
+      "expiryAt": "2026-08-31T23:59:59+02:00"
+    },
+    {
+      "id": "sant-joan-2026",
+      "name": "Sant Joan",
+      "validFrom": "2026-06-18",
+      "validUntil": "2026-06-24",
+      "businessRelevance": 0.35,
+      "relatedEditorialFamilies": ["processes_operations"],
+      "possibleBusinessPains": ["cobertures d'equip", "incidències fora d'horari"],
+      "maxPriorityBonus": 0.2,
+      "expiryAt": "2026-06-24T23:59:59+02:00"
+    },
+    {
+      "id": "christmas-2026",
+      "name": "Nadal",
+      "validFrom": "2026-12-10",
+      "validUntil": "2026-12-26",
+      "businessRelevance": 0.7,
+      "relatedEditorialFamilies": ["processes_operations", "knowledge_continuity"],
+      "possibleBusinessPains": ["cobertura operativa", "traspassos", "respostes fora d'oficina"],
+      "maxPriorityBonus": 0.45,
+      "expiryAt": "2026-12-26T23:59:59+01:00"
+    },
+    {
+      "id": "new-year-2027",
+      "name": "Cap d'Any",
+      "validFrom": "2026-12-27",
+      "validUntil": "2027-01-09",
+      "businessRelevance": 0.65,
+      "relatedEditorialFamilies": ["dashboards_measurement", "processes_operations"],
+      "possibleBusinessPains": ["tancament d'indicadors", "prioritats sense responsable", "processos pendents"],
+      "maxPriorityBonus": 0.4,
+      "expiryAt": "2027-01-09T23:59:59+01:00"
+    },
+    {
+      "id": "easter-2027",
+      "name": "Setmana Santa",
+      "validFrom": "2027-03-22",
+      "validUntil": "2027-04-05",
+      "businessRelevance": 0.55,
+      "relatedEditorialFamilies": ["processes_operations", "knowledge_continuity"],
+      "possibleBusinessPains": ["continuïtat del servei", "tasques sense substitució"],
+      "maxPriorityBonus": 0.35,
+      "expiryAt": "2027-04-05T23:59:59+02:00"
+    }
+  ]
+}

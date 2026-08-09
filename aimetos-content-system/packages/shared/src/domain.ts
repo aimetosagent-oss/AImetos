@@ -62,14 +62,14 @@ export type ContentCategory =
   | "Tendencia amb impacte empresarial";
 
 export type EditorialFamily =
-  | "agents_i_canals"
-  | "criteri_huma_i_governanca"
-  | "integracions_i_dades"
-  | "processos_i_operacions"
-  | "coneixement_i_continuitat"
-  | "dashboards_i_mesura"
-  | "robustesa_tecnica"
-  | "casos_reals";
+  | "agents_channels"
+  | "human_criterion_governance"
+  | "integrations_data"
+  | "processes_operations"
+  | "knowledge_continuity"
+  | "dashboards_measurement"
+  | "technical_robustness"
+  | "real_cases";
 
 export type Platform =
   | "blog"
@@ -112,11 +112,21 @@ export type ContentIdea = {
   appearancesLast4Posts: number;
   repetitionPenalty: number;
   diversityBonus: number;
+  temporalBonus: number;
+  temporalContext?: string;
+  expiresAt?: string;
   expandToArticle: boolean;
 };
 
-export type DataSourceType = "real_manual" | "real_export" | "mock" | "estimated" | "pending";
+export type DataSourceType =
+  | "real_export"
+  | "real_screenshot"
+  | "manual_user_report"
+  | "dashboard_derived"
+  | "mock"
+  | "pending";
 export type SnapshotPeriod = "24h" | "48h" | "72h" | "7d" | "30d" | "latest";
+export type SnapshotLabel = "~24h" | "~48h" | "~72h" | "~7d" | "latest_available";
 export type ConfidenceLevel =
   | "insufficient_data"
   | "early_signal"
@@ -137,7 +147,8 @@ export type AudienceBreakdown = {
 };
 
 export type MetricSnapshot = {
-  capturedAt: string;
+  capturedAt?: string;
+  snapshotLabel?: SnapshotLabel;
   period: SnapshotPeriod;
   impressions?: number;
   views?: number;
@@ -158,6 +169,11 @@ export type MetricSnapshot = {
   meetings?: number;
   proposals?: number;
   opportunities?: number;
+  networkDistribution?: {
+    inNetworkPercent: number;
+    outOfNetworkPercent: number;
+  };
+  audience?: AudienceBreakdown;
   sourceType: DataSourceType;
   notes?: string;
 };
@@ -168,8 +184,18 @@ export type RealContentRecord = {
   title: string;
   topic: string;
   editorialAngle: string;
+  editorialFamily: EditorialFamily;
   format: string;
   publishedAt?: string;
+  publishedAtManual?: string;
+  publishedAtExport?: string;
+  publishedAtConflict?: boolean;
+  dataNote?: string;
+  url?: string;
+  metricsStatus?: "available" | "pending";
+  comparable?: boolean;
+  isBaseline?: boolean;
+  synchronizedGroup?: "meta";
   status: "published" | "metrics_pending" | "low_performance_early_result";
   sourceType: DataSourceType;
   targetCustomer: string;
@@ -177,6 +203,26 @@ export type RealContentRecord = {
   snapshots: MetricSnapshot[];
   audience?: AudienceBreakdown;
   qualitativeSignals?: string[];
+};
+
+export type TemporalEvent = {
+  id: string;
+  name: string;
+  validFrom: string;
+  validUntil: string;
+  businessRelevance: number;
+  relatedEditorialFamilies: EditorialFamily[];
+  possibleBusinessPains: string[];
+  maxPriorityBonus: number;
+  expiryAt: string;
+};
+
+export type EditorialCalendar = {
+  locale: "es-ES";
+  region: "ES-CT";
+  contentLanguage: "es";
+  uiLanguage: "ca";
+  events: TemporalEvent[];
 };
 
 export type BusinessContentScore = {

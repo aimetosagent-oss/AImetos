@@ -7,8 +7,9 @@ test("client report keeps the simplified editorial decision contract", async () 
 
   assert.equal(report.executiveReading.length, 4);
   assert.equal(report.recommendations.length, 3);
-  assert.equal(report.recommendations[0]?.editorialFamily, "integracions_i_dades");
-  assert.match(report.decision.nextAction, /Tu empresa no necesita otra herramienta/);
+  assert.equal(report.recommendations[0]?.editorialFamily, "processes_operations");
+  assert.match(report.decision.nextAction, /Agosto es una prueba de estrés/);
+  assert.equal(report.decision.temporalContext, "Context temporal: Vacances d'agost");
   assert.ok(report.recommendations.every((item) => item.postCopy.includes("¿") || item.postCopy.includes("Una ")));
 });
 

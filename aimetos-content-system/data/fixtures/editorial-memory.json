@@ -5,6 +5,7 @@
   { "topic": "Dashboards i mesura", "lastPublishedAt": "2026-07-16", "timesPublished": 2, "relatedContentIds": ["LI-02", "IG-04"], "saturationScore": 45, "reusePossible": true, "nextAllowedDate": "2026-08-06", "narrativeRole": "show_solution" },
   { "topic": "Robustesa de workflows", "lastPublishedAt": "2026-07-28", "timesPublished": 1, "relatedContentIds": ["LI-05"], "saturationScore": 20, "reusePossible": true, "nextAllowedDate": "2026-08-25", "narrativeRole": "demonstrate_technical_depth" },
   { "topic": "Coneixement crític", "lastPublishedAt": "2026-07-30", "timesPublished": 2, "relatedContentIds": ["LI-06", "IG-03"], "saturationScore": 35, "reusePossible": true, "nextAllowedDate": "2026-08-13", "narrativeRole": "open_problem" },
-  { "topic": "IA i criteri humà", "timesPublished": 0, "relatedContentIds": [], "saturationScore": 0, "reusePossible": true, "nextAllowedDate": "2026-08-04", "narrativeRole": "reframe_problem" },
-  { "topic": "CRM abans d'afegir IA", "timesPublished": 0, "relatedContentIds": [], "saturationScore": 0, "reusePossible": true, "nextAllowedDate": "2026-08-06", "narrativeRole": "show_solution" }
+  { "topic": "Integracions i dades disperses", "lastPublishedAt": "2026-08-05", "timesPublished": 1, "relatedContentIds": ["LI-07"], "saturationScore": 45, "reusePossible": true, "nextAllowedDate": "2026-09-02", "narrativeRole": "show_solution" },
+  { "topic": "Processos i vacances", "timesPublished": 0, "relatedContentIds": [], "saturationScore": 0, "reusePossible": true, "nextAllowedDate": "2026-08-01", "narrativeRole": "open_problem" },
+  { "topic": "IA i criteri humà", "timesPublished": 0, "relatedContentIds": [], "saturationScore": 0, "reusePossible": true, "nextAllowedDate": "2026-08-18", "narrativeRole": "reframe_problem" }
 ]

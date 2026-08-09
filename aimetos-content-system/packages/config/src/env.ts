@@ -9,6 +9,8 @@ export type RuntimeConfig = {
   defaultLanguage: Language;
   uiLanguage: Language;
   contentLanguage: Language;
+  chatEnabled: boolean;
+  chatProvider: "mock" | "openai";
   temporalWeights: {
     last30Days: number;
     last90Days: number;
@@ -70,6 +72,8 @@ export function loadConfig(): RuntimeConfig {
     defaultLanguage: pick("DEFAULT_LANGUAGE", languages, "ca"),
     uiLanguage: pick("UI_LANGUAGE", languages, "ca"),
     contentLanguage: pick("CONTENT_LANGUAGE", languages, "es"),
+    chatEnabled: booleanFromEnv("CHAT_ENABLED", true),
+    chatProvider: pick("CHAT_PROVIDER", ["mock", "openai"], "mock"),
     temporalWeights: {
       last30Days: numberFromEnv("TEMPORAL_WEIGHT_30_DAYS", 0.6),
       last90Days: numberFromEnv("TEMPORAL_WEIGHT_90_DAYS", 0.3),

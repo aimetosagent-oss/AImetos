@@ -164,7 +164,8 @@ function renderRealIntelligence(data) {
     metric("Visualitzacions", formatter.format(data.instagram.views)),
     metric("M'agrada", formatter.format(data.instagram.reactions)),
     metric("Millor abast", data.instagram.bestReach),
-    metric("Millor interès relatiu", data.instagram.bestRelativeEngagement)
+    metric("Millor interès relatiu", data.instagram.bestRelativeEngagement),
+    metric("Facebook empresa", data.instagram.facebookBusinessStatus === "pending" ? "Mètriques pendents" : "Dades disponibles")
   );
   setText("instagramWarning", data.instagram.warning);
 
@@ -179,12 +180,15 @@ function renderRealIntelligence(data) {
   const states = byId("dataStates");
   states.innerHTML = '<strong>Estat de les dades</strong>';
   for (const item of data.dataStates) states.append(chip(`${item.sourceType}: ${item.count}`));
+  states.append(chip(`Baseline: ${data.dataQuality.baselineContentId}`));
+  states.append(chip(`Pendents: ${data.dataQuality.pendingContentIds.join(", ") || "cap"}`));
+  for (const conflict of data.dataQuality.conflicts) states.append(chip(`Conflicte ${conflict.contentId}`));
 
   const scores = byId("contentScores");
   scores.innerHTML = "";
   for (const item of data.scoredContent) {
     const node = card("score-row");
-    const snapshotPeriods = item.snapshots.map((snapshot) => snapshot.period).join(" · ") || "sense captures";
+    const snapshotPeriods = item.snapshots.map((snapshot) => snapshot.snapshotLabel || snapshot.period).join(" · ") || "sense captures";
     node.innerHTML =
       `<div><span>${item.id} · ${item.platform} · ${item.sourceType}</span><strong>${item.title}</strong><p>${item.score.explanation}</p></div>` +
       `<div class="score-main"><strong>${item.score.total}/100</strong><span>${item.score.confidence.replaceAll("_", " ")}</span><span>${item.score.comparablePosts} comparables</span><span>${snapshotPeriods}</span></div>` +
@@ -317,7 +321,9 @@ function renderLinkedInStart(data) {
   setText("linkedinReason", data.reason);
   setText(
     "requiredMetrics",
-    data.metricsComplete ? "Mètriques principals carregades. Leads i reunions marcats a 0." : `Pendent LI-06 · camps: ${data.requiredMetrics.join(", ")}`
+    data.metricsComplete
+      ? "Mètriques principals carregades. Leads i reunions marcats a 0."
+      : `${data.nextStep} Camps: ${data.requiredMetrics.join(", ")}`
   );
 
   const target = byId("linkedinPosts");
@@ -343,6 +349,9 @@ function render(report) {
   setText("comparablePosts", formatter.format(report.decision.comparablePosts));
   setText("publishDate", report.decision.publishDate);
   setText("decisionChannels", report.decision.channels.join(" + "));
+  const temporalBadge = byId("temporalBadge");
+  temporalBadge.textContent = report.decision.temporalContext || "";
+  temporalBadge.hidden = !report.decision.temporalContext;
   setText("confidenceNote", report.decision.confidenceNote);
   setText("businessObjective", report.businessObjective);
   setText("strategyQuarter", report.strategy.quarterly);
@@ -352,6 +361,7 @@ function render(report) {
   setText("dataSource", report.technicalStatus.dataSource);
   setText("workflows", report.technicalStatus.n8nWorkflowsValidated + " validats");
   setText("credentials", report.technicalStatus.credentialsRequiredNow ? "Pendents" : "No requerides ara");
+  setText("chatStatus", report.technicalStatus.chatEnabled ? `${report.technicalStatus.chatProvider} actiu` : "Desactivat");
 
   renderRealIntelligence(report.realIntelligence);
   renderExecutiveReading(report.executiveReading || [report.executiveSummary]);
@@ -385,6 +395,61 @@ function render(report) {
   );
 }
 
+function appendChatMessage(role, content) {
+  const node = document.createElement("article");
+  node.className = `chat-message ${role}`;
+  node.textContent = content;
+  byId("chatMessages").appendChild(node);
+  node.scrollIntoView({ block: "nearest" });
+}
+
+function setChatOpen(open) {
+  byId("contentDirector").classList.toggle("open", open);
+  byId("contentDirector").setAttribute("aria-hidden", String(!open));
+  byId("chatBackdrop").hidden = !open;
+  if (open) byId("contentDirectorInput").focus();
+}
+
+async function askContentDirector(question) {
+  const text = question.trim();
+  if (!text) return;
+  appendChatMessage("user", text);
+  const submit = byId("contentDirectorForm").querySelector('button[type="submit"]');
+  submit.disabled = true;
+  submit.textContent = "Pensant...";
+  try {
+    const response = await fetch("/api/content-director", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: text })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "No s'ha pogut obtenir una resposta");
+    appendChatMessage("assistant", result.reply);
+  } catch (error) {
+    appendChatMessage("assistant error", error.message);
+  } finally {
+    submit.disabled = false;
+    submit.textContent = "Enviar";
+  }
+}
+
+function setupContentDirector() {
+  byId("openContentDirector").addEventListener("click", () => setChatOpen(true));
+  byId("closeContentDirector").addEventListener("click", () => setChatOpen(false));
+  byId("chatBackdrop").addEventListener("click", () => setChatOpen(false));
+  for (const button of document.querySelectorAll("[data-chat-question]")) {
+    button.addEventListener("click", () => askContentDirector(button.dataset.chatQuestion));
+  }
+  byId("contentDirectorForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = byId("contentDirectorInput");
+    const question = input.value;
+    input.value = "";
+    await askContentDirector(question);
+  });
+}
+
 function setupTabs() {
   for (const button of document.querySelectorAll(".tab-button")) {
     button.addEventListener("click", () => {
@@ -392,7 +457,95 @@ function setupTabs() {
       document.querySelectorAll(".tab-button").forEach((item) => item.classList.toggle("active", item === button));
       byId("clientPanel").classList.toggle("active", tab === "client");
       byId("adminPanel").classList.toggle("active", tab === "admin");
+      byId("agentsPanel").classList.toggle("active", tab === "agents");
     });
+  }
+}
+
+function agentStatusLabel(status) {
+  return {
+    started: "En curs",
+    succeeded: "Correcte",
+    failed: "Error",
+    warning: "Avís",
+    waiting: "En espera"
+  }[status] || status;
+}
+
+function renderAgentEvent(event) {
+  const node = card(`agent-event severity-${event.severity}`);
+  const header = document.createElement("div");
+  header.className = "agent-event-header";
+  const identity = document.createElement("div");
+  const agent = document.createElement("strong");
+  agent.textContent = event.agentName;
+  const workflow = document.createElement("span");
+  workflow.textContent = event.workflowName;
+  identity.append(agent, workflow);
+  const badge = document.createElement("span");
+  badge.className = `agent-status status-${event.status}`;
+  badge.textContent = agentStatusLabel(event.status);
+  header.append(identity, badge);
+
+  const title = document.createElement("h3");
+  title.textContent = event.title;
+  const summary = document.createElement("p");
+  summary.textContent = event.summary;
+  const footer = document.createElement("div");
+  footer.className = "agent-event-footer";
+  const time = document.createElement("time");
+  time.dateTime = event.occurredAt;
+  time.textContent = new Intl.DateTimeFormat("ca-ES", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.occurredAt));
+  const meta = document.createElement("span");
+  meta.textContent = event.retryCount > 0 ? `${event.retryCount} reintent(s)` : event.correlationId;
+  footer.append(time, meta);
+  if (event.actionUrl) {
+    const link = document.createElement("a");
+    link.href = event.actionUrl;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = "Obrir execució";
+    footer.appendChild(link);
+  }
+  node.append(header, title, summary, footer);
+  return node;
+}
+
+function renderAgentActivity(activity) {
+  setText("agentActivityUpdated", `Actualitzat ${new Intl.DateTimeFormat("ca-ES", { timeStyle: "short" }).format(new Date(activity.generatedAt))}`);
+  const summary = byId("agentSummary");
+  summary.innerHTML = "";
+  for (const [label, value, tone] of [
+    ["Agents", activity.summary.agents, "neutral"],
+    ["Execucions", activity.summary.executions, "neutral"],
+    ["Correctes", activity.summary.succeeded, "success"],
+    ["En curs", activity.summary.running, "info"],
+    ["Errors", activity.summary.failed, "danger"],
+    ["Requereixen atenció", activity.summary.attention, "warning"]
+  ]) {
+    const node = card(`agent-kpi tone-${tone}`);
+    const number = document.createElement("strong");
+    number.textContent = formatter.format(value);
+    const text = document.createElement("span");
+    text.textContent = label;
+    node.append(number, text);
+    summary.appendChild(node);
+  }
+
+  for (const [id, events, emptyText] of [
+    ["agentImportant", activity.important, "No hi ha avisos importants."],
+    ["agentRecent", activity.recent, "Encara no hi ha activitat registrada."]
+  ]) {
+    const target = byId(id);
+    target.innerHTML = "";
+    if (events.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "agent-empty";
+      empty.textContent = emptyText;
+      target.appendChild(empty);
+    } else {
+      for (const event of events) target.appendChild(renderAgentEvent(event));
+    }
   }
 }
 
@@ -435,11 +588,17 @@ async function loadReport() {
   button.disabled = true;
   button.textContent = "Actualitzant...";
   try {
-    const [response, linkedinResponse] = await Promise.all([fetch("/api/client-report"), fetch("/api/linkedin-start")]);
+    const [response, linkedinResponse, activityResponse] = await Promise.all([
+      fetch("/api/client-report"),
+      fetch("/api/linkedin-start"),
+      fetch("/api/agent-activity")
+    ]);
     if (!response.ok) throw new Error("No s'ha pogut carregar l'informe");
     if (!linkedinResponse.ok) throw new Error("No s'ha pogut carregar LinkedIn");
+    if (!activityResponse.ok) throw new Error("No s'ha pogut carregar l'activitat dels agents");
     render(await response.json());
     renderLinkedInStart(await linkedinResponse.json());
+    renderAgentActivity(await activityResponse.json());
   } finally {
     button.disabled = false;
     button.textContent = "Actualitzar informe";
@@ -448,6 +607,7 @@ async function loadReport() {
 
 setupTabs();
 setupManualMetricsForm();
+setupContentDirector();
 setDefaultCaptureTime();
 byId("refreshReport").addEventListener("click", loadReport);
 loadReport().catch((error) => {

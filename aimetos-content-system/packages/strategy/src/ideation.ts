@@ -1,6 +1,7 @@
 import type { ContentIdea, MockScenario } from "../../shared/src/domain.ts";
 import type { RuntimeConfig } from "../../config/src/env.ts";
 import type { PerformanceAnalysis } from "../../analytics/src/performance.ts";
+import { applyTemporalModifiers, type TemporalDecisionContext } from "./editorial-calendar.ts";
 
 function averageScore(idea: Pick<ContentIdea, "commercialImpact" | "differentiation" | "estimatedEffort" | "reusability" | "authority">): number {
   const ease = 6 - idea.estimatedEffort;
@@ -16,41 +17,48 @@ function withScore(idea: Omit<ContentIdea, "globalScore" | "status">): ContentId
 }
 
 export function editorialScore(idea: ContentIdea): number {
-  return Number((idea.globalScore + idea.diversityBonus - idea.repetitionPenalty).toFixed(2));
+  return Number((idea.globalScore + idea.diversityBonus + idea.temporalBonus - idea.repetitionPenalty).toFixed(2));
 }
 
-export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockScenario): ContentIdea[] {
+export function generateFiveIdeas(
+  analysis: PerformanceAnalysis,
+  scenario: MockScenario,
+  temporalContext?: TemporalDecisionContext
+): ContentIdea[] {
   const lowQuality = scenario === "no_qualified_ideas";
   const modifier = lowQuality ? -2 : analysis.weightedScore >= 4 ? 0.4 : 0;
   const ideas = [
     withScore({
-      id: "idea_integrations_data",
-      title: "Tu empresa no necesita otra herramienta. Necesita que las que ya tiene se hablen.",
-      objective: "Demostrar el valor empresarial de las integraciones antes de añadir más herramientas o IA.",
-      audience: "Gerentes y responsables de operaciones de empresas B2B con varias herramientas desconectadas.",
-      pain: "La misma información existe en CRM, Excel, correo y WhatsApp, y se actualiza manualmente.",
-      value: "Una forma clara de detectar dónde conectar el proceso antes de comprar otra herramienta.",
-      mainMessage: "Antes de añadir IA, conecta el proceso que ya existe.",
-      cta: "¿En cuántos sitios vive hoy el mismo dato en tu empresa?",
+      id: "idea_august_process_stress",
+      title: "Agosto es una prueba de estrés para tus procesos.",
+      objective: "Hacer visible la fragilidad operativa que aparece durante las vacaciones.",
+      audience: "Gerentes y responsables de operaciones de PYMEs y empresas B2B.",
+      pain: "Durante las vacaciones aparecen aprobaciones detenidas, consultas sin propietario y tareas que nadie sabe continuar.",
+      value: "Un criterio práctico para reforzar responsables, traspaso, documentación y alertas antes de automatizar.",
+      mainMessage: "Si un proceso se frena porque alguien está de vacaciones, el problema no son las vacaciones.",
+      cta: "¿Qué proceso se vuelve más lento en tu empresa cuando llega agosto?",
       priority: 1,
-      justification: "Introduce un problema comercial distinto y evita repetir criterio humano, agentes, llamadas o conocimiento crítico.",
-      relatedService: "Integraciones y automatización de procesos",
+      justification: "Aprovecha un contexto temporal relevante para hablar de continuidad operativa sin repetir integraciones, agentes ni conocimiento crítico.",
+      relatedService: "Procesos, operaciones y automatización",
       primaryChannel: "linkedin",
       estimatedEffort: 2,
       commercialImpact: score(5 + modifier),
-      differentiation: score(4.6 + modifier),
-      authority: score(4.6 + modifier),
-      reusability: score(5 + modifier),
+      differentiation: score(4.4 + modifier),
+      authority: score(4.5 + modifier),
+      reusability: score(4.2 + modifier),
       category: "Estrategia",
       language: "es",
       funnelStage: "MOFU",
-      businessConsequence: "Errores, tiempo administrativo, seguimientos perdidos y falta de una fuente única de verdad.",
-      proofOrExample: "Un mismo dato de cliente actualizado manualmente en CRM, Excel, correo y WhatsApp.",
-      editorialFamily: "integracions_i_dades",
+      businessConsequence: "Aprobaciones detenidas, consultas sin responsable, tareas bloqueadas y seguimientos dependientes de memoria.",
+      proofOrExample: "Un proceso que se ralentiza cuando falta una persona revela una dependencia operativa real.",
+      editorialFamily: "processes_operations",
       appearancesLast4Posts: 0,
       repetitionPenalty: 0,
-      diversityBonus: 0.8,
-      expandToArticle: true
+      diversityBonus: 0.65,
+      temporalBonus: 0,
+      temporalContext: "Vacances d'agost",
+      expiresAt: "2026-08-31T23:59:59+02:00",
+      expandToArticle: false
     }),
     withScore({
       id: "idea_n8n_failures",
@@ -62,7 +70,7 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       mainMessage: "Automatizar no es unir nodos: es diseñar un sistema que resista errores.",
       cta: "¿Qué ocurre hoy cuando falla uno de tus procesos automáticos?",
       priority: 2,
-      justification: "Aporta demostración técnica y equilibra la siguiente pieza de decisión empresarial.",
+      justification: "Aporta demostración técnica, pero el ángulo Error / Log / Retry tuvo una señal inicial baja en LI-05.",
       relatedService: "Automatizaciones robustas",
       primaryChannel: "linkedin",
       estimatedEffort: 2,
@@ -75,11 +83,12 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       funnelStage: "MOFU",
       businessConsequence: "Un workflow frágil genera incidencias, retrabajo y dependencia técnica.",
       proofOrExample: "Ejemplo operativo con error, registro y reintento seguro.",
-      editorialFamily: "robustesa_tecnica",
+      editorialFamily: "technical_robustness",
       lastUsedAt: "2026-07-28",
       appearancesLast4Posts: 1,
-      repetitionPenalty: 0.25,
-      diversityBonus: 0.25,
+      repetitionPenalty: 0.35,
+      diversityBonus: 0.2,
+      temporalBonus: 0,
       expandToArticle: true
     }),
     withScore({
@@ -92,7 +101,7 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       mainMessage: "La métrica importante es la que activa una decisión clara.",
       cta: "¿Qué decisión debería activar hoy tu dashboard?",
       priority: 3,
-      justification: "Es relevante, pero ya se ha tratado recientemente y conviene abrir antes la línea de integraciones.",
+      justification: "Tiene buena calidad potencial de audiencia, pero ya se ha tratado recientemente.",
       relatedService: "Dashboards",
       primaryChannel: "linkedin",
       estimatedEffort: 2,
@@ -105,11 +114,12 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       funnelStage: "TOFU",
       businessConsequence: "Medir sin activar decisiones consume tiempo y retrasa las correcciones.",
       proofOrExample: "Tres preguntas que convierten una métrica en una decisión.",
-      editorialFamily: "dashboards_i_mesura",
+      editorialFamily: "dashboards_measurement",
       lastUsedAt: "2026-07-16",
       appearancesLast4Posts: 0,
       repetitionPenalty: 0,
       diversityBonus: 0.35,
+      temporalBonus: 0,
       expandToArticle: true
     }),
     withScore({
@@ -135,11 +145,12 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       funnelStage: "MOFU",
       businessConsequence: "Una decisión automática no cuestionada puede escalar errores operativos y de negocio.",
       proofOrExample: "Tres preguntas de validación antes de aceptar una recomendación automática.",
-      editorialFamily: "criteri_huma_i_governanca",
+      editorialFamily: "human_criterion_governance",
       lastUsedAt: "2026-07-30",
       appearancesLast4Posts: 2,
       repetitionPenalty: 1.25,
       diversityBonus: 0,
+      temporalBonus: 0,
       expandToArticle: false
     }),
     withScore({
@@ -165,24 +176,26 @@ export function generateFiveIdeas(analysis: PerformanceAnalysis, scenario: MockS
       funnelStage: "MOFU",
       businessConsequence: "Añadir un agente a un proceso desordenado dispersa todavía más los leads.",
       proofOrExample: "Árbol de decisión entre agente, CRM y rediseño del proceso.",
-      editorialFamily: "agents_i_canals",
+      editorialFamily: "agents_channels",
       lastUsedAt: "2026-07-23",
       appearancesLast4Posts: 2,
       repetitionPenalty: 1.5,
       diversityBonus: 0,
+      temporalBonus: 0,
       expandToArticle: false
     })
   ];
-  return ideas.map((idea) => ({ ...idea, globalScore: averageScore(idea) }));
+  return ideas.map((idea) => applyTemporalModifiers({ ...idea, globalScore: averageScore(idea) }, temporalContext));
 }
 
-export function selectBestIdeas(ideas: ContentIdea[], config: RuntimeConfig): ContentIdea[] {
+export function selectBestIdeas(ideas: ContentIdea[], config: RuntimeConfig, now = new Date()): ContentIdea[] {
   return ideas
     .filter(
       (idea) =>
         idea.globalScore >= config.thresholds.minAverageScore &&
         idea.commercialImpact >= config.thresholds.minCommercialImpact &&
-        idea.appearancesLast4Posts <= 2
+        idea.appearancesLast4Posts <= 2 &&
+        (!idea.expiresAt || now.getTime() <= Date.parse(idea.expiresAt))
     )
     .sort((a, b) => editorialScore(b) - editorialScore(a) || b.commercialImpact - a.commercialImpact)
     .slice(0, 3)

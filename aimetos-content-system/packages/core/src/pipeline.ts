@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import type {
   BusinessContentScore,
   ContentIdea,
+  DataSourceType,
+  EditorialCalendar,
   EditorialMemoryItem,
   MarketSignal,
   MetricRecord,
@@ -13,6 +15,7 @@ import { loadConfig, type RuntimeConfig } from "../../config/src/env.ts";
 import { analyzePerformance } from "../../analytics/src/performance.ts";
 import { confidenceFromSample, latestSnapshot, rankRealContent } from "../../analytics/src/business-content.ts";
 import { generateFiveIdeas, selectBestIdeas } from "../../strategy/src/ideation.ts";
+import { resolveTemporalContext, type TemporalDecisionContext } from "../../strategy/src/editorial-calendar.ts";
 import { generateContentForIdea } from "../../content/src/generator.ts";
 import { publishMock, scheduleContent } from "../../publishing/src/scheduler.ts";
 import { buildConnectorRegistry } from "../../connectors/src/registry.ts";
@@ -32,6 +35,7 @@ export type MockFlowReport = {
   auditLog: ReturnType<typeof transitionPath>;
   connectorHealth: Array<{ name: string; status: string; ok: boolean; message: string }>;
   metricsCollected: boolean;
+  temporalContext: TemporalDecisionContext;
   report: {
     summary: string;
     recommendations: string[];
@@ -70,6 +74,7 @@ export type ClientContentRecommendation = {
     appearancesLast4Posts: number;
     repetitionPenalty: number;
     diversityBonus: number;
+    temporalBonus: number;
   };
   expandToArticle: boolean;
 };
@@ -99,6 +104,7 @@ export type ClientMonthlyReport = {
     channels: string[];
     justification: string;
     comparablePosts: number;
+    temporalContext?: string;
   };
   realIntelligence: {
     confidence: {
@@ -169,10 +175,17 @@ export type ClientMonthlyReport = {
       bestReach: string;
       bestRelativeEngagement: string;
       warning: string;
+      facebookBusinessStatus: "pending" | "available";
     };
     marketSignals: MarketSignal[];
     editorialMemory: EditorialMemoryItem[];
     dataStates: Array<{ sourceType: string; count: number }>;
+    dataQuality: {
+      baselineContentId: string;
+      conflicts: Array<{ contentId: string; note: string }>;
+      pendingContentIds: string[];
+      snapshotInventory: Array<{ contentId: string; count: number; latestLabel: string }>;
+    };
   };
   weeklyValidation: {
     period: string;
@@ -260,6 +273,8 @@ export type ClientMonthlyReport = {
     dataSource: string;
     credentialsRequiredNow: boolean;
     n8nWorkflowsValidated: number;
+    chatEnabled: boolean;
+    chatProvider: "mock" | "openai";
   };
 };
 
@@ -269,6 +284,14 @@ function rootPath(relPath: string): string {
 
 function readJson<T>(relPath: string): T {
   return JSON.parse(readFileSync(rootPath(relPath), "utf8")) as T;
+}
+
+function nextTuesdayLabel(now = new Date()): string {
+  const date = new Date(now);
+  const daysUntilTuesday = ((2 - date.getDay() + 7) % 7) || 7;
+  date.setDate(date.getDate() + daysUntilTuesday);
+  const label = new Intl.DateTimeFormat("ca-ES", { weekday: "long", day: "numeric", month: "long" }).format(date);
+  return label[0].toUpperCase() + label.slice(1) + " · 08:40";
 }
 
 function applyScenario(records: MetricRecord[], scenario: string): MetricRecord[] {
@@ -406,7 +429,7 @@ type ManualMetricEntry = {
   meetings: number;
   audienceBreakdown: string;
   notes: string;
-  sourceType: "real_manual" | "real_export" | "estimated" | "pending";
+  sourceType: DataSourceType;
 };
 
 function hasLinkedInMetrics(posts: LinkedInPostInput[]): boolean {
@@ -467,8 +490,9 @@ function buildRealIntelligence(
 ): ClientMonthlyReport["realIntelligence"] {
   const linkedin = records.filter((record) => record.platform === "linkedin");
   const instagram = records.filter((record) => record.platform === "instagram");
-  const measured = records.filter((record) => latestSnapshot(record));
-  const linkedinMeasured = linkedin.filter((record) => latestSnapshot(record));
+  const facebookBusiness = records.filter((record) => record.platform === "facebook");
+  const measured = records.filter((record) => record.comparable !== false && latestSnapshot(record));
+  const linkedinMeasured = linkedin.filter((record) => record.comparable !== false && latestSnapshot(record));
   const ranked = rankRealContent(records, marketSignals);
   const scoredContent = ranked.map(({ record, score }) => ({
     id: record.id,
@@ -485,7 +509,7 @@ function buildRealIntelligence(
   const sumField = (field: keyof NonNullable<ReturnType<typeof latestSnapshot>>) =>
     snapshots.reduce((total, snapshot) => total + (typeof snapshot[field] === "number" ? Number(snapshot[field]) : 0), 0);
   const confidence = confidenceFromSample(linkedinMeasured.length);
-  const audienceRecords = linkedin.filter((record) => record.audience);
+  const audienceRecords = linkedin.filter((record) => record.comparable !== false && record.audience);
   const sectors = [...new Set(audienceRecords.flatMap((record) => record.audience?.prioritySectors || []))];
   const companySizes = [...new Set(audienceRecords.flatMap((record) => record.audience?.companySizes?.map((item) => item.label) || []))];
   const locations = [...new Set(audienceRecords.flatMap((record) => record.audience?.locations?.map((item) => item.label) || []))];
@@ -566,11 +590,24 @@ function buildRealIntelligence(
       reactions: igReactions,
       bestReach: "IG-01 · 12 visualitzacions",
       bestRelativeEngagement: "IG-03 · 3 m'agrada / 7 visualitzacions",
-      warning: "Mostra molt petita: cap comentari, compartició o enviament. No hi ha patró ferm."
+      warning: "Mostra molt petita: cap comentari, compartició o enviament. No hi ha patró ferm.",
+      facebookBusinessStatus: facebookBusiness.some((record) => record.metricsStatus === "available") ? "available" : "pending"
     },
     marketSignals,
     editorialMemory,
-    dataStates: [...sourceCounts.entries()].map(([sourceType, count]) => ({ sourceType, count }))
+    dataStates: [...sourceCounts.entries()].map(([sourceType, count]) => ({ sourceType, count })),
+    dataQuality: {
+      baselineContentId: records.find((record) => record.isBaseline)?.id || "-",
+      conflicts: records
+        .filter((record) => record.publishedAtConflict)
+        .map((record) => ({ contentId: record.id, note: record.dataNote || "Conflicte pendent de resoldre." })),
+      pendingContentIds: records.filter((record) => record.metricsStatus === "pending").map((record) => record.id),
+      snapshotInventory: records.map((record) => ({
+        contentId: record.id,
+        count: record.snapshots.length,
+        latestLabel: record.snapshots.at(-1)?.snapshotLabel || record.snapshots.at(-1)?.period || "pending"
+      }))
+    }
   };
 }
 
@@ -656,12 +693,12 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     ""
   ];
   const visualBriefs = [
-    "Diagrama visual d'un procés B2B amb CRM, Excel, correo i WhatsApp connectats a una única font de veritat. Inclou el logo AImetos en petit.",
+    "Esquema d'un procés que continua funcionant quan falta una persona: responsable, traspàs, documentació i alerta. Inclou el logo AImetos en petit.",
     "Esquema tècnic d'un workflow robust amb validació, log, retry i alerta. Inclou el logo AImetos en petit.",
     "Dashboard de decisió amb una mètrica, una alerta, un responsable i una acció. Inclou el logo AImetos en petit."
   ];
   const imagePrompts = [
-    "Crea una imagen profesional para LinkedIn, formato 1200x627, estilo de consultoría tecnológica B2B de primer nivel. Titular: 'Tu empresa no necesita otra herramienta'. Subtítulo: 'Necesita que las que ya tiene se hablen'. Representa CRM, Excel, correo y WhatsApp conectados a una única fuente de verdad, con jerarquía visual limpia. Paleta blanca, verde petróleo, azul y gris. Incluye el logo AImetos original en pequeño. Sin personas, sin estilo stock y sin texto pequeño.",
+    "Crea una imagen profesional para LinkedIn, formato 1200x627, estilo de consultoría tecnológica B2B de primer nivel. Titular: 'Agosto es una prueba de estrés para tus procesos'. Subtítulo: 'Si el proceso entero se frena cuando falta alguien, existe una dependencia operativa'. Representa un flujo con cuatro elementos: Responsable, Traspaso, Documentación y Alerta. Paleta blanca, verde petróleo, azul y gris. Incluye el logo AImetos original en pequeño. Sin personas, sin estilo stock y sin texto pequeño.",
     "Crea una imagen profesional para LinkedIn, formato 1200x627, estilo de consultoría tecnológica B2B. Titular: 'Una automatización robusta también sabe fallar'. Muestra cuatro etapas claras: Validación, Log, Retry y Alerta. Paleta blanca, verde petróleo, azul y gris. Incluye el logo AImetos original en pequeño. Sin personas ni estilo stock.",
     "Crea una imagen profesional para LinkedIn, formato 1200x627, estilo de consultoría tecnológica B2B. Titular: 'Un dashboard no sirve si no cambia una decisión'. Muestra una secuencia visual: Métrica, Alerta, Responsable y Acción. Paleta blanca, verde petróleo, azul y gris. Incluye el logo AImetos original en pequeño. Sin personas ni estilo stock."
   ];
@@ -671,7 +708,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     "Dijous a les 08:50"
   ];
   const postCopies = [
-    "Tu empresa no necesita otra herramienta. Necesita que las que ya tiene se hablen.\n\nEn muchas empresas, el mismo dato vive a la vez en el CRM, un Excel, el correo y WhatsApp.\n\nCada actualización manual añade una oportunidad de error: un seguimiento que no llega, una versión distinta o una decisión tomada con información incompleta.\n\nAntes de añadir IA, conecta el proceso que ya existe.\n\nUna integración útil no empieza por la tecnología. Empieza por decidir cuál es la fuente de verdad, qué evento actualiza el dato y quién debe actuar después.\n\n¿En cuántos sitios vive hoy el mismo dato en tu empresa?",
+    "Agosto es una prueba de estrés para tus procesos.\n\nSi un proceso se frena porque alguien está de vacaciones, el problema no son las vacaciones.\n\nEs la dependencia que el resto del año queda escondida: aprobaciones que esperan, consultas sin propietario, tareas que nadie sabe continuar o seguimientos que dependen de la memoria.\n\nNo se trata de automatizar cada parte. Primero hacen falta responsables claros, un traspaso mínimo de información, documentación accesible y alertas donde exista un riesgo real.\n\nDespués, automatiza solo aquello que elimine una dependencia concreta.\n\n¿Qué proceso se vuelve más lento en tu empresa cuando llega agosto?",
     "Una automatización robusta no es la que nunca falla. Es la que sabe qué hacer cuando falla.\n\nAntes de poner un workflow en producción, revisaría cuatro puntos: validar los datos de entrada, registrar el error, reintentar sin duplicar acciones y alertar a la persona responsable.\n\nAutomatizar no es unir nodos. Es diseñar un sistema que resista la realidad.\n\n¿Qué ocurre hoy cuando falla uno de tus procesos automáticos?",
     "Un dashboard no sirve si no cambia ninguna decisión.\n\nUna métrica solo aporta valor cuando activa una alerta, tiene un responsable y conduce a una acción concreta.\n\nSi el equipo mira el informe pero nadie sabe qué hacer después, no falta otro gráfico: falta diseñar la decisión.\n\n¿Qué decisión debería activar hoy tu dashboard?"
   ];
@@ -695,7 +732,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
   const recommendations = nextIdeas.map((idea, index): ClientContentRecommendation => {
     const content = nextContents[index];
     const detailIndex = {
-      idea_integrations_data: 0,
+      idea_august_process_stress: 0,
       idea_n8n_failures: 1,
       idea_dashboard_decisions: 2
     }[idea.id] ?? index;
@@ -711,7 +748,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       recommended: index === 0,
       whyRecommended:
         index === 0
-          ? "És la millor opció perquè obre la família d'integracions i dades, manté rellevància comercial i evita repetir els temes de les últimes publicacions."
+          ? `És la millor opció pel seu valor comercial i varietat editorial${idea.temporalBonus > 0 ? ", reforçada pel context temporal vigent" : ""}.`
           : idea.justification,
       hook: idea.pain,
       postCopy: postCopies[detailIndex] || postCopies[0],
@@ -735,11 +772,15 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
         lastUsedAt: idea.lastUsedAt,
         appearancesLast4Posts: idea.appearancesLast4Posts,
         repetitionPenalty: idea.repetitionPenalty,
-        diversityBonus: idea.diversityBonus
+        diversityBonus: idea.diversityBonus,
+        temporalBonus: idea.temporalBonus
       },
       expandToArticle: idea.expandToArticle
     };
   });
+  const primaryIdea = nextIdeas[0];
+  const primaryIdeaId = primaryIdea?.id || "pending_idea";
+  const blogEligible = Boolean(primaryIdea?.expandToArticle);
   const socialDistribution: ClientMonthlyReport["socialDistribution"] = [
     {
       channel: "linkedin",
@@ -753,8 +794,8 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       adaptationStatus: "ready",
       metricsStatus: "pending",
       reason: "Canal principal B2B i única xarxa amb senyals de conversa i qualitat d'audiència.",
-      sourceContentId: "idea_integrations_data",
-      adaptation: "Post de decisió empresarial sobre eines desconnectades i una única font de veritat.",
+      sourceContentId: primaryIdeaId,
+      adaptation: primaryIdea?.mainMessage || "Adaptació pendent.",
       coherenceRule: "Un client, un problema, una fase MOFU, un objectiu i un CTA.",
       metricsToTrack
     },
@@ -770,7 +811,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       adaptationStatus: "draft_needed",
       metricsStatus: "pending",
       reason: "Instagram i Facebook empresa es publiquen sincronitzats amb una única acció.",
-      sourceContentId: "idea_integrations_data",
+      sourceContentId: primaryIdeaId,
       adaptation: "Mateix text, creativitat, data i hora per a Instagram i Facebook empresa.",
       coherenceRule: "Una única peça Meta coherent amb la idea principal de LinkedIn.",
       metricsToTrack: ["Visualitzacions", "Abast", "Interaccions", "Clics", "Missatges"],
@@ -791,7 +832,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       adaptationStatus: "not_required",
       metricsStatus: "not_applicable",
       reason: "Ús ocasional; no és canal principal de màrqueting.",
-      sourceContentId: "idea_integrations_data",
+      sourceContentId: primaryIdeaId,
       adaptation: "Cap adaptació prevista.",
       coherenceRule: "Publicar només quan hi hagi context personal rellevant.",
       metricsToTrack: []
@@ -799,17 +840,19 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     {
       channel: "blog",
       label: "Blog",
-      recommendedScore: 65,
-      recommended: true,
-      recommendation: "adapt_and_publish",
-      format: "Article de criteri",
-      publishTime: "Setmana següent",
-      status: "pending_publish",
-      adaptationStatus: "draft_needed",
-      metricsStatus: "pending",
-      reason: "Permet aprofundir en governança i responsabilitat sense carregar el post social.",
-      sourceContentId: "idea_integrations_data",
-      adaptation: "Article opcional sobre font única de veritat i integracions útils.",
+      recommendedScore: blogEligible ? 65 : 30,
+      recommended: blogEligible,
+      recommendation: blogEligible ? "adapt_and_publish" : "not_recommended",
+      format: blogEligible ? "Article de criteri" : "No planificat",
+      publishTime: blogEligible ? "Setmana següent" : "-",
+      status: blogEligible ? "pending_publish" : "not_planned",
+      adaptationStatus: blogEligible ? "draft_needed" : "not_required",
+      metricsStatus: blogEligible ? "pending" : "not_applicable",
+      reason: blogEligible
+        ? "El tema pot aportar profunditat, rellevància comercial i enllaç intern útil."
+        : "La peça temporal no genera article per defecte; només s'ampliaria com a contingut evergreen de continuïtat operativa.",
+      sourceContentId: primaryIdeaId,
+      adaptation: blogEligible ? "Ampliació editorial pendent d'aprovació." : "Cap article automàtic.",
       coherenceRule: "Ampliar la prova, no canviar la conclusió editorial.",
       metricsToTrack: ["Lectures", "Temps de lectura", "Clics", "Leads"]
     },
@@ -825,7 +868,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       adaptationStatus: "not_required",
       metricsStatus: "not_applicable",
       reason: "Encara no hi ha una cadència ni base suficient per prioritzar aquest canal.",
-      sourceContentId: "idea_integrations_data",
+      sourceContentId: primaryIdeaId,
       adaptation: "Reservar com a bloc d'una futura edició.",
       coherenceRule: "No obrir un canal nou sense procés de seguiment.",
       metricsToTrack: []
@@ -842,7 +885,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       adaptationStatus: "not_required",
       metricsStatus: "not_applicable",
       reason: "Cost de producció alt per al senyal disponible; ajornar fins que l'angle es validi.",
-      sourceContentId: "idea_integrations_data",
+      sourceContentId: primaryIdeaId,
       adaptation: "Cap adaptació prevista.",
       coherenceRule: "Produir només després de validar interès en canals de menor cost.",
       metricsToTrack: []
@@ -852,7 +895,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
   return {
     reportId: "client_report_" + Date.now(),
     clientName: "Client demo AImetos",
-    period: "Últims 30 dies · actualitzat 01/08/2026",
+    period: "Dades disponibles fins al 05/08/2026",
     generatedAt: new Date().toISOString(),
     executiveSummary:
       "Les dades reals mostren dos senyals diferents: ROI aporta més abast, mentre criteri abans que tecnologia aporta més conversa i millor alineació qualitativa. Encara no hi ha leads ni reunions confirmades i la mostra continua sent petita.",
@@ -860,7 +903,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       "ROI continua sent el millor angle per visibilitat i visites al perfil.",
       "Dashboards i model híbrid han arribat proporcionalment a més decisors.",
       "Encara no hi ha leads ni reunions confirmades; les invitacions són senyals probables.",
-      "La mostra és petita: la propera publicació provarà integracions i dades per guanyar varietat editorial."
+      "LI-07 ja ha obert integracions i dades; la següent peça ha de canviar de família editorial."
     ],
     businessObjective: "Convertir autoritat a LinkedIn en converses comercials: visites al perfil, leads qualificats i reunions.",
     strategy: {
@@ -871,16 +914,17 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     decision: {
       nextBestFormat: "Post LinkedIn",
       nextBestChannel: "LinkedIn + Meta",
-      nextAction: "Tu empresa no necesita otra herramienta. Necesita que las que ya tiene se hablen.",
+      nextAction: recommendations[0]?.title || "Decisió pendent de dades suficients",
       confidence: realIntelligence.confidence.level,
       confidenceLabel: realIntelligence.confidence.label,
       confidenceNote:
         realIntelligence.confidence.warning,
       recommendationLevel: "alta",
-      publishDate: "Dimarts 4 d'agost · 08:40",
+      publishDate: nextTuesdayLabel(),
       channels: ["LinkedIn", "Meta"],
-      justification: "Obre una família editorial no tractada recentment, resol un problema B2B concret i evita repetir agents, trucades o criteri humà.",
-      comparablePosts: realIntelligence.confidence.comparablePosts
+      justification: recommendations[0]?.whyRecommended || "La prioritat es calcularà amb varietat, negoci i temporalitat.",
+      comparablePosts: realIntelligence.confidence.comparablePosts,
+      temporalContext: recommendations[0]?.editorialVariety.temporalBonus > 0 ? flow.temporalContext.badge : undefined
     },
     realIntelligence,
     weeklyValidation: {
@@ -926,9 +970,11 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     })),
     technicalStatus: {
       mode: flow.mode,
-      dataSource: "Dades reals manuals/exportades: 6 LinkedIn + 5 Instagram; mock separat",
+      dataSource: "Dades reals: 8 LinkedIn + 5 Instagram + Facebook empresa pendent; mock separat",
       credentialsRequiredNow: false,
-      n8nWorkflowsValidated: 28
+      n8nWorkflowsValidated: 28,
+      chatEnabled: config.chatEnabled,
+      chatProvider: config.chatProvider
     }
   };
 }
@@ -946,7 +992,9 @@ export async function runMockContentFlow(overrides: Partial<RuntimeConfig> = {})
   }
   const metrics = applyScenario(rawMetrics, config.mockScenario);
   const analysis = analyzePerformance(metrics, config);
-  const generatedIdeas = generateFiveIdeas(analysis, config.mockScenario);
+  const editorialCalendar = readJson<EditorialCalendar>("config/editorial-calendar.json");
+  const temporalContext = resolveTemporalContext(editorialCalendar);
+  const generatedIdeas = generateFiveIdeas(analysis, config.mockScenario, temporalContext);
   for (const idea of generatedIdeas) {
     const result = validateIdea(idea);
     if (!result.ok) {
@@ -998,6 +1046,7 @@ export async function runMockContentFlow(overrides: Partial<RuntimeConfig> = {})
     auditLog,
     connectorHealth,
     metricsCollected: publications.every((item) => item.status === "published"),
+    temporalContext,
     report: {
       summary:
         selectedIdeas.length === 0

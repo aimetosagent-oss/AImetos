@@ -15,7 +15,7 @@ test("small samples never produce high confidence", () => {
 });
 
 test("business score is transparent and bounded", () => {
-  const linkedin = records.filter((record) => record.platform === "linkedin" && record.snapshots.length > 0);
+  const linkedin = records.filter((record) => record.platform === "linkedin" && record.comparable !== false && record.snapshots.length > 0);
   const result = scoreRealContent(linkedin[0], linkedin, signals);
   assert.ok(result.total >= 0 && result.total <= 100);
   assert.equal(result.comparablePosts, 5);
@@ -24,7 +24,7 @@ test("business score is transparent and bounded", () => {
 });
 
 test("probable invitations do not become confirmed leads", () => {
-  const linkedin = records.filter((record) => record.platform === "linkedin" && record.snapshots.length > 0);
+  const linkedin = records.filter((record) => record.platform === "linkedin" && record.comparable !== false && record.snapshots.length > 0);
   const result = scoreRealContent(linkedin[0], linkedin, signals);
   assert.equal(linkedin[0].snapshots.at(-1)?.qualifiedLeads, 0);
   assert.ok(result.breakdown.commercialSignal > 0);
