@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const roots = ["packages", "apps/api/src", "apps/worker/src"];
+const roots = ["packages", "apps/api/src", "apps/agent-dashboard/src", "apps/worker/src"];
 const files: string[] = [];
 
 function walk(dir: string) {

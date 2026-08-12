@@ -14,6 +14,12 @@ import type {
 import { loadConfig, type RuntimeConfig } from "../../config/src/env.ts";
 import { analyzePerformance } from "../../analytics/src/performance.ts";
 import { confidenceFromSample, latestSnapshot, rankRealContent } from "../../analytics/src/business-content.ts";
+import {
+  analyzePublicationTiming,
+  chooseTimingTestStrategy,
+  type PublicationTimingAnalysis,
+  type TimingTestStrategy
+} from "../../analytics/src/publication-timing.ts";
 import { generateFiveIdeas, selectBestIdeas } from "../../strategy/src/ideation.ts";
 import { resolveTemporalContext, type TemporalDecisionContext } from "../../strategy/src/editorial-calendar.ts";
 import { generateContentForIdea } from "../../content/src/generator.ts";
@@ -54,6 +60,10 @@ export type ClientContentRecommendation = {
   hook: string;
   postCopy: string;
   bestPublishTime: string;
+  publishTimeLabel: "Hora recomanada actual" | "Millor hora per publicar";
+  timing_confidence: PublicationTimingAnalysis["timing_confidence"];
+  timing_reason: string;
+  timing_strategy: TimingTestStrategy;
   metricsToTrack: string[];
   publicationStatus: "pending_publish" | "published" | "metrics_24h" | "metrics_72h" | "validated";
   productionBrief: string;
@@ -105,6 +115,8 @@ export type ClientMonthlyReport = {
     justification: string;
     comparablePosts: number;
     temporalContext?: string;
+    timing_confidence: PublicationTimingAnalysis["timing_confidence"];
+    timing_reason: string;
   };
   realIntelligence: {
     confidence: {
@@ -186,6 +198,7 @@ export type ClientMonthlyReport = {
       pendingContentIds: string[];
       snapshotInventory: Array<{ contentId: string; count: number; latestLabel: string }>;
     };
+    timing: PublicationTimingAnalysis;
   };
   weeklyValidation: {
     period: string;
@@ -607,7 +620,8 @@ function buildRealIntelligence(
         count: record.snapshots.length,
         latestLabel: record.snapshots.at(-1)?.snapshotLabel || record.snapshots.at(-1)?.period || "pending"
       }))
-    }
+    },
+    timing: analyzePublicationTiming(records)
   };
 }
 
@@ -704,8 +718,8 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
   ];
   const bestPublishTimes = [
     "Dimarts a les 08:40",
-    "Dimecres a les 09:10",
-    "Dijous a les 08:50"
+    "Dimarts a les 08:40",
+    "Dimarts a les 08:40"
   ];
   const postCopies = [
     "Agosto es una prueba de estrés para tus procesos.\n\nSi un proceso se frena porque alguien está de vacaciones, el problema no son las vacaciones.\n\nEs la dependencia que el resto del año queda escondida: aprobaciones que esperan, consultas sin propietario, tareas que nadie sabe continuar o seguimientos que dependen de la memoria.\n\nNo se trata de automatizar cada parte. Primero hacen falta responsables claros, un traspaso mínimo de información, documentación accesible y alertas donde exista un riesgo real.\n\nDespués, automatiza solo aquello que elimine una dependencia concreta.\n\n¿Qué proceso se vuelve más lento en tu empresa cuando llega agosto?",
@@ -729,6 +743,10 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
   ];
   const nextIdeas = flow.selectedIdeas.slice(0, 3);
   const nextContents = nextIdeas.map(generateContentForIdea);
+  const latestPublishedLinkedIn = mergedRealContent
+    .filter((record) => record.platform === "linkedin" && record.publishedAt)
+    .sort((a, b) => a.publishedAt!.localeCompare(b.publishedAt!))
+    .at(-1);
   const recommendations = nextIdeas.map((idea, index): ClientContentRecommendation => {
     const content = nextContents[index];
     const detailIndex = {
@@ -738,6 +756,16 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     }[idea.id] ?? index;
     const reel = content?.adaptations.find((item) => item.channel === "reels");
     const visual = content?.adaptations.find((item) => item.channel === "visual");
+    const introducesMajorEditorialVariable =
+      idea.temporalBonus > 0 || idea.editorialFamily !== latestPublishedLinkedIn?.editorialFamily || detailIndex !== 0;
+    const timingStrategy = chooseTimingTestStrategy(
+      realIntelligence.timing.timing_confidence,
+      introducesMajorEditorialVariable
+    );
+    const timingReason =
+      timingStrategy === "maintain_time"
+        ? `${realIntelligence.timing.timing_reason} Aquesta publicació introdueix la temporalitat com a variable editorial; mantenim les 08:40 per aïllar l'efecte del contingut.`
+        : `${realIntelligence.timing.timing_reason} Aquesta opció pot servir com a prova controlada d'una franja nova si es mantenen estables el tema i el format.`;
     return {
       title: idea.title,
       format: detailIndex === 0 ? "linkedin-post" : detailIndex === 1 ? "linkedin-carousel" : "linkedin-document",
@@ -753,6 +781,10 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       hook: idea.pain,
       postCopy: postCopies[detailIndex] || postCopies[0],
       bestPublishTime: bestPublishTimes[detailIndex] || bestPublishTimes[0],
+      publishTimeLabel: realIntelligence.timing.can_claim_best_time ? "Millor hora per publicar" : "Hora recomanada actual",
+      timing_confidence: realIntelligence.timing.timing_confidence,
+      timing_reason: timingReason,
+      timing_strategy: timingStrategy,
       metricsToTrack,
       publicationStatus: "pending_publish",
       productionBrief: reel?.content || visual?.content || idea.mainMessage,
@@ -924,7 +956,9 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       channels: ["LinkedIn", "Meta"],
       justification: recommendations[0]?.whyRecommended || "La prioritat es calcularà amb varietat, negoci i temporalitat.",
       comparablePosts: realIntelligence.confidence.comparablePosts,
-      temporalContext: recommendations[0]?.editorialVariety.temporalBonus > 0 ? flow.temporalContext.badge : undefined
+      temporalContext: recommendations[0]?.editorialVariety.temporalBonus > 0 ? flow.temporalContext.badge : undefined,
+      timing_confidence: realIntelligence.timing.timing_confidence,
+      timing_reason: recommendations[0]?.timing_reason || realIntelligence.timing.timing_reason
     },
     realIntelligence,
     weeklyValidation: {

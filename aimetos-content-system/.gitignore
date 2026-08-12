@@ -27,6 +27,7 @@ test-results/
 # Runtime exports
 data/exports/*
 !data/exports/.gitkeep
+data/runtime/
 
 # n8n and local state
 .n8n/

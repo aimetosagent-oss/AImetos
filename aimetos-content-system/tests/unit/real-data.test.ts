@@ -44,3 +44,12 @@ test("probable invitations are not counted as leads", () => {
   assert.equal(probableInvites, 2);
   assert.equal(leads, 0);
 });
+
+test("known LinkedIn publication times include normalized timing metadata", () => {
+  const timedLinkedIn = records.filter((record) => record.platform === "linkedin" && record.id !== "LI-00");
+  assert.ok(timedLinkedIn.every((record) => record.published_weekday));
+  assert.ok(timedLinkedIn.every((record) => typeof record.published_hour === "number"));
+  assert.ok(timedLinkedIn.every((record) => typeof record.published_minute === "number"));
+  assert.ok(timedLinkedIn.every((record) => record.time_slot));
+  assert.equal(records.find((record) => record.id === "LI-04")?.time_slot, "early_morning");
+});

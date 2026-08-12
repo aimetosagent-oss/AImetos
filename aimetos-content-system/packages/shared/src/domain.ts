@@ -125,6 +125,20 @@ export type DataSourceType =
   | "dashboard_derived"
   | "mock"
   | "pending";
+
+export type PublicationTimeSlot = "early_morning" | "morning" | "midday" | "afternoon" | "evening";
+
+export type PublishedWeekday =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday"
+  | "unknown";
+
+export type TimingConfidence = "insufficient_data" | "early_signal" | "developing_pattern" | "validated_pattern";
 export type SnapshotPeriod = "24h" | "48h" | "72h" | "7d" | "30d" | "latest";
 export type SnapshotLabel = "~24h" | "~48h" | "~72h" | "~7d" | "latest_available";
 export type ConfidenceLevel =
@@ -190,6 +204,10 @@ export type RealContentRecord = {
   publishedAtManual?: string;
   publishedAtExport?: string;
   publishedAtConflict?: boolean;
+  published_weekday?: PublishedWeekday;
+  published_hour?: number;
+  published_minute?: number;
+  time_slot?: PublicationTimeSlot;
   dataNote?: string;
   url?: string;
   metricsStatus?: "available" | "pending";

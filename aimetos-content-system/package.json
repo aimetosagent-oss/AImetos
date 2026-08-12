@@ -15,6 +15,7 @@
   },
   "scripts": {
     "dev": "node apps/api/src/server.ts",
+    "dev:agents": "node apps/agent-dashboard/src/server.ts",
     "build": "node scripts/build.ts",
     "lint": "node scripts/lint.ts",
     "format": "node scripts/format-check.ts",

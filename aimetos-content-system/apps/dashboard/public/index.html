@@ -18,7 +18,6 @@
       <div class="topbar-actions">
         <nav class="tabs" aria-label="Perfil">
           <button class="tab-button active" data-tab="client" type="button">Client</button>
-          <button class="tab-button" data-tab="agents" type="button">Activitat dels agents</button>
           <button class="tab-button" data-tab="admin" type="button">Administrador tècnic</button>
         </nav>
         <button id="openContentDirector" class="secondary-button" type="button">Director de contingut</button>
@@ -217,61 +216,36 @@
         </section>
       </section>
 
-      <section id="agentsPanel" class="tab-panel" aria-label="Activitat dels agents">
-        <section class="agent-overview">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Control operatiu</p>
-              <h1>Què ha passat amb els agents</h1>
-            </div>
-            <span id="agentActivityUpdated">Carregant activitat...</span>
-          </div>
-          <div id="agentSummary" class="agent-summary"></div>
-        </section>
-
-        <section class="agent-layout">
-          <article class="focus-panel">
-            <div class="section-heading">
-              <h2>Important ara</h2>
-              <span>Errors, avisos i decisions</span>
-            </div>
-            <div id="agentImportant" class="agent-feed"></div>
-          </article>
-
-          <article class="focus-panel">
-            <div class="section-heading">
-              <h2>Activitat recent</h2>
-              <span>Últims esdeveniments</span>
-            </div>
-            <div id="agentRecent" class="agent-feed"></div>
-          </article>
-        </section>
-      </section>
     </main>
 
     <div id="chatBackdrop" class="chat-backdrop" hidden></div>
     <aside id="contentDirector" class="chat-drawer" aria-labelledby="contentDirectorTitle" aria-hidden="true">
       <div class="chat-header">
         <div>
-          <span>Assistent especialitzat</span>
           <h2 id="contentDirectorTitle">Director de contingut</h2>
+          <span>Estratègia, dades i decisions d’AImetos</span>
         </div>
         <button id="closeContentDirector" class="icon-button" type="button" aria-label="Tancar Director de contingut" title="Tancar">×</button>
       </div>
-      <div id="chatMessages" class="chat-messages" aria-live="polite">
-        <article class="chat-message assistant">Puc ajudar-te a interpretar la recomanació, les dades, la temporalitat, el funnel, els canals o el blog.</article>
+      <div class="chat-conversation-tools">
+        <label for="chatConversationSelect">Conversa</label>
+        <select id="chatConversationSelect" aria-label="Conversa actual"></select>
+        <button id="newChatConversation" type="button">Nova</button>
+        <button id="deleteChatConversation" class="secondary-button" type="button">Eliminar</button>
       </div>
-      <div class="chat-suggestions" aria-label="Consultes suggerides">
-        <button type="button" data-chat-question="Per què recomanes aquesta idea?">Per què aquesta idea?</button>
-        <button type="button" data-chat-question="Quins resultats comercials tenim?">Resultats comercials</button>
-        <button type="button" data-chat-question="Quines dades estan pendents o en conflicte?">Qualitat de dades</button>
+      <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
+      <div id="chatSuggestions" class="chat-suggestions" aria-label="Consultes suggerides">
+        <button type="button" data-chat-question="Què publicaries ara?">Què publicaries ara?</button>
+        <button type="button" data-chat-question="Compara els últims posts.">Compara els últims posts</button>
+        <button type="button" data-chat-question="Què estem aprenent?">Què estem aprenent?</button>
+        <button type="button" data-chat-question="Hi ha algun patró que encara no estic veient?">Hi ha algun patró ocult?</button>
       </div>
       <form id="contentDirectorForm" class="chat-form">
         <label for="contentDirectorInput">Pregunta editorial</label>
         <textarea id="contentDirectorInput" maxlength="2000" placeholder="Pregunta sobre idees, mètriques, CTA, temporalitat..."></textarea>
         <button type="submit">Enviar</button>
       </form>
-      <p class="chat-mode">Mode mock · sense crides externes</p>
+      <p id="chatMode" class="chat-mode">Dades del dashboard disponibles · Mode local</p>
     </aside>
 
     <template id="topContentTemplate">

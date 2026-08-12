@@ -1,33 +1,154 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createChatProvider, loadContentDirectorInstructions, type ContentDirectorContext } from "../../packages/core/src/content-director.ts";
+import { readFileSync } from "node:fs";
+import type { RealContentRecord } from "../../packages/shared/src/domain.ts";
+import { buildClientMonthlyReport } from "../../packages/core/src/pipeline.ts";
+import {
+  buildContentDirectorContext,
+  createChatProvider,
+  loadContentDirectorInstructions,
+  replySafely,
+  type ChatProvider
+} from "../../packages/core/src/content-director.ts";
 
-const context: ContentDirectorContext = {
-  recommendedIdea: "Agosto es una prueba de estrés para tus procesos.",
-  recommendationReason: "Varietat editorial i context temporal.",
-  confidence: "Patró en desenvolupament",
-  comparablePosts: 5,
-  temporalContext: "Context temporal: Vacances d'agost",
-  executiveReading: ["ROI lidera abast.", "El model híbrid genera conversa."],
-  commercialSignals: { leads: 0, meetings: 0, probableAttributedConnections: 2 },
-  dataConflicts: [{ contentId: "LI-01", note: "Data discrepant." }],
-  pendingContentIds: ["LI-06", "LI-07", "FB-BUSINESS-01"],
-  snapshotInventory: [{ contentId: "LI-01", count: 3, latestLabel: "latest_available" }],
-  marketSignals: ["Saturació d'agents genèrics"],
-  editorialMemory: ["Integracions i dades disperses"],
-  candidateIdeas: [{ title: "Agosto es una prueba de estrés para tus procesos.", family: "processes_operations", recommended: true }]
-};
+const report = await buildClientMonthlyReport();
+const records = JSON.parse(
+  readFileSync(new URL("../../data/fixtures/real-content.json", import.meta.url), "utf8")
+) as RealContentRecord[];
 
-test("mock content director stays grounded in dashboard context", async () => {
-  const provider = createChatProvider("mock");
-  const reply = await provider.reply([{ role: "user", content: "Quins resultats comercials tenim?" }], context);
-  assert.equal(provider.name, "mock");
-  assert.match(reply, /0 leads/);
-  assert.match(reply, /no compten com a leads/);
+function contextFor(query: string, history = []) {
+  return buildContentDirectorContext({ query, history, report, records, now: new Date("2026-08-12T09:00:00+02:00") });
+}
+
+test("context for tomorrow selects recommendation, editorial memory and temporality", () => {
+  const context = contextFor("Què publicaries demà i per què?");
+  assert.ok(context.selectedSections.includes("recommendation"));
+  assert.ok(context.selectedSections.includes("editorial_memory"));
+  assert.ok(context.selectedSections.includes("temporal"));
+  assert.equal(context.recommendation?.family, "processes_operations");
+  assert.equal(context.languages.content, "es");
+  assert.equal(context.temporal?.date, "2026-08-12");
 });
 
-test("OpenAI provider is prepared but performs no external call", async () => {
+test("comparison context only carries recent comparable content sections", () => {
+  const context = contextFor("Compara els últims posts.");
+  assert.ok(context.selectedSections.includes("performance"));
+  assert.equal(context.performance?.posts.length, 4);
+  assert.equal(context.commercial, undefined);
+  assert.equal(context.channels, undefined);
+});
+
+test("snapshot query selects the requested publication and all captures", () => {
+  const context = contextFor("Com ha evolucionat LI-01 entre 24h i el resultat final?");
+  assert.ok(context.selectedSections.includes("snapshots"));
+  assert.deepEqual(context.performance?.posts.map((post) => post.id), ["LI-01"]);
+  assert.equal(context.performance?.posts[0]?.snapshots.length, 3);
+});
+
+test("multi-turn context resolves a follow-up against the prior comparison", () => {
+  const context = contextFor("Quin repetiríes?", [
+    { role: "user", content: "Compara LI-01 i LI-03." },
+    { role: "assistant", content: "LI-01 lidera abast i LI-03 conversa." }
+  ]);
+  assert.ok(context.selectedSections.includes("performance"));
+  assert.ok(context.selectedSections.includes("recommendation"));
+  assert.deepEqual(context.performance?.posts.map((post) => post.id), ["LI-01", "LI-03"]);
+});
+
+test("mock follow-up chooses from the posts compared in the previous turn", async () => {
+  const history = [
+    { role: "user" as const, content: "Compara LI-01 i LI-03 a 24h." },
+    { role: "assistant" as const, content: "LI-01 lidera abast i LI-03 conversa." }
+  ];
+  const context = contextFor("Quin repetiríes?", history);
+  const provider = createChatProvider("mock");
+  const reply = await provider.reply([...history, { role: "user", content: context.query }], context);
+  assert.match(reply, /em quedo amb LI-03/);
+  assert.match(reply, /no el text literal/);
+});
+
+test("mock provider compares equivalent 24h snapshots and stays in scope", async () => {
+  const provider = createChatProvider("mock");
+  const context = contextFor("Compara LI-01 i LI-03 a 24h.");
+  const reply = await provider.reply([{ role: "user", content: context.query }], context);
+  assert.match(reply, /LI-01 lidera visibilitat/);
+  assert.match(reply, /24 h/);
+  assert.match(reply, /senyal inicial/);
+});
+
+test("out-of-scope questions are declined", async () => {
+  const provider = createChatProvider("mock");
+  const context = contextFor("Quin temps farà demà?");
+  const reply = await provider.reply([{ role: "user", content: context.query }], context);
+  assert.equal(context.scopeAllowed, false);
+  assert.match(reply, /especialitzat/);
+});
+
+test("public content is generated in Spanish while explanation remains Catalan", async () => {
+  const provider = createChatProvider("mock");
+  const context = contextFor("Genera el text final per LinkedIn.");
+  const reply = await provider.reply([{ role: "user", content: context.query }], context);
+  assert.match(reply, /Text final per a LinkedIn/);
+  assert.match(reply, /Agosto es una prueba/);
+  assert.equal(context.languages.ui, "ca");
+  assert.equal(context.languages.content, "es");
+});
+
+test("a funnel question receives the requested post instead of generic dashboard data", async () => {
+  const provider = createChatProvider("mock");
+  const context = contextFor("LI-03 és TOFU, MOFU o BOFU?");
+  const reply = await provider.reply([{ role: "user", content: context.query }], context);
+  assert.match(reply, /LI-03/);
+  assert.match(reply, /TOFU/);
+});
+
+test("OpenAI without API key returns a friendly credential state", async () => {
   const provider = createChatProvider("openai");
-  assert.match(loadContentDirectorInstructions(), /No inventis mètriques/);
-  await assert.rejects(() => provider.reply([{ role: "user", content: "Hola" }], context), /desactivat/);
+  const result = await replySafely(provider, [{ role: "user", content: "Què publico?" }], contextFor("Què publico?"));
+  assert.equal(result.providerFailed, true);
+  assert.equal(result.errorCode, "credential_missing");
+  assert.match(result.reply, /Falta configurar la credencial/);
+});
+
+test("an empty OpenAI response is handled without breaking the dashboard", async () => {
+  const provider = createChatProvider("openai", {
+    apiKey: "test-only-key",
+    fetchImpl: async () => new Response(JSON.stringify({ output: [] }), { status: 200 })
+  });
+  const result = await replySafely(provider, [{ role: "user", content: "Què publico?" }], contextFor("Què publico?"));
+  assert.equal(result.providerFailed, true);
+  assert.equal(result.errorCode, "empty_response");
+  assert.match(result.reply, /cap resposta/);
+});
+
+test("provider failures never expose raw errors", async () => {
+  const failingProvider: ChatProvider = {
+    name: "mock",
+    async reply() {
+      throw new Error("private stack and secret details");
+    }
+  };
+  const result = await replySafely(
+    failingProvider,
+    [{ role: "user", content: "Compara posts" }],
+    contextFor("Compara posts")
+  );
+  assert.equal(result.providerFailed, true);
+  assert.doesNotMatch(result.reply, /private stack|secret details/);
+  assert.match(result.reply, /dashboard continua funcionant/);
+});
+
+test("the specialized prompt is the single complete source of truth", () => {
+  const instructions = loadContentDirectorInstructions();
+  assert.match(instructions, /Lean\/Toyota/);
+  assert.match(instructions, /No inventis mètriques/);
+  assert.match(instructions, /TOFU/);
+  assert.match(instructions, /temporalitat/);
+});
+
+test("frontend does not contain or request the OpenAI API key", () => {
+  const frontend = ["index.html", "app.js"].map((file) =>
+    readFileSync(new URL(`../../apps/dashboard/public/${file}`, import.meta.url), "utf8")
+  ).join("\n");
+  assert.doesNotMatch(frontend, /OPENAI_API_KEY|api\.openai\.com|authorization.*Bearer/i);
 });

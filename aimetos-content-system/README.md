@@ -13,7 +13,13 @@ pnpm run dev
 
 The local API serves the dashboard and the mock endpoints at [http://localhost:4317](http://localhost:4317).
 
-The dashboard also includes an **Activitat dels agents** view backed by normalized mock events. See `docs/agent-activity.md` for the ingestion contract and production boundary.
+The separate agent operations dashboard is documented in `docs/agent-activity.md` and runs independently from the social content dashboard.
+
+## Director de contingut
+
+The content dashboard includes a closed-by-default conversation drawer. It builds selective context from the real dashboard report, keeps up to 30 local conversations in the ignored `data/runtime` directory and runs without credentials in `CHAT_PROVIDER=mock` mode.
+
+To enable the server-side OpenAI provider, set `CHAT_PROVIDER=openai`, `OPENAI_API_KEY` and optionally `OPENAI_MODEL`. The browser never receives the API key. `prompts/content-director.md` is the single source of behavioral instructions for both providers.
 
 ## Main flow
 

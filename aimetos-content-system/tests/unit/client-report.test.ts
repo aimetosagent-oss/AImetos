@@ -10,6 +10,11 @@ test("client report keeps the simplified editorial decision contract", async () 
   assert.equal(report.recommendations[0]?.editorialFamily, "processes_operations");
   assert.match(report.decision.nextAction, /Agosto es una prueba de estrés/);
   assert.equal(report.decision.temporalContext, "Context temporal: Vacances d'agost");
+  assert.equal(report.decision.timing_confidence, "insufficient_data");
+  assert.equal(report.recommendations[0]?.publishTimeLabel, "Hora recomanada actual");
+  assert.equal(report.recommendations[0]?.bestPublishTime, "Dimarts a les 08:40");
+  assert.equal(report.recommendations[0]?.timing_strategy, "maintain_time");
+  assert.match(report.recommendations[0]?.timing_reason || "", /temporalitat/);
   assert.ok(report.recommendations.every((item) => item.postCopy.includes("¿") || item.postCopy.includes("Una ")));
 });
 

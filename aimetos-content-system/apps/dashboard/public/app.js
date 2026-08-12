@@ -1,4 +1,5 @@
 const formatter = new Intl.NumberFormat("ca-ES");
+const chatState = { conversationId: null, initialized: false };
 
 function byId(id) {
   return document.getElementById(id);
@@ -215,10 +216,20 @@ function recommendationDetail(item) {
   const articleAction = item.expandToArticle
     ? '<button class="article-action" type="button">Ampliar a article</button><span class="article-action-note" hidden>Aquesta ampliació només es prepararà després d\'aprovar-la.</span>'
     : "";
+  const timingLabels = {
+    insufficient_data: "Dades insuficients",
+    early_signal: "Senyal inicial",
+    developing_pattern: "Patró en desenvolupament",
+    validated_pattern: "Patró validat"
+  };
+  const timingDetails =
+    '<details class="timing-details"><summary>Confiança horària: ' +
+    (timingLabels[item.timing_confidence] || item.timing_confidence) +
+    '</summary><p>' + item.timing_reason + "</p></details>";
   return (
     '<div class="brief"><strong>Text del post</strong><p>' + item.postCopy + "</p></div>" +
-    '<div class="brief-grid"><div class="brief"><strong>Millor moment per publicar</strong><p>' + item.bestPublishTime +
-    '</p></div><div class="brief"><strong>Estat</strong><p>' + statusLabel(item.publicationStatus) + "</p></div></div>" +
+    '<div class="brief-grid"><div class="brief"><strong>' + item.publishTimeLabel + '</strong><p>' + item.bestPublishTime +
+    '</p>' + timingDetails + '</div><div class="brief"><strong>Estat</strong><p>' + statusLabel(item.publicationStatus) + "</p></div></div>" +
     '<div class="brief"><strong>Imatge recomanada</strong><p>' + item.visualBrief + "</p>" + imageLink + "</div>" +
     '<div class="brief"><strong>Prompt visual premium</strong><p>' + item.imagePrompt + "</p></div>" +
     '<div class="funnel-grid"><div><span>Client objectiu</span><strong>' + item.targetCustomer +
@@ -399,15 +410,98 @@ function appendChatMessage(role, content) {
   const node = document.createElement("article");
   node.className = `chat-message ${role}`;
   node.textContent = content;
-  byId("chatMessages").appendChild(node);
-  node.scrollIntoView({ block: "nearest" });
+  const target = byId("chatMessages");
+  target.appendChild(node);
+  target.scrollTop = target.scrollHeight;
 }
 
-function setChatOpen(open) {
+function renderChatConversation(conversation) {
+  const target = byId("chatMessages");
+  target.innerHTML = "";
+  const messages = conversation?.messages || [];
+  if (messages.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "chat-empty";
+    empty.textContent = "Pregunta'm sobre decisions editorials, rendiment, audiència, temporalitat o contingut per publicar.";
+    target.appendChild(empty);
+  } else {
+    for (const message of messages) appendChatMessage(message.role, message.content);
+  }
+  byId("chatSuggestions").hidden = messages.length > 0;
+}
+
+async function loadChatConversation(id) {
+  const response = await fetch(`/api/content-director/conversations/${encodeURIComponent(id)}`);
+  if (!response.ok) throw new Error("No s'ha pogut carregar la conversa.");
+  const conversation = await response.json();
+  chatState.conversationId = conversation.id;
+  byId("chatConversationSelect").value = conversation.id;
+  renderChatConversation(conversation);
+  return conversation;
+}
+
+async function createChatConversation() {
+  const response = await fetch("/api/content-director/conversations", { method: "POST" });
+  if (!response.ok) throw new Error("No s'ha pogut crear la conversa.");
+  const conversation = await response.json();
+  await loadChatConversations(conversation.id);
+  return conversation;
+}
+
+async function loadChatConversations(preferredId) {
+  const response = await fetch("/api/content-director/conversations");
+  if (!response.ok) throw new Error("No s'ha pogut carregar l'historial.");
+  let conversations = await response.json();
+  if (conversations.length === 0) {
+    const createdResponse = await fetch("/api/content-director/conversations", { method: "POST" });
+    if (!createdResponse.ok) throw new Error("No s'ha pogut iniciar el xat.");
+    const created = await createdResponse.json();
+    conversations = [created];
+    preferredId = created.id;
+  }
+  const select = byId("chatConversationSelect");
+  select.innerHTML = "";
+  for (const conversation of conversations) {
+    const option = document.createElement("option");
+    option.value = conversation.id;
+    option.textContent = conversation.title;
+    select.appendChild(option);
+  }
+  const selectedId = preferredId || chatState.conversationId || conversations[0].id;
+  await loadChatConversation(conversations.some((item) => item.id === selectedId) ? selectedId : conversations[0].id);
+}
+
+async function loadChatStatus() {
+  const response = await fetch("/api/config");
+  if (!response.ok) return;
+  const config = await response.json();
+  const labels = {
+    local: "Dades del dashboard disponibles · Mode local",
+    connected: "Dades del dashboard disponibles · OpenAI connectat",
+    credential_missing: "Xat preparat · Falta configurar la credencial d’OpenAI"
+  };
+  setText("chatMode", config.chat.enabled ? labels[config.chat.status] || "Director disponible" : "Director desactivat");
+}
+
+async function initializeContentDirector() {
+  if (chatState.initialized) return;
+  await Promise.all([loadChatConversations(), loadChatStatus()]);
+  chatState.initialized = true;
+}
+
+async function setChatOpen(open) {
   byId("contentDirector").classList.toggle("open", open);
   byId("contentDirector").setAttribute("aria-hidden", String(!open));
   byId("chatBackdrop").hidden = !open;
-  if (open) byId("contentDirectorInput").focus();
+  if (open) {
+    try {
+      await initializeContentDirector();
+    } catch (error) {
+      byId("chatMessages").innerHTML = "";
+      appendChatMessage("assistant error", error.message);
+    }
+    byId("contentDirectorInput").focus();
+  }
 }
 
 async function askContentDirector(question) {
@@ -421,11 +515,13 @@ async function askContentDirector(question) {
     const response = await fetch("/api/content-director", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ message: text })
+      body: JSON.stringify({ message: text, conversationId: chatState.conversationId })
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "No s'ha pogut obtenir una resposta");
-    appendChatMessage("assistant", result.reply);
+    chatState.conversationId = result.conversation.id;
+    renderChatConversation(result.conversation);
+    await loadChatConversations(result.conversation.id);
   } catch (error) {
     appendChatMessage("assistant error", error.message);
   } finally {
@@ -435,6 +531,7 @@ async function askContentDirector(question) {
 }
 
 function setupContentDirector() {
+  byId("chatSuggestions").hidden = false;
   byId("openContentDirector").addEventListener("click", () => setChatOpen(true));
   byId("closeContentDirector").addEventListener("click", () => setChatOpen(false));
   byId("chatBackdrop").addEventListener("click", () => setChatOpen(false));
@@ -448,6 +545,20 @@ function setupContentDirector() {
     input.value = "";
     await askContentDirector(question);
   });
+  byId("chatConversationSelect").addEventListener("change", (event) => loadChatConversation(event.target.value));
+  byId("newChatConversation").addEventListener("click", createChatConversation);
+  byId("deleteChatConversation").addEventListener("click", async () => {
+    if (!chatState.conversationId || !window.confirm("Vols eliminar aquesta conversa?")) return;
+    const response = await fetch(`/api/content-director/conversations/${encodeURIComponent(chatState.conversationId)}`, {
+      method: "DELETE"
+    });
+    if (!response.ok) {
+      appendChatMessage("assistant error", "No s'ha pogut eliminar la conversa.");
+      return;
+    }
+    chatState.conversationId = null;
+    await loadChatConversations();
+  });
 }
 
 function setupTabs() {
@@ -457,95 +568,7 @@ function setupTabs() {
       document.querySelectorAll(".tab-button").forEach((item) => item.classList.toggle("active", item === button));
       byId("clientPanel").classList.toggle("active", tab === "client");
       byId("adminPanel").classList.toggle("active", tab === "admin");
-      byId("agentsPanel").classList.toggle("active", tab === "agents");
     });
-  }
-}
-
-function agentStatusLabel(status) {
-  return {
-    started: "En curs",
-    succeeded: "Correcte",
-    failed: "Error",
-    warning: "Avís",
-    waiting: "En espera"
-  }[status] || status;
-}
-
-function renderAgentEvent(event) {
-  const node = card(`agent-event severity-${event.severity}`);
-  const header = document.createElement("div");
-  header.className = "agent-event-header";
-  const identity = document.createElement("div");
-  const agent = document.createElement("strong");
-  agent.textContent = event.agentName;
-  const workflow = document.createElement("span");
-  workflow.textContent = event.workflowName;
-  identity.append(agent, workflow);
-  const badge = document.createElement("span");
-  badge.className = `agent-status status-${event.status}`;
-  badge.textContent = agentStatusLabel(event.status);
-  header.append(identity, badge);
-
-  const title = document.createElement("h3");
-  title.textContent = event.title;
-  const summary = document.createElement("p");
-  summary.textContent = event.summary;
-  const footer = document.createElement("div");
-  footer.className = "agent-event-footer";
-  const time = document.createElement("time");
-  time.dateTime = event.occurredAt;
-  time.textContent = new Intl.DateTimeFormat("ca-ES", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.occurredAt));
-  const meta = document.createElement("span");
-  meta.textContent = event.retryCount > 0 ? `${event.retryCount} reintent(s)` : event.correlationId;
-  footer.append(time, meta);
-  if (event.actionUrl) {
-    const link = document.createElement("a");
-    link.href = event.actionUrl;
-    link.target = "_blank";
-    link.rel = "noreferrer";
-    link.textContent = "Obrir execució";
-    footer.appendChild(link);
-  }
-  node.append(header, title, summary, footer);
-  return node;
-}
-
-function renderAgentActivity(activity) {
-  setText("agentActivityUpdated", `Actualitzat ${new Intl.DateTimeFormat("ca-ES", { timeStyle: "short" }).format(new Date(activity.generatedAt))}`);
-  const summary = byId("agentSummary");
-  summary.innerHTML = "";
-  for (const [label, value, tone] of [
-    ["Agents", activity.summary.agents, "neutral"],
-    ["Execucions", activity.summary.executions, "neutral"],
-    ["Correctes", activity.summary.succeeded, "success"],
-    ["En curs", activity.summary.running, "info"],
-    ["Errors", activity.summary.failed, "danger"],
-    ["Requereixen atenció", activity.summary.attention, "warning"]
-  ]) {
-    const node = card(`agent-kpi tone-${tone}`);
-    const number = document.createElement("strong");
-    number.textContent = formatter.format(value);
-    const text = document.createElement("span");
-    text.textContent = label;
-    node.append(number, text);
-    summary.appendChild(node);
-  }
-
-  for (const [id, events, emptyText] of [
-    ["agentImportant", activity.important, "No hi ha avisos importants."],
-    ["agentRecent", activity.recent, "Encara no hi ha activitat registrada."]
-  ]) {
-    const target = byId(id);
-    target.innerHTML = "";
-    if (events.length === 0) {
-      const empty = document.createElement("p");
-      empty.className = "agent-empty";
-      empty.textContent = emptyText;
-      target.appendChild(empty);
-    } else {
-      for (const event of events) target.appendChild(renderAgentEvent(event));
-    }
   }
 }
 
@@ -588,17 +611,11 @@ async function loadReport() {
   button.disabled = true;
   button.textContent = "Actualitzant...";
   try {
-    const [response, linkedinResponse, activityResponse] = await Promise.all([
-      fetch("/api/client-report"),
-      fetch("/api/linkedin-start"),
-      fetch("/api/agent-activity")
-    ]);
+    const [response, linkedinResponse] = await Promise.all([fetch("/api/client-report"), fetch("/api/linkedin-start")]);
     if (!response.ok) throw new Error("No s'ha pogut carregar l'informe");
     if (!linkedinResponse.ok) throw new Error("No s'ha pogut carregar LinkedIn");
-    if (!activityResponse.ok) throw new Error("No s'ha pogut carregar l'activitat dels agents");
     render(await response.json());
     renderLinkedInStart(await linkedinResponse.json());
-    renderAgentActivity(await activityResponse.json());
   } finally {
     button.disabled = false;
     button.textContent = "Actualitzar informe";

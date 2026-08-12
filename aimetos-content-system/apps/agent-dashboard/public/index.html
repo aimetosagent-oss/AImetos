@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Centre intern d'operacions dels agents AImetos" />
+    <title>AImetos Agent Operations</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="AImetos Agent Operations">
+        <span class="brand-mark">AI</span>
+        <span><strong>AImetos</strong><small>Agent Operations</small></span>
+      </a>
+      <div class="top-actions">
+        <span class="environment"><i></i> Local · Mock</span>
+        <button id="refresh" type="button">Actualitzar</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">Centre de control intern</p>
+          <h1>Què està passant amb els agents?</h1>
+          <p class="subtitle">Execucions, incidències i decisions importants en un únic lloc. Aquest dashboard és independent del sistema de continguts de XXSS.</p>
+        </div>
+        <div class="freshness"><span>Última actualització</span><strong id="updatedAt">—</strong></div>
+      </section>
+
+      <section id="summary" class="summary-grid" aria-label="Resum operatiu"></section>
+
+      <section class="workspace">
+        <article class="panel attention-panel">
+          <header class="panel-header">
+            <div><p class="eyebrow">Prioritat</p><h2>Requereix atenció</h2></div>
+            <span id="attentionCount" class="count">0</span>
+          </header>
+          <div id="important" class="event-list"></div>
+        </article>
+
+        <article class="panel timeline-panel">
+          <header class="panel-header">
+            <div><p class="eyebrow">Cronologia</p><h2>Activitat recent</h2></div>
+            <div class="filters" role="group" aria-label="Filtrar activitat">
+              <button class="filter active" data-filter="all" type="button">Tot</button>
+              <button class="filter" data-filter="failed" type="button">Errors</button>
+              <button class="filter" data-filter="succeeded" type="button">Correctes</button>
+            </div>
+          </header>
+          <div id="recent" class="event-list timeline"></div>
+        </article>
+      </section>
+    </main>
+
+    <div id="errorBanner" class="error-banner" role="alert" hidden></div>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

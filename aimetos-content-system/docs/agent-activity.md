@@ -1,11 +1,13 @@
 # Agent activity
 
-The internal dashboard exposes a normalized operational timeline independently of n8n's own execution retention.
+The independent Agent Operations dashboard exposes a normalized operational timeline independently of the social-content dashboard and n8n's own execution retention.
+
+Run it with `pnpm run dev:agents` and open `http://localhost:4320`.
 
 ## Local endpoints
 
-- `GET /api/agent-activity`: summary, important events and recent activity.
-- `POST /api/agent-events`: ingest one normalized event. Reusing an event `id` is idempotent.
+- `GET /api/activity`: summary, important events and recent activity.
+- `POST /api/events`: ingest one normalized event. Reusing an event `id` is idempotent.
 
 In mock mode, events are stored in `data/fixtures/agent-events.json`. The production target is the `AgentEvent` PostgreSQL model introduced by migration `0002_agent_events`.
 

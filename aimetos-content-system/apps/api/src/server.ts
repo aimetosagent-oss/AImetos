@@ -4,8 +4,12 @@ import { extname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../../../packages/config/src/env.ts";
 import { buildClientMonthlyReport, runMockContentFlow, writeReport } from "../../../packages/core/src/pipeline.ts";
-import { createChatProvider } from "../../../packages/core/src/content-director.ts";
-import { buildAgentActivity, normalizeAgentEvent, validateAgentEvent } from "../../../packages/operations/src/agent-activity.ts";
+import {
+  buildContentDirectorContext,
+  createChatProvider,
+  replySafely
+} from "../../../packages/core/src/content-director.ts";
+import { ChatConversationStore } from "../../../packages/core/src/chat-store.ts";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 const dashboardDir = join(root, "apps", "dashboard", "public");
@@ -97,6 +101,7 @@ export function buildLinkedInStartData(content, manualEntries) {
 
 export function createAimetosServer() {
   const config = loadConfig();
+  const chatStore = new ChatConversationStore(join(root, "data", "runtime", "content-director-conversations.json"));
   return createServer(async (req, res) => {
     try {
       const url = new URL(req.url || "/", "http://localhost");
@@ -111,7 +116,16 @@ export function createAimetosServer() {
           mode: config.appMode,
           scenario: config.mockScenario,
           thresholds: config.thresholds,
-          chat: { enabled: config.chatEnabled, provider: config.chatProvider }
+          chat: {
+            enabled: config.chatEnabled,
+            provider: config.chatProvider,
+            status:
+              config.chatProvider === "mock"
+                ? "local"
+                : config.openAiApiKey
+                  ? "connected"
+                  : "credential_missing"
+          }
         });
       }
       if (url.pathname === "/api/run-mock-flow") {
@@ -131,6 +145,35 @@ export function createAimetosServer() {
       if (url.pathname === "/api/client-report") {
         return json(res, 200, await buildClientMonthlyReport());
       }
+      if (url.pathname === "/api/content-director/conversations" && req.method === "GET") {
+        return json(
+          res,
+          200,
+          chatStore.list().map(({ id, title, createdAt, updatedAt, messages }) => ({
+            id,
+            title,
+            createdAt,
+            updatedAt,
+            messageCount: messages.length
+          }))
+        );
+      }
+      if (url.pathname === "/api/content-director/conversations" && req.method === "POST") {
+        return json(res, 201, chatStore.create());
+      }
+      const conversationMatch = url.pathname.match(/^\/api\/content-director\/conversations\/([^/]+)$/);
+      if (conversationMatch && req.method === "GET") {
+        const conversation = chatStore.get(decodeURIComponent(conversationMatch[1]));
+        return conversation
+          ? json(res, 200, conversation)
+          : json(res, 404, { ok: false, error: "Conversa no trobada." });
+      }
+      if (conversationMatch && req.method === "DELETE") {
+        const deleted = chatStore.delete(decodeURIComponent(conversationMatch[1]));
+        return deleted
+          ? json(res, 200, { ok: true })
+          : json(res, 404, { ok: false, error: "Conversa no trobada." });
+      }
       if (url.pathname === "/api/content-director" && req.method === "POST") {
         if (!config.chatEnabled) return json(res, 503, { ok: false, error: "El Director de contingut està desactivat." });
         const input = await readJsonBody(req);
@@ -139,51 +182,27 @@ export function createAimetosServer() {
           return json(res, 400, { ok: false, error: "La consulta ha de tenir entre 2 i 2.000 caràcters." });
         }
         const report = await buildClientMonthlyReport();
-        const provider = createChatProvider(config.chatProvider);
-        const reply = await provider.reply(
-          [{ role: "user", content: question }],
-          {
-            recommendedIdea: report.decision.nextAction,
-            recommendationReason: report.decision.justification,
-            confidence: report.decision.confidenceLabel,
-            comparablePosts: report.decision.comparablePosts,
-            temporalContext: report.decision.temporalContext,
-            executiveReading: report.executiveReading,
-            commercialSignals: {
-              leads: report.realIntelligence.commercialSignals.leads,
-              meetings: report.realIntelligence.commercialSignals.meetings,
-              probableAttributedConnections: report.realIntelligence.commercialSignals.probableAttributedConnections
-            },
-            dataConflicts: report.realIntelligence.dataQuality.conflicts,
-            pendingContentIds: report.realIntelligence.dataQuality.pendingContentIds,
-            snapshotInventory: report.realIntelligence.dataQuality.snapshotInventory,
-            marketSignals: report.realIntelligence.marketSignals.map((signal) => signal.description),
-            editorialMemory: report.realIntelligence.editorialMemory.map((item) => item.topic),
-            candidateIdeas: report.recommendations.map((idea) => ({
-              title: idea.title,
-              family: idea.editorialFamily,
-              recommended: idea.recommended
-            }))
-          }
-        );
-        return json(res, 200, { ok: true, provider: provider.name, reply });
-      }
-      if (url.pathname === "/api/agent-activity" && req.method === "GET") {
-        const target = join(root, "data", "fixtures", "agent-events.json");
-        const events = JSON.parse(readFileSync(target, "utf8"));
-        return json(res, 200, buildAgentActivity(events));
-      }
-      if (url.pathname === "/api/agent-events" && req.method === "POST") {
-        const input = await readJsonBody(req);
-        const issues = validateAgentEvent(input);
-        if (issues.length > 0) return json(res, 400, { ok: false, error: "Esdeveniment invàlid", fields: issues });
-        const target = join(root, "data", "fixtures", "agent-events.json");
-        const events = JSON.parse(readFileSync(target, "utf8"));
-        const event = normalizeAgentEvent(input);
-        if (events.some((item) => item.id === event.id)) return json(res, 200, { ok: true, duplicate: true, event });
-        events.push(event);
-        writeFileSync(target, JSON.stringify(events, null, 2) + "\n", "utf8");
-        return json(res, 201, { ok: true, duplicate: false, event });
+        const records = JSON.parse(readFileSync(join(root, "data", "fixtures", "real-content.json"), "utf8"));
+        let conversation = input.conversationId ? chatStore.get(String(input.conversationId)) : undefined;
+        if (!conversation) conversation = chatStore.create();
+        const history = conversation.messages;
+        conversation = chatStore.append(conversation.id, "user", question);
+        const context = buildContentDirectorContext({ query: question, history, report, records });
+        const provider = createChatProvider(config.chatProvider, {
+          apiKey: config.openAiApiKey,
+          model: config.openAiModel,
+          timeoutMs: config.chatTimeoutMs
+        });
+        const result = await replySafely(provider, conversation.messages, context);
+        conversation = chatStore.append(conversation.id, "assistant", result.reply);
+        return json(res, 200, {
+          ok: !result.providerFailed,
+          provider: provider.name,
+          providerStatus: result.providerFailed ? result.errorCode : "ready",
+          reply: result.reply,
+          conversation,
+          contextSections: context.selectedSections
+        });
       }
       if (url.pathname === "/api/manual-metrics" && req.method === "GET") {
         const target = join(root, "data", "fixtures", "manual-metric-entries.json");

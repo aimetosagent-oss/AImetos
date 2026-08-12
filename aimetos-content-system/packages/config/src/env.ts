@@ -11,6 +11,9 @@ export type RuntimeConfig = {
   contentLanguage: Language;
   chatEnabled: boolean;
   chatProvider: "mock" | "openai";
+  openAiApiKey?: string;
+  openAiModel: string;
+  chatTimeoutMs: number;
   temporalWeights: {
     last30Days: number;
     last90Days: number;
@@ -74,6 +77,9 @@ export function loadConfig(): RuntimeConfig {
     contentLanguage: pick("CONTENT_LANGUAGE", languages, "es"),
     chatEnabled: booleanFromEnv("CHAT_ENABLED", true),
     chatProvider: pick("CHAT_PROVIDER", ["mock", "openai"], "mock"),
+    openAiApiKey: process.env.OPENAI_API_KEY || undefined,
+    openAiModel: process.env.OPENAI_MODEL || "gpt-5-mini",
+    chatTimeoutMs: numberFromEnv("CHAT_TIMEOUT_MS", 20000),
     temporalWeights: {
       last30Days: numberFromEnv("TEMPORAL_WEIGHT_30_DAYS", 0.6),
       last90Days: numberFromEnv("TEMPORAL_WEIGHT_90_DAYS", 0.3),
