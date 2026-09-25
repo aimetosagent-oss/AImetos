@@ -6,14 +6,14 @@ type Field = {
   id: string;
   label: string;
   name: string;
-  type: "TEXT" | "EMAIL" | "PHONE" | "TEXTAREA" | "NUMBER" | "SELECT" | "CHECKBOX" | "HIDDEN";
+  type: "TEXT" | "EMAIL" | "PHONE" | "TEXTAREA" | "NUMBER" | "SELECT" | "RADIO" | "MULTI_CHECKBOX" | "CHECKBOX" | "HIDDEN";
   required: boolean;
   placeholder: string | null;
   options: unknown;
   defaultValue: string | null;
 };
 
-export function PublicForm({ slug, fields, consentText }: { slug: string; fields: Field[]; consentText: string | null }) {
+export function PublicForm({ slug, fields, consentText, submitLabel }: { slug: string; fields: Field[]; consentText: string | null; submitLabel: string }) {
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -39,9 +39,13 @@ export function PublicForm({ slug, fields, consentText }: { slug: string; fields
     const formData = new FormData(form);
     const requestId = requestIdRef.current ?? window.crypto.randomUUID();
     requestIdRef.current = requestId;
-    const values: Record<string, string | boolean> = {};
+    const values: Record<string, string | boolean | string[]> = {};
     for (const field of fields) {
-      values[field.name] = field.type === "CHECKBOX" ? formData.get(field.name) === "on" : String(formData.get(field.name) ?? "");
+      values[field.name] = field.type === "CHECKBOX"
+        ? formData.get(field.name) === "on"
+        : field.type === "MULTI_CHECKBOX"
+          ? formData.getAll(field.name).map(String)
+          : String(formData.get(field.name) ?? "");
     }
     values._company_website = String(formData.get("_company_website") ?? "");
     const query = new URLSearchParams(window.location.search);
@@ -68,16 +72,16 @@ export function PublicForm({ slug, fields, consentText }: { slug: string; fields
       const result = (await response.json()) as { message?: string; redirectUrl?: string; errors?: Record<string, string> };
       if (!response.ok) {
         setErrors(result.errors ?? {});
-        throw new Error(result.message ?? "No s’ha pogut enviar el formulari");
+        throw new Error(result.message ?? "No se ha podido enviar el formulario");
       }
       form.reset();
       requestIdRef.current = window.crypto.randomUUID();
       setStatus("success");
-      setMessage(result.message ?? "Gràcies. Hem rebut la teva sol·licitud.");
+      setMessage(result.message ?? "Gracias. Hemos recibido tu solicitud.");
       if (result.redirectUrl) window.setTimeout(() => window.location.assign(result.redirectUrl!), 800);
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : "No s’ha pogut enviar el formulari");
+      setMessage(error instanceof Error ? error.message : "No se ha podido enviar el formulario");
     }
   }
 
@@ -85,7 +89,7 @@ export function PublicForm({ slug, fields, consentText }: { slug: string; fields
     return (
       <div className="public-success" role="status">
         <span aria-hidden="true">✓</span>
-        <h2>Sol·licitud rebuda</h2>
+        <h2>Solicitud recibida</h2>
         <p>{message}</p>
       </div>
     );
@@ -95,7 +99,7 @@ export function PublicForm({ slug, fields, consentText }: { slug: string; fields
     <form ref={formRef} className="public-form" onSubmit={submit} noValidate>
       <div className="honeypot" aria-hidden="true">
         <label>
-          No emplenis aquest camp
+          No rellenes este campo
           <input name="_company_website" tabIndex={-1} autoComplete="off" />
         </label>
       </div>
@@ -130,7 +134,7 @@ export function PublicForm({ slug, fields, consentText }: { slug: string; fields
         disabled={status === "sending"}
         aria-busy={status === "sending" || undefined}
       >
-        {status === "sending" ? "Enviant…" : "Enviar sol·licitud"}
+        {status === "sending" ? "Enviando…" : submitLabel}
       </button>
     </form>
   );
@@ -172,17 +176,47 @@ function FieldControl({ field, error, label }: { field: Field; error?: string; l
       </div>
     );
   }
+  if (field.type === "RADIO" || field.type === "MULTI_CHECKBOX") {
+    const options = Array.isArray(field.options) ? field.options.map(String) : [];
+    return (
+      <fieldset className="field-group" aria-describedby={error ? errorId : undefined}>
+        <legend>
+          {field.label} {field.required ? <b aria-label="obligatorio">*</b> : null}
+        </legend>
+        <div className="public-choice-list">
+          {options.map((option, index) => {
+            const optionId = `${inputId}-${index}`;
+            return (
+              <label className="checkbox-field" htmlFor={optionId} key={option}>
+                <input
+                  id={optionId}
+                  type={field.type === "RADIO" ? "radio" : "checkbox"}
+                  name={field.name}
+                  value={option}
+                  required={field.type === "RADIO" ? field.required : undefined}
+                  defaultChecked={field.defaultValue?.split("|").includes(option)}
+                  aria-invalid={error ? true : undefined}
+                />
+                <span>{option}</span>
+              </label>
+            );
+          })}
+        </div>
+        {error ? <small className="field-error" id={errorId}>{error}</small> : null}
+      </fieldset>
+    );
+  }
   return (
     <div className="field-group">
       <label htmlFor={inputId}>
-        {field.label} {field.required ? <b aria-label="obligatori">*</b> : null}
+        {field.label} {field.required ? <b aria-label="obligatorio">*</b> : null}
       </label>
       {field.type === "TEXTAREA" ? (
         <textarea rows={4} {...common} />
       ) : field.type === "SELECT" ? (
         <select {...common} defaultValue={field.defaultValue ?? ""}>
           <option value="" disabled>
-            Selecciona una opció
+            Selecciona una opción
           </option>
           {(Array.isArray(field.options) ? field.options : []).map((option) => (
             <option key={String(option)} value={String(option)}>

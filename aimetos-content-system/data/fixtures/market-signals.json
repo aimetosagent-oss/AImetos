@@ -42,5 +42,16 @@
     "strength": 4,
     "confidence": "early_signal",
     "editorialImplication": "Reforçar criteri, model híbrid i equilibri entre persona i sistema."
+  },
+  {
+    "id": "SIGNAL-05",
+    "signalType": "commercial_feedback",
+    "source": "Workflow real treballat amb un client",
+    "date": "2026-09-24",
+    "description": "Les ofertes laborals actives poden indicar creixement, urgència operativa o falta de capacitat. El sistema monitora fonts públiques, identifica l'empresa i prioritza la revisió humana.",
+    "affectedTopic": "senyals comercials des d'ofertes de feina",
+    "strength": 5,
+    "confidence": "developing_pattern",
+    "editorialImplication": "Explicar detecció de necessitat real i criteri comercial, evitant promeses de scraping de leads o agendes plenes."
   }
 ]

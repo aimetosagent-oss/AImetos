@@ -47,6 +47,7 @@ export async function createQuote(context: TenantContext, input: CreateQuoteInpu
         issueDate,
         prefix: settings.quotePrefix,
         padding: settings.quoteNumberLength,
+        timeZone: settings.timezone,
       });
       const quote = await tx.quote.create({
         data: {
@@ -200,7 +201,7 @@ export async function sendQuote(context: TenantContext, quoteId: string) {
     });
     if (snapshot.opportunityId) {
       const stage = await tx.pipelineStage.findFirst({
-        where: { organizationId: context.organizationId, pipelineId: snapshot.opportunityId ? (await tx.opportunity.findUnique({ where: { id: snapshot.opportunityId }, select: { pipelineId: true } }))?.pipelineId : undefined, name: { equals: "Proposta enviada", mode: "insensitive" } },
+        where: { organizationId: context.organizationId, pipelineId: snapshot.opportunityId ? (await tx.opportunity.findUnique({ where: { id: snapshot.opportunityId }, select: { pipelineId: true } }))?.pipelineId : undefined, name: { equals: "Presupuesto enviado", mode: "insensitive" } },
       });
       if (stage) await moveOpportunityInTransaction(tx, context, { opportunityId: snapshot.opportunityId, stageId: stage.id, reason: `Pressupost ${snapshot.number} enviat` });
     }
@@ -279,7 +280,7 @@ export async function decideQuote(token: string, decision: "accept" | "reject", 
     if (decision === "accept" && quote.opportunityId) {
       const opportunity = await tx.opportunity.findUnique({ where: { id: quote.opportunityId } });
       const won = opportunity
-        ? await tx.pipelineStage.findFirst({ where: { organizationId: quote.organizationId, pipelineId: opportunity.pipelineId, type: "WON" } })
+        ? await tx.pipelineStage.findFirst({ where: { organizationId: quote.organizationId, pipelineId: opportunity.pipelineId, name: { equals: "Ganado / pago anticipado", mode: "insensitive" } } })
         : null;
       if (won) await moveOpportunityInTransaction(tx, { organizationId: quote.organizationId, userId: quote.createdById, role: "MEMBER" }, { opportunityId: quote.opportunityId, stageId: won.id, reason: `Pressupost ${quote.number} acceptat` });
     }

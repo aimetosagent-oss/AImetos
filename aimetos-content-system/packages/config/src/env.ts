@@ -1,4 +1,9 @@
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { AppMode, MockScenario, Language } from "../../shared/src/domain.ts";
+
+const localEnvPath = fileURLToPath(new URL("../../../.env", import.meta.url));
+if (existsSync(localEnvPath)) process.loadEnvFile(localEnvPath);
 
 export type RuntimeConfig = {
   appName: string;
@@ -14,6 +19,19 @@ export type RuntimeConfig = {
   openAiApiKey?: string;
   openAiModel: string;
   chatTimeoutMs: number;
+  databaseUrl?: string;
+  linkedIn: {
+    clientId?: string;
+    clientSecret?: string;
+    redirectUri?: string;
+    apiVersion?: string;
+    syncEnabled: boolean;
+    tokenEncryptionKey?: string;
+    storage: "json" | "postgres";
+    fixtureMode: boolean;
+    maxCallsPerDay: number;
+    syncIntervalMs: number;
+  };
   temporalWeights: {
     last30Days: number;
     last90Days: number;
@@ -57,6 +75,24 @@ function booleanFromEnv(name: string, fallback = false): boolean {
   return raw.toLowerCase() === "true";
 }
 
+export type LinkedInApiVersionStatus = {
+  valid: boolean;
+  reason: "missing" | "invalid_format" | "older_than_minimum" | "obsolete" | "ok";
+};
+
+export function validateLinkedInApiVersion(value?: string, now = new Date()): LinkedInApiVersionStatus {
+  if (!value) return { valid: false, reason: "missing" };
+  if (!/^\d{6}$/.test(value)) return { valid: false, reason: "invalid_format" };
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(4, 6));
+  if (month < 1 || month > 12) return { valid: false, reason: "invalid_format" };
+  if (year * 100 + month < 202506) return { valid: false, reason: "older_than_minimum" };
+  const versionIndex = year * 12 + month;
+  const currentIndex = now.getUTCFullYear() * 12 + now.getUTCMonth() + 1;
+  if (versionIndex < currentIndex - 11) return { valid: false, reason: "obsolete" };
+  return { valid: true, reason: "ok" };
+}
+
 function pick<T extends string>(name: string, allowed: readonly T[], fallback: T): T {
   const raw = process.env[name] || fallback;
   if (!allowed.includes(raw as T)) {
@@ -80,6 +116,19 @@ export function loadConfig(): RuntimeConfig {
     openAiApiKey: process.env.OPENAI_API_KEY || undefined,
     openAiModel: process.env.OPENAI_MODEL || "gpt-5-mini",
     chatTimeoutMs: numberFromEnv("CHAT_TIMEOUT_MS", 20000),
+    databaseUrl: process.env.DATABASE_URL || undefined,
+    linkedIn: {
+      clientId: process.env.LINKEDIN_CLIENT_ID || undefined,
+      clientSecret: process.env.LINKEDIN_CLIENT_SECRET || undefined,
+      redirectUri: process.env.LINKEDIN_REDIRECT_URI || undefined,
+      apiVersion: process.env.LINKEDIN_API_VERSION || undefined,
+      syncEnabled: booleanFromEnv("LINKEDIN_SYNC_ENABLED"),
+      tokenEncryptionKey: process.env.LINKEDIN_TOKEN_ENCRYPTION_KEY || undefined,
+      storage: pick("LINKEDIN_STORAGE", ["json", "postgres"], process.env.DATABASE_URL ? "postgres" : "json"),
+      fixtureMode: booleanFromEnv("LINKEDIN_FIXTURE_MODE"),
+      maxCallsPerDay: numberFromEnv("LINKEDIN_MAX_CALLS_PER_DAY", 90),
+      syncIntervalMs: numberFromEnv("LINKEDIN_SYNC_INTERVAL_MS", 21_600_000)
+    },
     temporalWeights: {
       last30Days: numberFromEnv("TEMPORAL_WEIGHT_30_DAYS", 0.6),
       last90Days: numberFromEnv("TEMPORAL_WEIGHT_90_DAYS", 0.3),

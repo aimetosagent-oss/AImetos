@@ -13,10 +13,16 @@ import type {
 } from "../../shared/src/domain.ts";
 import { loadConfig, type RuntimeConfig } from "../../config/src/env.ts";
 import { analyzePerformance } from "../../analytics/src/performance.ts";
-import { confidenceFromSample, latestSnapshot, rankRealContent } from "../../analytics/src/business-content.ts";
+import {
+  confidenceFromSample,
+  determineCurrentObjective,
+  evaluateCausalTest,
+  latestSnapshot,
+  rankRealContent,
+  type DecisionObjective
+} from "../../analytics/src/business-content.ts";
 import {
   analyzePublicationTiming,
-  chooseTimingTestStrategy,
   type PublicationTimingAnalysis,
   type TimingTestStrategy
 } from "../../analytics/src/publication-timing.ts";
@@ -27,6 +33,17 @@ import { publishMock, scheduleContent } from "../../publishing/src/scheduler.ts"
 import { buildConnectorRegistry } from "../../connectors/src/registry.ts";
 import { transitionPath } from "./state-machine.ts";
 import { validateIdea, validateMetric } from "../../validation/src/schemas.ts";
+import {
+  buildEditorialState,
+  type EditorialControlState,
+  type EditorialState
+} from "./editorial-state.ts";
+import {
+  buildContentDecision,
+  DEFAULT_EDITORIAL_CANDIDATES,
+  type ContentDecision,
+  type EditorialCandidate
+} from "./content-decision-engine.ts";
 
 export type MockFlowReport = {
   runId: string;
@@ -87,6 +104,9 @@ export type ClientContentRecommendation = {
     temporalBonus: number;
   };
   expandToArticle: boolean;
+  learningObjective?: string;
+  experiment?: ContentDecision["experiment"];
+  confidence?: ContentDecision["confidence"];
 };
 
 export type ClientMonthlyReport = {
@@ -117,6 +137,10 @@ export type ClientMonthlyReport = {
     temporalContext?: string;
     timing_confidence: PublicationTimingAnalysis["timing_confidence"];
     timing_reason: string;
+    testObjective: DecisionObjective;
+    evidenceWindow?: string;
+    multivariableTest: boolean;
+    causalConfidence: "high" | "medium" | "low";
   };
   realIntelligence: {
     confidence: {
@@ -184,6 +208,11 @@ export type ClientMonthlyReport = {
       posts: number;
       views: number;
       reactions: number;
+      interactions: number;
+      profileVisits: number;
+      bioLinkTaps: number;
+      followersViewsPercent: number;
+      nonFollowersViewsPercent: number;
       bestReach: string;
       bestRelativeEngagement: string;
       warning: string;
@@ -197,6 +226,7 @@ export type ClientMonthlyReport = {
       conflicts: Array<{ contentId: string; note: string }>;
       pendingContentIds: string[];
       snapshotInventory: Array<{ contentId: string; count: number; latestLabel: string }>;
+      causalTests: Array<{ contentId: string; multivariableTest: boolean; causalConfidence: "high" | "medium" | "low" }>;
     };
     timing: PublicationTimingAnalysis;
   };
@@ -289,6 +319,53 @@ export type ClientMonthlyReport = {
     chatEnabled: boolean;
     chatProvider: "mock" | "openai";
   };
+  editorialState: EditorialState;
+  contentDecision: ContentDecision;
+};
+
+type PlatformSnapshotData = {
+  dataCutoff?: string;
+  linkedin: {
+    rolling28DaySnapshots: Array<{
+      capturedAt: string;
+      impressions: number;
+      reach: number;
+      reactions: number;
+      comments: number;
+      followersTotal: number;
+      outOfNetworkPercent: number;
+      shares?: number;
+      saves?: number;
+      sends?: number;
+      profileViews?: number;
+    }>;
+    rolling90DaySnapshots?: Array<{
+      capturedAt: string;
+      impressions: number;
+      reach: number;
+      reactions: number;
+      comments: number;
+      followersTotal: number;
+      outOfNetworkPercent: number;
+      shares?: number;
+      saves?: number;
+      sends?: number;
+      profileViews?: number;
+    }>;
+    currentAudienceViews?: Array<Record<string, unknown>>;
+  };
+  instagram: {
+    rolling30DaySnapshots: Array<{
+      capturedAt: string;
+      views: number;
+      interactions: number;
+      followersViewsPercent?: number;
+      nonFollowersViewsPercent?: number;
+      profileVisits?: number;
+      bioLinkTaps?: number;
+    }>;
+    topVisibleContent: Array<{ title: string; views: number }>;
+  };
 };
 
 function rootPath(relPath: string): string {
@@ -297,14 +374,6 @@ function rootPath(relPath: string): string {
 
 function readJson<T>(relPath: string): T {
   return JSON.parse(readFileSync(rootPath(relPath), "utf8")) as T;
-}
-
-function nextTuesdayLabel(now = new Date()): string {
-  const date = new Date(now);
-  const daysUntilTuesday = ((2 - date.getDay() + 7) % 7) || 7;
-  date.setDate(date.getDate() + daysUntilTuesday);
-  const label = new Intl.DateTimeFormat("ca-ES", { weekday: "long", day: "numeric", month: "long" }).format(date);
-  return label[0].toUpperCase() + label.slice(1) + " · 08:40";
 }
 
 function applyScenario(records: MetricRecord[], scenario: string): MetricRecord[] {
@@ -499,7 +568,8 @@ function confidenceLabelCa(level: ReturnType<typeof confidenceFromSample>): stri
 function buildRealIntelligence(
   records: RealContentRecord[],
   marketSignals: MarketSignal[],
-  editorialMemory: EditorialMemoryItem[]
+  editorialMemory: EditorialMemoryItem[],
+  platformSnapshots: PlatformSnapshotData
 ): ClientMonthlyReport["realIntelligence"] {
   const linkedin = records.filter((record) => record.platform === "linkedin");
   const instagram = records.filter((record) => record.platform === "instagram");
@@ -532,6 +602,12 @@ function buildRealIntelligence(
   const igReactions = instagramSnapshots.reduce((total, snapshot) => total + (snapshot.reactions || 0), 0);
   const sourceCounts = new Map<string, number>();
   for (const record of records) sourceCounts.set(record.sourceType, (sourceCounts.get(record.sourceType) || 0) + 1);
+  const currentLinkedIn = [
+    ...platformSnapshots.linkedin.rolling28DaySnapshots,
+    ...(platformSnapshots.linkedin.rolling90DaySnapshots || [])
+  ].sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt)).at(-1);
+  const currentInstagram = platformSnapshots.instagram.rolling30DaySnapshots.at(-1);
+  const bestInstagram = platformSnapshots.instagram.topVisibleContent[0];
 
   return {
     confidence: {
@@ -549,12 +625,12 @@ function buildRealIntelligence(
       linkedinPosts: linkedin.length,
       instagramPosts: instagram.length,
       measuredPosts: measured.length,
-      impressions: linkedinMeasured.reduce((total, record) => total + (latestSnapshot(record)?.impressions || 0), 0),
-      reach: linkedinMeasured.reduce((total, record) => total + (latestSnapshot(record)?.reach || 0), 0),
-      profileViews: sumField("profileViews"),
-      reactions: sumField("reactions"),
-      comments: sumField("comments"),
-      followers: sumField("followers"),
+      impressions: currentLinkedIn?.impressions || linkedinMeasured.reduce((total, record) => total + (latestSnapshot(record)?.impressions || 0), 0),
+      reach: currentLinkedIn?.reach || linkedinMeasured.reduce((total, record) => total + (latestSnapshot(record)?.reach || 0), 0),
+      profileViews: currentLinkedIn?.profileViews || sumField("profileViews"),
+      reactions: currentLinkedIn?.reactions || sumField("reactions"),
+      comments: currentLinkedIn?.comments || sumField("comments"),
+      followers: currentLinkedIn?.followersTotal || sumField("followers"),
       probableInvitations: snapshots.reduce(
         (total, snapshot) => total + (snapshot.attributionConfidence === "probable" ? snapshot.connectionRequestsAttributed || 0 : 0),
         0
@@ -563,12 +639,13 @@ function buildRealIntelligence(
       meetings: sumField("meetings")
     },
     winners: [
-      { key: "reach", label: "Millor abast LinkedIn", contentId: "LI-01", title: linkedin.find((record) => record.id === "LI-01")?.title || "-", reason: "281 impressions, 138 membres assolits i 9 visites al perfil." },
-      { key: "conversation", label: "Millor conversa LinkedIn", contentId: "LI-03", title: linkedin.find((record) => record.id === "LI-03")?.title || "-", reason: "2 comentaris qualitatius que reforcen criteri abans que tecnologia; LI-04 confirma el mateix angle." },
-      { key: "audience", label: "Millor qualitat potencial", contentId: "LI-02", title: linkedin.find((record) => record.id === "LI-02")?.title || "-", reason: "29% de decisors estimats i primer seguidor atribuït; el model híbrid LI-04 aporta 20% de gerents." },
-      { key: "commercial", label: "Millor senyal comercial", contentId: "LI-02", title: linkedin.find((record) => record.id === "LI-02")?.title || "-", reason: "1 seguidor atribuït i 1 invitació probable, sense convertir-la en lead." },
-      { key: "worst", label: "Pitjor resultat inicial", contentId: "LI-05", title: linkedin.find((record) => record.id === "LI-05")?.title || "-", reason: "38 impressions i cap interacció a ~48 h. Resultat primerenc, no conclusió definitiva." },
-      { key: "instagram", label: "Millor interès relatiu Instagram", contentId: "IG-03", title: instagram.find((record) => record.id === "IG-03")?.title || "-", reason: "3 m'agrada sobre 7 visualitzacions; mostra insuficient per validar el patró." }
+      { key: "reach", label: "Millor visibilitat recent madura", contentId: "LI-16", title: linkedin.find((record) => record.id === "LI-16")?.title || "-", reason: "267 impressions, 163 persones assolides i 6 visites al perfil a 7 dies." },
+      { key: "conversation", label: "Millor conversa recent", contentId: "LI-16", title: linkedin.find((record) => record.id === "LI-16")?.title || "-", reason: "3 comentaris i una conversa substantiva sobre dades contradictòries i incertesa." },
+      { key: "audience", label: "Millor authority fit recent", contentId: "LI-16", title: linkedin.find((record) => record.id === "LI-16")?.title || "-", reason: "10% Director de projecte i proximitat amb l'experiència professional de Roger; és una hipòtesi en desenvolupament." },
+      { key: "commercial", label: "Millor senyal comercial recent", contentId: "LI-13", title: linkedin.find((record) => record.id === "LI-13")?.title || "-", reason: "2 visites al perfil al primer export. És curiositat comercial, no un lead confirmat." },
+      { key: "worst", label: "Resultat provisional més modest", contentId: "LI-17", title: linkedin.find((record) => record.id === "LI-17")?.title || "-", reason: "76 impressions i 0 interaccions a ~43 h, però 2 visites al perfil. Encara no és comparable a 7 dies." },
+      { key: "maturation", label: "Major maduració després de 24 h", contentId: "LI-16", title: linkedin.find((record) => record.id === "LI-16")?.title || "-", reason: "Va passar de 110 impressions a 24 h a 267 a 7 dies; els comentaris van aparèixer després del primer snapshot." },
+      { key: "instagram", label: "Millor abast visible Instagram", contentId: "IG-LI-09", title: bestInstagram?.title || "-", reason: `${bestInstagram?.views || 0} visualitzacions i 1 repost visible; mostra encara molt petita.` }
     ],
     scoredContent,
     audience: {
@@ -594,14 +671,20 @@ function buildRealIntelligence(
       attributionNote: "Les invitacions es registren com a probables i no confirmades. No compten com a leads."
     },
     weeklyComparisons: [
-      { period: "14-19 juliol", impressions: 416, reach: 212, profileViews: 12, reactions: 7, comments: 0, reading: "Més visibilitat i visites; sense conversa. LI-02 va créixer després fins a 193 impressions i 1 seguidor." },
-      { period: "21-23 juliol", impressions: 215, reach: 92, profileViews: 6, reactions: 4, comments: 4, reading: "Menys volum, però més conversa i millor senyal qualitatiu de criteri abans que tecnologia." }
+      { period: "1-3 setembre", impressions: 226, reach: 146, profileViews: 3, reactions: 4, comments: 2, reading: "Email va madurar de 64 a 145 i seguiment comercial va portar 2 visites al perfil; les finestres finals no són exactament equivalents." },
+      { period: "9-15 setembre", impressions: 181, reach: 108, profileViews: 3, reactions: 6, comments: 1, reading: "Reporting mostra bona densitat d'interacció i factures interès proporcional al perfil, sense propagació." },
+      { period: "17-24 setembre", impressions: 343, reach: 201, profileViews: 8, reactions: 3, comments: 3, reading: "PM ja és comparable a 7 dies; aprovacions encara és provisional. No atribuir la diferència a l'hora." }
     ],
     instagram: {
       posts: instagram.length,
-      views: igViews,
+      views: currentInstagram?.views || igViews,
       reactions: igReactions,
-      bestReach: "IG-01 · 12 visualitzacions",
+      interactions: currentInstagram?.interactions || 0,
+      profileVisits: currentInstagram?.profileVisits || 0,
+      bioLinkTaps: currentInstagram?.bioLinkTaps || 0,
+      followersViewsPercent: currentInstagram?.followersViewsPercent || 0,
+      nonFollowersViewsPercent: currentInstagram?.nonFollowersViewsPercent || 0,
+      bestReach: `${bestInstagram?.title || "-"} · ${bestInstagram?.views || 0} visualitzacions`,
       bestRelativeEngagement: "IG-03 · 3 m'agrada / 7 visualitzacions",
       warning: "Mostra molt petita: cap comentari, compartició o enviament. No hi ha patró ferm.",
       facebookBusinessStatus: facebookBusiness.some((record) => record.metricsStatus === "available") ? "available" : "pending"
@@ -619,19 +702,19 @@ function buildRealIntelligence(
         contentId: record.id,
         count: record.snapshots.length,
         latestLabel: record.snapshots.at(-1)?.snapshotLabel || record.snapshots.at(-1)?.period || "pending"
-      }))
+      })),
+      causalTests: records
+        .filter((record) => record.changedVariables?.length || record.multivariable_test)
+        .map((record) => ({ contentId: record.id, ...evaluateCausalTest(record) }))
     },
     timing: analyzePublicationTiming(records)
   };
 }
 
-export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig> = {}): Promise<ClientMonthlyReport> {
-  const flow = await runMockContentFlow(overrides);
-  const rawMetrics = readJson<MetricRecord[]>("data/fixtures/content-performance.json");
-  const linkedInPosts = readJson<LinkedInPostInput[]>("data/fixtures/linkedin-posts.json");
+export function loadRealContentWithManualEntries(): RealContentRecord[] {
   const realContent = readJson<RealContentRecord[]>("data/fixtures/real-content.json");
   const manualEntries = readJson<ManualMetricEntry[]>("data/fixtures/manual-metric-entries.json");
-  const mergedRealContent = realContent.map((record) => ({
+  return realContent.map((record) => ({
     ...record,
     snapshots: [
       ...record.snapshots,
@@ -660,9 +743,34 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
         }))
     ]
   }));
+}
+
+export async function buildClientMonthlyReport(
+  overrides: Partial<RuntimeConfig> = {},
+  options: { controlState?: EditorialControlState; now?: Date; realContentRecords?: RealContentRecord[] } = {}
+): Promise<ClientMonthlyReport> {
+  const flow = await runMockContentFlow(overrides);
+  const rawMetrics = readJson<MetricRecord[]>("data/fixtures/content-performance.json");
+  const linkedInPosts = readJson<LinkedInPostInput[]>("data/fixtures/linkedin-posts.json");
+  const mergedRealContent = options.realContentRecords || loadRealContentWithManualEntries();
   const marketSignals = readJson<MarketSignal[]>("data/fixtures/market-signals.json");
   const editorialMemory = readJson<EditorialMemoryItem[]>("data/fixtures/editorial-memory.json");
-  const realIntelligence = buildRealIntelligence(mergedRealContent, marketSignals, editorialMemory);
+  const platformSnapshots = readJson<PlatformSnapshotData>("data/fixtures/platform-snapshots.json");
+  const editorialState = buildEditorialState({
+    records: mergedRealContent,
+    marketSignals,
+    editorialMemory,
+    platformSnapshots,
+    controlState: options.controlState,
+    now: options.now
+  });
+  const contentDecision = buildContentDecision({
+    state: editorialState,
+    records: mergedRealContent,
+    excludedCandidateIds: options.controlState?.excludedCandidateIds
+  });
+  const realIntelligence = buildRealIntelligence(mergedRealContent, marketSignals, editorialMemory, platformSnapshots);
+  const testObjective = determineCurrentObjective(mergedRealContent);
   const config = { ...loadConfig(), ...overrides };
   const metrics = applyScenario(rawMetrics, config.mockScenario);
   const topContent = realIntelligence.scoredContent
@@ -701,118 +809,68 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
           : "Canal de reforç visual. No declarar patró fins tenir més abast i interaccions."
     };
   });
-  const imageAssets = [
-    "",
-    "",
-    ""
-  ];
-  const visualBriefs = [
-    "Esquema d'un procés que continua funcionant quan falta una persona: responsable, traspàs, documentació i alerta. Inclou el logo AImetos en petit.",
-    "Esquema tècnic d'un workflow robust amb validació, log, retry i alerta. Inclou el logo AImetos en petit.",
-    "Dashboard de decisió amb una mètrica, una alerta, un responsable i una acció. Inclou el logo AImetos en petit."
-  ];
-  const imagePrompts = [
-    "Crea una imagen profesional para LinkedIn, formato 1200x627, estilo de consultoría tecnológica B2B de primer nivel. Titular: 'Agosto es una prueba de estrés para tus procesos'. Subtítulo: 'Si el proceso entero se frena cuando falta alguien, existe una dependencia operativa'. Representa un flujo con cuatro elementos: Responsable, Traspaso, Documentación y Alerta. Paleta blanca, verde petróleo, azul y gris. Incluye el logo AImetos original en pequeño. Sin personas, sin estilo stock y sin texto pequeño.",
-    "Crea una imagen profesional para LinkedIn, formato 1200x627, estilo de consultoría tecnológica B2B. Titular: 'Una automatización robusta también sabe fallar'. Muestra cuatro etapas claras: Validación, Log, Retry y Alerta. Paleta blanca, verde petróleo, azul y gris. Incluye el logo AImetos original en pequeño. Sin personas ni estilo stock.",
-    "Crea una imagen profesional para LinkedIn, formato 1200x627, estilo de consultoría tecnológica B2B. Titular: 'Un dashboard no sirve si no cambia una decisión'. Muestra una secuencia visual: Métrica, Alerta, Responsable y Acción. Paleta blanca, verde petróleo, azul y gris. Incluye el logo AImetos original en pequeño. Sin personas ni estilo stock."
-  ];
-  const bestPublishTimes = [
-    "Dimarts a les 08:40",
-    "Dimarts a les 08:40",
-    "Dimarts a les 08:40"
-  ];
-  const postCopies = [
-    "Agosto es una prueba de estrés para tus procesos.\n\nSi un proceso se frena porque alguien está de vacaciones, el problema no son las vacaciones.\n\nEs la dependencia que el resto del año queda escondida: aprobaciones que esperan, consultas sin propietario, tareas que nadie sabe continuar o seguimientos que dependen de la memoria.\n\nNo se trata de automatizar cada parte. Primero hacen falta responsables claros, un traspaso mínimo de información, documentación accesible y alertas donde exista un riesgo real.\n\nDespués, automatiza solo aquello que elimine una dependencia concreta.\n\n¿Qué proceso se vuelve más lento en tu empresa cuando llega agosto?",
-    "Una automatización robusta no es la que nunca falla. Es la que sabe qué hacer cuando falla.\n\nAntes de poner un workflow en producción, revisaría cuatro puntos: validar los datos de entrada, registrar el error, reintentar sin duplicar acciones y alertar a la persona responsable.\n\nAutomatizar no es unir nodos. Es diseñar un sistema que resista la realidad.\n\n¿Qué ocurre hoy cuando falla uno de tus procesos automáticos?",
-    "Un dashboard no sirve si no cambia ninguna decisión.\n\nUna métrica solo aporta valor cuando activa una alerta, tiene un responsable y conduce a una acción concreta.\n\nSi el equipo mira el informe pero nadie sabe qué hacer después, no falta otro gráfico: falta diseñar la decisión.\n\n¿Qué decisión debería activar hoy tu dashboard?"
-  ];
-  const displayFormats = [
-    "Post LinkedIn",
-    "Carrusel LinkedIn",
-    "Document LinkedIn"
-  ];
-  const metricsToTrack = [
-    "Impressions",
-    "Reaccions",
-    "Comentaris",
-    "Comparticions",
-    "Visites al perfil",
-    "Nous seguidors",
-    "Leads",
-    "Reunions"
-  ];
-  const nextIdeas = flow.selectedIdeas.slice(0, 3);
-  const nextContents = nextIdeas.map(generateContentForIdea);
-  const latestPublishedLinkedIn = mergedRealContent
-    .filter((record) => record.platform === "linkedin" && record.publishedAt)
-    .sort((a, b) => a.publishedAt!.localeCompare(b.publishedAt!))
-    .at(-1);
-  const recommendations = nextIdeas.map((idea, index): ClientContentRecommendation => {
-    const content = nextContents[index];
-    const detailIndex = {
-      idea_august_process_stress: 0,
-      idea_n8n_failures: 1,
-      idea_dashboard_decisions: 2
-    }[idea.id] ?? index;
-    const reel = content?.adaptations.find((item) => item.channel === "reels");
-    const visual = content?.adaptations.find((item) => item.channel === "visual");
-    const introducesMajorEditorialVariable =
-      idea.temporalBonus > 0 || idea.editorialFamily !== latestPublishedLinkedIn?.editorialFamily || detailIndex !== 0;
-    const timingStrategy = chooseTimingTestStrategy(
-      realIntelligence.timing.timing_confidence,
-      introducesMajorEditorialVariable
-    );
-    const timingReason =
-      timingStrategy === "maintain_time"
-        ? `${realIntelligence.timing.timing_reason} Aquesta publicació introdueix la temporalitat com a variable editorial; mantenim les 08:40 per aïllar l'efecte del contingut.`
-        : `${realIntelligence.timing.timing_reason} Aquesta opció pot servir com a prova controlada d'una franja nova si es mantenen estables el tema i el format.`;
+  const metricsToTrack = contentDecision.metrics_to_watch;
+  const candidateById = new Map(DEFAULT_EDITORIAL_CANDIDATES.map((candidate) => [candidate.id, candidate]));
+  const selectedCandidate = candidateById.get(contentDecision.candidate_id) || DEFAULT_EDITORIAL_CANDIDATES[0];
+  const recommendationCandidates = [
+    selectedCandidate,
+    ...contentDecision.alternatives
+      .filter((alternative) => alternative.status === "eligible")
+      .map((alternative) => candidateById.get(alternative.candidate_id))
+      .filter((candidate): candidate is EditorialCandidate => Boolean(candidate))
+  ].slice(0, 3);
+  const dateParts = contentDecision.recommended_date.split("-");
+  const publishMoment = `Dimarts ${dateParts[2]}/${dateParts[1]} a les ${contentDecision.recommended_time}`;
+  const recommendations = recommendationCandidates.map((candidate, index): ClientContentRecommendation => {
+    const alternative = contentDecision.alternatives.find((item) => item.candidate_id === candidate.id);
     return {
-      title: idea.title,
-      format: detailIndex === 0 ? "linkedin-post" : detailIndex === 1 ? "linkedin-carousel" : "linkedin-document",
+      title: candidate.title,
+      format: candidate.format,
       channel: "linkedin",
-      displayFormat: displayFormats[detailIndex] || "Post LinkedIn",
+      displayFormat: candidate.display_format,
       displayChannel: "LinkedIn",
-      reason: idea.justification,
+      reason: index === 0 ? contentDecision.reason_to_publish : alternative?.reason || candidate.source,
       recommended: index === 0,
-      whyRecommended:
-        index === 0
-          ? `És la millor opció pel seu valor comercial i varietat editorial${idea.temporalBonus > 0 ? ", reforçada pel context temporal vigent" : ""}.`
-          : idea.justification,
-      hook: idea.pain,
-      postCopy: postCopies[detailIndex] || postCopies[0],
-      bestPublishTime: bestPublishTimes[detailIndex] || bestPublishTimes[0],
-      publishTimeLabel: realIntelligence.timing.can_claim_best_time ? "Millor hora per publicar" : "Hora recomanada actual",
+      whyRecommended: index === 0
+        ? `${contentDecision.reason_to_publish} Objectiu d'aprenentatge: ${contentDecision.learning_objective}.`
+        : alternative?.reason || candidate.source,
+      hook: candidate.hook,
+      postCopy: candidate.post_copy,
+      bestPublishTime: publishMoment,
+      publishTimeLabel: contentDecision.timing_label,
       timing_confidence: realIntelligence.timing.timing_confidence,
-      timing_reason: timingReason,
-      timing_strategy: timingStrategy,
-      metricsToTrack,
+      timing_reason: `${editorialState.timing_reason} Es manté la franja baseline per aïllar la variable editorial principal.`,
+      timing_strategy: "maintain_time",
+      metricsToTrack: candidate.metrics_to_watch,
       publicationStatus: "pending_publish",
-      productionBrief: reel?.content || visual?.content || idea.mainMessage,
-      visualBrief: visualBriefs[detailIndex] || "Visual net, professional i relacionat amb el problema principal del post. Inclou el logo AImetos en petit.",
-      imageAsset: imageAssets[detailIndex] || "",
-      imagePrompt: imagePrompts[detailIndex] || imagePrompts[0],
-      cta: idea.cta,
-      effort: idea.estimatedEffort <= 2 ? "low" : idea.estimatedEffort === 3 ? "medium" : "high",
-      targetCustomer: idea.audience,
-      concreteProblem: idea.pain,
-      funnelStage: idea.funnelStage,
-      singleObjective: idea.objective,
-      businessConsequence: idea.businessConsequence,
-      proofOrExample: idea.proofOrExample,
-      editorialFamily: idea.editorialFamily,
+      productionBrief: candidate.visual_brief,
+      visualBrief: candidate.visual_brief,
+      imageAsset: "",
+      imagePrompt: candidate.image_prompt,
+      cta: candidate.cta,
+      effort: candidate.format === "image_post" ? "low" : candidate.format === "document_carousel" ? "medium" : "high",
+      targetCustomer: candidate.target_customer,
+      concreteProblem: candidate.concrete_problem,
+      funnelStage: candidate.funnel_stage,
+      singleObjective: candidate.objective,
+      businessConsequence: candidate.expected_signal,
+      proofOrExample: candidate.source,
+      editorialFamily: candidate.family,
       editorialVariety: {
-        lastUsedAt: idea.lastUsedAt,
-        appearancesLast4Posts: idea.appearancesLast4Posts,
-        repetitionPenalty: idea.repetitionPenalty,
-        diversityBonus: idea.diversityBonus,
-        temporalBonus: idea.temporalBonus
+        appearancesLast4Posts: editorialState.recent_posts.slice(0, 4).filter((post) => post.family === candidate.family).length,
+        repetitionPenalty: 0,
+        diversityBonus: editorialState.recent_posts.slice(0, 4).some((post) => post.family === candidate.family) ? 0 : 14,
+        temporalBonus: 0
       },
-      expandToArticle: idea.expandToArticle
+      expandToArticle: false,
+      learningObjective: candidate.learning_objective,
+      experiment: index === 0 ? contentDecision.experiment : undefined,
+      confidence: index === 0 ? contentDecision.confidence : undefined
     };
   });
-  const primaryIdea = nextIdeas[0];
-  const primaryIdeaId = primaryIdea?.id || "pending_idea";
-  const blogEligible = Boolean(primaryIdea?.expandToArticle);
+  const primaryIdea = selectedCandidate;
+  const primaryIdeaId = primaryIdea.id;
+  const blogEligible = false;
   const socialDistribution: ClientMonthlyReport["socialDistribution"] = [
     {
       channel: "linkedin",
@@ -827,7 +885,7 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
       metricsStatus: "pending",
       reason: "Canal principal B2B i única xarxa amb senyals de conversa i qualitat d'audiència.",
       sourceContentId: primaryIdeaId,
-      adaptation: primaryIdea?.mainMessage || "Adaptació pendent.",
+      adaptation: primaryIdea.post_copy,
       coherenceRule: "Un client, un problema, una fase MOFU, un objectiu i un CTA.",
       metricsToTrack
     },
@@ -927,68 +985,72 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
   return {
     reportId: "client_report_" + Date.now(),
     clientName: "Client demo AImetos",
-    period: "Dades disponibles fins al 05/08/2026",
-    generatedAt: new Date().toISOString(),
+    period: "Dades disponibles fins al 24/09/2026",
+    generatedAt: (options.now || new Date()).toISOString(),
     executiveSummary:
-      "Les dades reals mostren dos senyals diferents: ROI aporta més abast, mentre criteri abans que tecnologia aporta més conversa i millor alineació qualitativa. Encara no hi ha leads ni reunions confirmades i la mostra continua sent petita.",
+      "Project Management ha madurat fins a convertir-se en una de les peces més fortes, mentre que aprovacions encara és un senyal provisional. La següent decisió prioritza un cas comercial real i una sola variable experimental.",
     executiveReading: [
-      "ROI continua sent el millor angle per visibilitat i visites al perfil.",
-      "Dashboards i model híbrid han arribat proporcionalment a més decisors.",
-      "Encara no hi ha leads ni reunions confirmades; les invitacions són senyals probables.",
-      "LI-07 ja ha obert integracions i dades; la següent peça ha de canviar de família editorial."
+      "Project Management va passar de 110 impressions a 24 h a 267 a 7 dies, amb 3 comentaris i 1 guardat: la maduració canvia la lectura.",
+      "Aprovacions té 76 impressions a ~43 h i és el primer test deliberat de tarda; no permet concloure que 17–20 funcioni millor o pitjor.",
+      "El snapshot agregat arriba a 3.339 impressions, 670 membres assolits, 13 comentaris, 1 guardat i 1 enviament; les comparticions continuen a 0.",
+      "Encara hi ha 0 leads i 0 reunions confirmades. La propera prova valida un cas comercial real, no una promesa de conversió."
     ],
     businessObjective: "Convertir autoritat a LinkedIn en converses comercials: visites al perfil, leads qualificats i reunions.",
     strategy: {
-      quarterly: "Construir autoritat en automatitzacio, IA aplicada i sistemes de decisio per PIMEs.",
-      monthly: "Validar criteri humà, continuïtat operativa i qualitat d'audiència sense repetir agents o workflows en dies consecutius.",
-      publication: "Alternar una peça de decisió empresarial i una de demostració tècnica, amb captures a 24h, 72h, 7 dies i 30 dies."
+      quarterly: "Construir autoritat en automatització, IA aplicada i sistemes de decisió per a PIMEs.",
+      monthly: "Combinar casos reals amb aprenentatge mesurable, diversitat editorial i senyals comercials honestos.",
+      publication: `Publicar ${contentDecision.weekly_cadence} peça aquesta setmana, mantenir hora, format i visual baseline, i provar principalment el tema.`
     },
     decision: {
       nextBestFormat: "Post LinkedIn",
       nextBestChannel: "LinkedIn + Meta",
-      nextAction: recommendations[0]?.title || "Decisió pendent de dades suficients",
+      nextAction: contentDecision.publish ? contentDecision.hook : "Aquesta setmana no hi ha una proposta prou forta",
       confidence: realIntelligence.confidence.level,
       confidenceLabel: realIntelligence.confidence.label,
       confidenceNote:
         realIntelligence.confidence.warning,
       recommendationLevel: "alta",
-      publishDate: nextTuesdayLabel(),
+      publishDate: contentDecision.recommended_date.split("-").reverse().join("/"),
       channels: ["LinkedIn", "Meta"],
-      justification: recommendations[0]?.whyRecommended || "La prioritat es calcularà amb varietat, negoci i temporalitat.",
+      justification: contentDecision.reason_to_publish,
       comparablePosts: realIntelligence.confidence.comparablePosts,
       temporalContext: recommendations[0]?.editorialVariety.temporalBonus > 0 ? flow.temporalContext.badge : undefined,
       timing_confidence: realIntelligence.timing.timing_confidence,
-      timing_reason: recommendations[0]?.timing_reason || realIntelligence.timing.timing_reason
+      timing_reason: recommendations[0]?.timing_reason || realIntelligence.timing.timing_reason,
+      testObjective,
+      evidenceWindow: "7d",
+      multivariableTest: false,
+      causalConfidence: "medium"
     },
     realIntelligence,
     weeklyValidation: {
-      period: "21-23 juliol 2026",
+      period: "17-24 setembre 2026",
       status: "initial_positive",
-      summary: "Menys volum que la setmana anterior, però més conversa i millor qualitat potencial de l'audiència.",
+      summary: "Project Management ja té lectura a 7 dies; aprovacions continua provisional. Les dues xifres es mostren juntes, però no es comparen com si tinguessin la mateixa maduració.",
       totals: {
         posts: 2,
-        impressions: 215,
-        reach: 92,
-        profileVisits: 6,
-        reactions: 4,
-        comments: 4,
+        impressions: 343,
+        reach: 201,
+        profileVisits: 8,
+        reactions: 3,
+        comments: 3,
         shares: 0,
-        saves: 0,
+        saves: 1,
         newFollowers: 0,
         probableInvitations: 0,
         qualifiedLeads: 0,
         meetings: 0
       },
       visibilityWinner: {
-        title: "No todas las empresas necesitan automatizar sus llamadas",
-        reason: "117 impressions i 2 comentaris; menys abast que LI-01 però més conversa."
+        title: "Un Project Manager no debería pasar el viernes persiguiendo actualizaciones de estado.",
+        reason: "267 impressions, 163 persones assolides i 6 visites al perfil a 7 dies; va créixer molt després de 24 h."
       },
       audienceQualityWinner: {
-        title: "Automatizar no significa eliminar la atención humana",
-        reason: "20% de gerents i millor alineació amb indústria i empreses mitjanes."
+        title: "Un Project Manager no debería pasar el viernes persiguiendo actualizaciones de estado.",
+        reason: "10% Director de projecte i un comentari substantiu d'un altre PM; authority fit prometedor, encara no causal."
       },
-      commercialSignal: "6 visites al perfil; 0 leads i 0 reunions confirmades.",
-      nextDecision: "Mantenir la línia de criteri humà, però variar el problema i evitar repetir agents o trucades."
+      commercialSignal: "8 visites al perfil entre les dues peces; 0 leads i 0 reunions confirmades.",
+      nextDecision: contentDecision.reason_to_publish
     },
     topContent,
     formatInsights: insights,
@@ -1004,12 +1066,14 @@ export async function buildClientMonthlyReport(overrides: Partial<RuntimeConfig>
     })),
     technicalStatus: {
       mode: flow.mode,
-      dataSource: "Dades reals: 8 LinkedIn + 5 Instagram + Facebook empresa pendent; mock separat",
+      dataSource: "Dades reals fins al 24/09: històric LinkedIn, snapshots individuals i agregats, Instagram complementari i Facebook empresa pendent",
       credentialsRequiredNow: false,
       n8nWorkflowsValidated: 28,
       chatEnabled: config.chatEnabled,
       chatProvider: config.chatProvider
-    }
+    },
+    editorialState,
+    contentDecision
   };
 }
 
@@ -1027,8 +1091,9 @@ export async function runMockContentFlow(overrides: Partial<RuntimeConfig> = {})
   const metrics = applyScenario(rawMetrics, config.mockScenario);
   const analysis = analyzePerformance(metrics, config);
   const editorialCalendar = readJson<EditorialCalendar>("config/editorial-calendar.json");
+  const realContent = readJson<RealContentRecord[]>("data/fixtures/real-content.json");
   const temporalContext = resolveTemporalContext(editorialCalendar);
-  const generatedIdeas = generateFiveIdeas(analysis, config.mockScenario, temporalContext);
+  const generatedIdeas = generateFiveIdeas(analysis, config.mockScenario, temporalContext, realContent);
   for (const idea of generatedIdeas) {
     const result = validateIdea(idea);
     if (!result.ok) {

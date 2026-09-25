@@ -23,6 +23,7 @@ type EditorForm = {
   pipelineId: string;
   initialStageId: string;
   successMessage: string;
+  submitLabel: string;
   redirectUrl: string | null;
   consentText: string | null;
   createFollowUpTask: boolean;
@@ -47,7 +48,8 @@ function optionsText(value: unknown): string {
 export function FormEditor({ pipelines, form }: { pipelines: EditorPipeline[]; form?: EditorForm }) {
   const selectedPipelineId = form?.pipelineId ?? pipelines[0]?.id;
   const selectedStageId = form?.initialStageId ?? pipelines[0]?.stages[0]?.id;
-  const rows = Array.from({ length: 10 }, (_, index) => form?.fields[index] ?? defaults[index] ?? null);
+  const rowCount = Math.max(12, form?.fields.length ?? 0);
+  const rows = Array.from({ length: rowCount }, (_, index) => form?.fields[index] ?? defaults[index] ?? null);
 
   return (
     <>
@@ -56,6 +58,7 @@ export function FormEditor({ pipelines, form }: { pipelines: EditorPipeline[]; f
         <Field label="Identificador URL" htmlFor="slug" hint="Només lletres, números i guions."><Input id="slug" name="slug" defaultValue={form?.slug} placeholder="demanar-una-demo" /></Field>
         <Field className="form-field--full" label="Descripció" htmlFor="description"><Textarea id="description" name="description" defaultValue={form?.description ?? ""} rows={3} /></Field>
         <Field className="form-field--full" label="Missatge de confirmació" htmlFor="successMessage" required><Textarea id="successMessage" name="successMessage" defaultValue={form?.successMessage ?? "Gràcies. Hem rebut la teva sol·licitud."} rows={2} required /></Field>
+        <Field label="Text del botó" htmlFor="submitLabel" required><Input id="submitLabel" name="submitLabel" defaultValue={form?.submitLabel ?? "Enviar sol·licitud"} required /></Field>
         <Field label="URL de redirecció" htmlFor="redirectUrl"><Input id="redirectUrl" name="redirectUrl" type="url" defaultValue={form?.redirectUrl ?? ""} placeholder="https://" /></Field>
         <Field label="Text de consentiment" htmlFor="consentText"><Input id="consentText" name="consentText" defaultValue={form?.consentText ?? ""} /></Field>
       </FormSection>
@@ -74,12 +77,12 @@ export function FormEditor({ pipelines, form }: { pipelines: EditorPipeline[]; f
         <Field label="Retard de la tasca (hores)" htmlFor="followUpTaskDelayHours"><Input id="followUpTaskDelayHours" name="followUpTaskDelayHours" type="number" min="1" max="8760" defaultValue={form?.followUpTaskDelayHours ?? 24} /></Field>
         <div className="form-field">
           <CheckboxField name="createFollowUpTask" label="Crea una tasca de seguiment" defaultChecked={form?.createFollowUpTask ?? true} />
-          <CheckboxField name="webhookEnabled" label="Publica l’esdeveniment webhook" defaultChecked={form?.webhookEnabled ?? true} />
+          <CheckboxField name="webhookEnabled" label="Publica l’esdeveniment webhook" defaultChecked={form?.webhookEnabled ?? false} />
           <CheckboxField name="isActive" label="Formulari actiu" description="Només els formularis actius accepten enviaments." defaultChecked={form?.isActive ?? false} />
         </div>
       </FormSection>
 
-      <FormSection title="Camps" description="Configura fins a deu camps. Deixa la fila buida per ignorar-la.">
+      <FormSection title="Camps" description="Configura els camps del formulari. Deixa la fila buida per ignorar-la.">
         <div className="form-field--full" style={{ display: "grid", gap: 14 }}>
           {rows.map((field, index) => (
             <div className="ui-card" key={index} style={{ padding: 16 }}>
@@ -88,11 +91,11 @@ export function FormEditor({ pipelines, form }: { pipelines: EditorPipeline[]; f
                 <Field label="Nom intern" htmlFor={`field_${index}_name`}><Input id={`field_${index}_name`} name={`field_${index}_name`} defaultValue={field?.name ?? ""} placeholder="campPersonalitzat" /></Field>
                 <Field label="Tipus" htmlFor={`field_${index}_type`}>
                   <Select id={`field_${index}_type`} name={`field_${index}_type`} defaultValue={field?.type ?? "TEXT"}>
-                    <option value="TEXT">Text</option><option value="EMAIL">Correu</option><option value="PHONE">Telèfon</option><option value="TEXTAREA">Text llarg</option><option value="NUMBER">Número</option><option value="SELECT">Selecció</option><option value="CHECKBOX">Casella</option><option value="HIDDEN">Ocult</option>
+                    <option value="TEXT">Text</option><option value="EMAIL">Correu</option><option value="PHONE">Telèfon</option><option value="TEXTAREA">Text llarg</option><option value="NUMBER">Número</option><option value="SELECT">Selecció</option><option value="RADIO">Opció única</option><option value="MULTI_CHECKBOX">Selecció múltiple</option><option value="CHECKBOX">Casella</option><option value="HIDDEN">Ocult</option>
                   </Select>
                 </Field>
                 <Field label="Placeholder" htmlFor={`field_${index}_placeholder`}><Input id={`field_${index}_placeholder`} name={`field_${index}_placeholder`} defaultValue={field?.placeholder ?? ""} /></Field>
-                <Field label="Opcions" htmlFor={`field_${index}_options`} hint="Separades per comes; només per a camps de selecció."><Input id={`field_${index}_options`} name={`field_${index}_options`} defaultValue={optionsText(field?.options)} /></Field>
+                <Field label="Opcions" htmlFor={`field_${index}_options`} hint="Separades per comes; per a selecció, opció única o selecció múltiple."><Input id={`field_${index}_options`} name={`field_${index}_options`} defaultValue={optionsText(field?.options)} /></Field>
                 <Field label="Valor per defecte" htmlFor={`field_${index}_defaultValue`}><Input id={`field_${index}_defaultValue`} name={`field_${index}_defaultValue`} defaultValue={field?.defaultValue ?? ""} /></Field>
                 <CheckboxField name={`field_${index}_required`} value="true" label="Camp obligatori" defaultChecked={field?.required ?? false} />
               </div>

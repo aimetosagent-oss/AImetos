@@ -1,12 +1,38 @@
 import { runMockContentFlow, writeReport } from "../../../packages/core/src/pipeline.ts";
 import { log, createRunId } from "../../../packages/logging/src/logger.ts";
 import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { loadConfig } from "../../../packages/config/src/env.ts";
+import { loadRealContentWithManualEntries } from "../../../packages/core/src/pipeline.ts";
+import { LinkedInRuntime } from "../../../packages/linkedin/src/runtime.ts";
+import { startLinkedInScheduler } from "../../../packages/linkedin/src/scheduler.ts";
 
-export async function runWorker() {
+const root = fileURLToPath(new URL("../../..", import.meta.url));
+
+export async function runWorker(options: { stayAlive?: boolean } = {}) {
   const started = Date.now();
   const runId = createRunId("worker");
 
   try {
+    const config = loadConfig();
+    if (config.linkedIn.syncEnabled) {
+      const runtime = new LinkedInRuntime(config, root);
+      await runtime.initialize(loadRealContentWithManualEntries());
+      if (!runtime.sync) throw new Error("LinkedIn synchronization is enabled but API version or encryption key is missing");
+      const scheduler = startLinkedInScheduler(runtime.sync, config.linkedIn.syncIntervalMs);
+      const sync = await scheduler.tick();
+      log({
+        runId,
+        level: "info",
+        workflow: "worker.linkedin-sync",
+        status: "completed",
+        message: "LinkedIn synchronization scheduler started",
+        durationMs: Date.now() - started,
+        outputSummary: { intervalMs: config.linkedIn.syncIntervalMs, initialSync: sync || "completed" }
+      });
+      if (!options.stayAlive) scheduler.stop();
+      return scheduler;
+    }
     const report = await runMockContentFlow();
     const path = writeReport(report);
     log({
@@ -33,5 +59,5 @@ export async function runWorker() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runWorker();
+  await runWorker({ stayAlive: true });
 }

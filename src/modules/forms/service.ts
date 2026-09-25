@@ -25,17 +25,20 @@ const field = (data: Record<string, unknown>, name: string) => sanitizeText(data
 export async function submitPublicForm(input: PublicSubmissionInput) {
   const form = await db.form.findFirst({
     where: { slug: input.slug, isActive: true, archivedAt: null },
-    include: { fields: { orderBy: { position: "asc" } } },
+    include: {
+      fields: { orderBy: { position: "asc" } },
+      initialStage: { select: { defaultProbability: true } },
+    },
   });
-  if (!form) throw new NotFoundError("Aquest formulari no està disponible");
+  if (!form) throw new NotFoundError("Este formulario no está disponible");
 
   const allowedFields = new Set([...form.fields.map(({ name }) => name), "website_url", "_company_website"]);
   const submittedValues = Object.fromEntries(
     Object.entries(input.values).filter(([name]) => allowedFields.has(name)),
   );
   const validation = validateDynamicForm(form.fields, submittedValues);
-  if (!validation.success) throw new AppError("Revisa els camps del formulari", "VALIDATION_ERROR", 422);
-  if (form.consentText && !input.consentAccepted) throw new AppError("Cal acceptar el consentiment", "CONSENT_REQUIRED", 422);
+  if (!validation.success) throw new AppError("Revisa los campos del formulario", "VALIDATION_ERROR", 422);
+  if (form.consentText && !input.consentAccepted) throw new AppError("Debes aceptar el consentimiento", "CONSENT_REQUIRED", 422);
 
   const ipHash = input.ip ? hashIdentifier(input.ip) : null;
   const rateLimitHash = ipHash ?? hashIdentifier(`fallback:${input.rateLimitKey ?? "unknown"}`);
@@ -94,14 +97,17 @@ export async function submitPublicForm(input: PublicSubmissionInput) {
     const email = normalizeEmail(field(validation.data, "email"));
     const phone = normalizePhone(field(validation.data, "phone"));
     const companyName = field(validation.data, "companyName") || field(validation.data, "company") || null;
+    const position = field(validation.data, "position") || null;
+    const sector = field(validation.data, "sector") || null;
 
-    const company = companyName ? await findOrCreateCompany(tx, form.organizationId, companyName, email, phone, form.ownerId) : null;
+    const company = companyName ? await findOrCreateCompany(tx, form.organizationId, companyName, email, phone, sector, form.ownerId) : null;
     const contactResult = await findOrCreateContact(tx, {
       organizationId: form.organizationId,
       firstName,
       lastName,
       email,
       phone,
+      position,
       companyId: company?.id,
       ownerId: form.ownerId,
       source: `Formulari: ${form.name}`,
@@ -117,7 +123,7 @@ export async function submitPublicForm(input: PublicSubmissionInput) {
         stageId: form.initialStageId,
         ownerId: form.ownerId,
         source: `Formulari: ${form.name}`,
-        probability: 10,
+        probability: form.initialStage.defaultProbability,
       },
     });
     await tx.lead.create({
@@ -280,6 +286,7 @@ async function findOrCreateCompany(
   name: string,
   email: string | null,
   phone: string | null,
+  sector: string | null,
   ownerId: string | null,
 ) {
   const emailMatch = email
@@ -292,9 +299,14 @@ async function findOrCreateCompany(
     emailMatch ??
     phoneMatch ??
     (await tx.company.findFirst({ where: { organizationId, name: { equals: name, mode: "insensitive" }, deletedAt: null } }));
-  if (existing) return existing;
+  if (existing) {
+    if (!existing.sector && sector) {
+      return tx.company.update({ where: { id: existing.id }, data: { sector } });
+    }
+    return existing;
+  }
   return tx.company.create({
-    data: { organizationId, name, email, emailNormalized: email, phone, phoneNormalized: phone, source: "Formulari públic", ownerId },
+    data: { organizationId, name, email, emailNormalized: email, phone, phoneNormalized: phone, sector, source: "Formulari públic", ownerId },
   });
 }
 
@@ -306,6 +318,7 @@ async function findOrCreateContact(
     lastName: string | null;
     email: string | null;
     phone: string | null;
+    position: string | null;
     companyId?: string;
     ownerId: string | null;
     source: string;
@@ -331,6 +344,7 @@ async function findOrCreateContact(
           emailNormalized: input.email,
           phone: input.phone,
           phoneNormalized: input.phone,
+          position: input.position,
           companyId: input.companyId,
           ownerId: input.ownerId,
           source: input.source,
@@ -354,6 +368,7 @@ async function findOrCreateContact(
         firstName: contact.firstName || input.firstName,
         lastName: contact.lastName || input.lastName,
         companyId: contact.companyId || input.companyId,
+        position: contact.position || input.position,
         email: emailCanBeFilled ? input.email : undefined,
         emailNormalized: emailCanBeFilled ? input.email : undefined,
         phone: phoneCanBeFilled ? input.phone : undefined,

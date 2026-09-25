@@ -41,6 +41,8 @@ enum FormFieldType {
   TEXTAREA
   NUMBER
   SELECT
+  RADIO
+  MULTI_CHECKBOX
   CHECKBOX
   HIDDEN
 }
@@ -244,16 +246,16 @@ model OrganizationSettings {
   paymentTermsDays  Int     @default(30)
   timezone          String  @default("Europe/Madrid")
 
-  quotePrefix            String  @default("P")
-  quoteNumberLength      Int     @default(4)
+  quotePrefix            String  @default("PRE")
+  quoteNumberLength      Int     @default(2)
   quoteValidityDays      Int     @default(30)
   quoteFollowUpDays      Int[]   @default([3, 7, 14])
   quoteEmailSubject      String?
   quoteEmailTemplateHtml String? @db.Text
   quoteEmailTemplateText String? @db.Text
 
-  invoicePrefix              String  @default("F")
-  invoiceNumberLength        Int     @default(4)
+  invoicePrefix              String  @default("FAC")
+  invoiceNumberLength        Int     @default(2)
   invoiceDueDays             Int     @default(30)
   invoiceReminderOffsetsDays Int[]   @default([-3, 0, 3, 7])
   invoiceEmailSubject        String?
@@ -610,11 +612,12 @@ model Form {
   initialStageId         String
   ownerId                String?
   successMessage         String    @default("Gràcies. Hem rebut la teva sol·licitud.")
+  submitLabel            String    @default("Enviar sol·licitud")
   redirectUrl            String?
   consentText            String?   @db.Text
   createFollowUpTask     Boolean   @default(true)
   followUpTaskDelayHours Int       @default(24)
-  webhookEnabled         Boolean   @default(true)
+  webhookEnabled         Boolean   @default(false)
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
   archivedAt             DateTime?
@@ -831,16 +834,16 @@ model DocumentSequence {
   id             String       @id @default(cuid())
   organizationId String
   type           DocumentType
-  year           Int
+  periodKey      String
   prefix         String
-  padding        Int          @default(4)
+  padding        Int          @default(2)
   nextValue      Int          @default(1)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@unique([organizationId, type, year])
+  @@unique([organizationId, type, periodKey])
 }
 
 model Quote {

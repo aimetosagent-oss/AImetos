@@ -307,3 +307,119 @@ model GeneratedAsset {
   metadata  Json
   createdAt DateTime @default(now())
 }
+
+model LinkedInAccount {
+  id                    String   @id @default(uuid())
+  memberUrn             String?  @unique
+  status                String
+  accessTokenEncrypted  String?
+  refreshTokenEncrypted String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  grantedScopes         String[]
+  connectedAt           DateTime?
+  disconnectedAt        DateTime?
+  lastSyncAt            DateTime?
+  lastSyncStatus        String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model LinkedInOAuthState {
+  id        String   @id @default(uuid())
+  stateHash String   @unique
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([expiresAt])
+}
+
+model LinkedInPost {
+  id                   String   @id @default(uuid())
+  internalContentId    String?  @unique
+  linkedinUrn          String?  @unique
+  linkedinUrl          String?
+  activityId           String?
+  urnValidationStatus  String
+  publishedAt          DateTime?
+  author               String?
+  text                 String?
+  hook                 String?
+  format               String?
+  editorialFamily      String?
+  decisionId           String?
+  experimentId         String?
+  source               String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  @@index([publishedAt])
+  @@index([source])
+}
+
+model LinkedInPostSnapshot {
+  id                       String   @id @default(uuid())
+  postId                   String
+  capturedAt               DateTime
+  milestone                String
+  source                   String
+  impressions              Int      @default(0)
+  membersReached           Int      @default(0)
+  reactions                Int      @default(0)
+  comments                 Int      @default(0)
+  reshares                 Int      @default(0)
+  postSaves                Int      @default(0)
+  postSends                Int      @default(0)
+  followersGained          Int      @default(0)
+  profileViewsFromContent  Int      @default(0)
+  linkClicks               Int      @default(0)
+  premiumCtaClicks         Int      @default(0)
+  rawPayload               Json
+  dataQualityNote          String?
+  idempotencyKey           String   @unique
+  createdAt                DateTime @default(now())
+  @@index([postId, capturedAt])
+  @@index([source])
+}
+
+model LinkedInProfileSnapshot {
+  id              String   @id @default(uuid())
+  accountId       String
+  capturedAt      DateTime
+  followersTotal  Int
+  source          String
+  rawPayload      Json
+  dataQualityNote String?
+  idempotencyKey  String   @unique
+  createdAt       DateTime @default(now())
+  @@index([accountId, capturedAt])
+}
+
+model LinkedInSyncRun {
+  id          String   @id @default(uuid())
+  accountId   String?
+  status      String
+  trigger     String
+  startedAt   DateTime
+  finishedAt  DateTime?
+  callsUsed   Int      @default(0)
+  postsRead   Int      @default(0)
+  snapshotsCreated Int  @default(0)
+  errorCount  Int      @default(0)
+  durationMs  Int?
+  createdAt   DateTime @default(now())
+  @@index([startedAt])
+}
+
+model LinkedInApiError {
+  id          String   @id @default(uuid())
+  syncRunId   String?
+  postId      String?
+  code        String
+  httpStatus  Int?
+  message     String
+  retryable   Boolean  @default(false)
+  occurredAt  DateTime @default(now())
+  metadata    Json?
+  @@index([occurredAt])
+  @@index([syncRunId])
+}

@@ -3,13 +3,20 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { extname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../../../packages/config/src/env.ts";
-import { buildClientMonthlyReport, runMockContentFlow, writeReport } from "../../../packages/core/src/pipeline.ts";
+import { buildClientMonthlyReport, loadRealContentWithManualEntries, runMockContentFlow, writeReport } from "../../../packages/core/src/pipeline.ts";
 import {
   buildContentDirectorContext,
   createChatProvider,
   replySafely
 } from "../../../packages/core/src/content-director.ts";
 import { ChatConversationStore } from "../../../packages/core/src/chat-store.ts";
+import { OpenAIResponsesClient } from "../../../packages/core/src/openai-client.ts";
+import { generateEditorialReportSafely } from "../../../packages/core/src/editorial-report.ts";
+import {
+  EditorialControlStore,
+  type EditorialDecisionAction
+} from "../../../packages/core/src/editorial-control-store.ts";
+import { LinkedInRuntime } from "../../../packages/linkedin/src/runtime.ts";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 const dashboardDir = join(root, "apps", "dashboard", "public");
@@ -101,7 +108,27 @@ export function buildLinkedInStartData(content, manualEntries) {
 
 export function createAimetosServer() {
   const config = loadConfig();
+  const linkedInRuntime = new LinkedInRuntime(config, root);
   const chatStore = new ChatConversationStore(join(root, "data", "runtime", "content-director-conversations.json"));
+  const editorialControlStore = new EditorialControlStore(join(root, "data", "runtime", "editorial-control.json"));
+  const openAiClient = new OpenAIResponsesClient({
+    apiKey: config.openAiApiKey,
+    model: config.openAiModel,
+    timeoutMs: config.chatTimeoutMs
+  });
+  async function linkedInRecords() {
+    const records = loadRealContentWithManualEntries();
+    const knownPosts = JSON.parse(readFileSync(join(root, "data", "fixtures", "linkedin-posts.json"), "utf8"));
+    const knownUrls = Object.fromEntries(knownPosts.filter((post) => post.id && post.url).map((post) => [post.id, post.url]));
+    await linkedInRuntime.initialize(records, knownUrls);
+    return linkedInRuntime.editorialRecords(records);
+  }
+  async function buildLiveReport() {
+    return buildClientMonthlyReport({}, {
+      controlState: editorialControlStore.getState(),
+      realContentRecords: await linkedInRecords()
+    });
+  }
   return createServer(async (req, res) => {
     try {
       const url = new URL(req.url || "/", "http://localhost");
@@ -128,6 +155,50 @@ export function createAimetosServer() {
           }
         });
       }
+      if (url.pathname === "/api/linkedin/status" && req.method === "GET") {
+        await linkedInRecords();
+        return json(res, 200, await linkedInRuntime.status());
+      }
+      if (url.pathname === "/api/linkedin/connect" && req.method === "GET") {
+        if (!linkedInRuntime.oauth.isConfigured()) {
+          return json(res, 503, { ok: false, error: "LinkedIn OAuth is ready, but app approval and environment configuration are still required." });
+        }
+        res.writeHead(302, { location: await linkedInRuntime.oauth.createAuthorizationUrl(), "cache-control": "no-store" });
+        return res.end();
+      }
+      if (url.pathname === "/api/linkedin/oauth/callback" && req.method === "GET") {
+        await linkedInRuntime.oauth.completeAuthorization(url.searchParams.get("code") || "", url.searchParams.get("state") || "");
+        res.writeHead(302, { location: "/?linkedin=connected", "cache-control": "no-store" });
+        return res.end();
+      }
+      if (url.pathname === "/api/linkedin/disconnect" && req.method === "POST") {
+        await linkedInRuntime.store.disconnectAccount();
+        return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/linkedin/sync" && req.method === "POST") {
+        await linkedInRecords();
+        if (!linkedInRuntime.sync) return json(res, 503, { ok: false, error: "LinkedIn API version or token encryption key is not configured." });
+        const run = await linkedInRuntime.sync.syncLinkedIn("manual");
+        return json(res, run.status === "error" ? 502 : 200, { ok: run.status !== "error", run, status: await linkedInRuntime.status() });
+      }
+      if (url.pathname === "/api/linkedin/posts" && req.method === "GET") {
+        await linkedInRecords();
+        return json(res, 200, await linkedInRuntime.store.listPosts());
+      }
+      if (url.pathname === "/api/linkedin/posts" && req.method === "POST") {
+        const input = await readJsonBody(req);
+        if (!input.url) return json(res, 400, { ok: false, error: "Cal indicar la URL pública del post." });
+        const post = await linkedInRuntime.registerPost({
+          url: String(input.url),
+          linkedinUrn: typeof input.linkedinUrn === "string" ? input.linkedinUrn : undefined,
+          internalContentId: typeof input.internalContentId === "string" ? input.internalContentId : undefined,
+          publishedAt: typeof input.publishedAt === "string" ? input.publishedAt : undefined,
+          hook: typeof input.hook === "string" ? input.hook : undefined,
+          format: typeof input.format === "string" ? input.format : undefined,
+          editorialFamily: typeof input.editorialFamily === "string" ? input.editorialFamily : undefined
+        });
+        return json(res, 201, { ok: true, post });
+      }
       if (url.pathname === "/api/run-mock-flow") {
         const report = await runMockContentFlow();
         const path = writeReport(report);
@@ -143,7 +214,42 @@ export function createAimetosServer() {
         });
       }
       if (url.pathname === "/api/client-report") {
-        return json(res, 200, await buildClientMonthlyReport());
+        return json(res, 200, await buildLiveReport());
+      }
+      if (url.pathname === "/api/content-decision" && req.method === "GET") {
+        const report = await buildLiveReport();
+        return json(res, 200, {
+          decision: report.contentDecision,
+          state: report.editorialState
+        });
+      }
+      if (url.pathname === "/api/content-decision/actions" && req.method === "POST") {
+        const input = await readJsonBody(req);
+        const action = String(input.action || "") as EditorialDecisionAction;
+        if (!["approve", "reject", "regenerate_alternative"].includes(action)) {
+          return json(res, 400, { ok: false, error: "Acció editorial no vàlida." });
+        }
+        const report = await buildLiveReport();
+        if (String(input.decisionId || "") !== report.contentDecision.decision_id) {
+          return json(res, 409, { ok: false, error: "La decisió ha canviat. Actualitza l'informe abans de continuar." });
+        }
+        const feedback = editorialControlStore.record(action, report.contentDecision, {
+          reason: typeof input.reason === "string" ? input.reason : undefined,
+          conversationId: typeof input.conversationId === "string" ? input.conversationId : undefined
+        });
+        const updated = await buildLiveReport();
+        return json(res, 200, { ok: true, feedback, report: updated });
+      }
+      if (url.pathname === "/api/editorial-report" && req.method === "POST") {
+        const sourceReport = await buildLiveReport();
+        const result = await generateEditorialReportSafely(openAiClient, sourceReport);
+        return json(res, 200, {
+          ok: !result.providerFailed,
+          provider: "openai",
+          providerStatus: result.providerFailed ? result.errorCode : "ready",
+          sourceReportId: sourceReport.reportId,
+          report: result.report
+        });
       }
       if (url.pathname === "/api/content-director/conversations" && req.method === "GET") {
         return json(
@@ -181,24 +287,31 @@ export function createAimetosServer() {
         if (question.length < 2 || question.length > 2000) {
           return json(res, 400, { ok: false, error: "La consulta ha de tenir entre 2 i 2.000 caràcters." });
         }
-        const report = await buildClientMonthlyReport();
+        const report = await buildLiveReport();
         const records = JSON.parse(readFileSync(join(root, "data", "fixtures", "real-content.json"), "utf8"));
-        let conversation = input.conversationId ? chatStore.get(String(input.conversationId)) : undefined;
+        const conversationId = input.conversationId || input.conversation_id;
+        let conversation = conversationId ? chatStore.get(String(conversationId)) : undefined;
         if (!conversation) conversation = chatStore.create();
         const history = conversation.messages;
         conversation = chatStore.append(conversation.id, "user", question);
         const context = buildContentDirectorContext({ query: question, history, report, records });
         const provider = createChatProvider(config.chatProvider, {
-          apiKey: config.openAiApiKey,
-          model: config.openAiModel,
-          timeoutMs: config.chatTimeoutMs
+          client: openAiClient
         });
-        const result = await replySafely(provider, conversation.messages, context);
+        let result = await replySafely(provider, conversation.messages, context);
+        let responseProvider: "mock" | "openai" = provider.name;
+        let providerStatus = result.providerFailed ? result.errorCode : "ready";
+        if (result.providerFailed && provider.name === "openai") {
+          const fallback = createChatProvider("mock");
+          result = await replySafely(fallback, conversation.messages, context);
+          responseProvider = fallback.name;
+          providerStatus = "fallback_local";
+        }
         conversation = chatStore.append(conversation.id, "assistant", result.reply);
         return json(res, 200, {
           ok: !result.providerFailed,
-          provider: provider.name,
-          providerStatus: result.providerFailed ? result.errorCode : "ready",
+          provider: responseProvider,
+          providerStatus,
           reply: result.reply,
           conversation,
           contextSections: context.selectedSections

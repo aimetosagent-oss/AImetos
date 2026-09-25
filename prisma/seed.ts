@@ -1,10 +1,97 @@
 import { createHash } from "node:crypto";
 import { hash } from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type FormFieldType } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+type SeedFormField = {
+  label: string;
+  name: string;
+  type: FormFieldType;
+  required: boolean;
+  placeholder?: string;
+  options?: string[];
+};
+
+const commonContactFields = (includeSector = true): SeedFormField[] => [
+  { label: "Nombre", name: "firstName", type: "TEXT", required: true, placeholder: "Nombre" },
+  { label: "Apellidos", name: "lastName", type: "TEXT", required: true, placeholder: "Apellidos" },
+  { label: "Empresa", name: "companyName", type: "TEXT", required: true, placeholder: "Empresa" },
+  { label: "Cargo en la empresa", name: "position", type: "TEXT", required: true },
+  { label: "Teléfono", name: "phone", type: "PHONE", required: true, placeholder: "+34" },
+  { label: "E-mail", name: "email", type: "EMAIL", required: true, placeholder: "nombre@empresa.com" },
+  ...(includeSector ? [{ label: "Sector", name: "sector", type: "TEXT" as const, required: false }] : []),
+];
+
+const serviceFormDefinitions: Array<{
+  name: string;
+  slug: string;
+  description: string;
+  fields: SeedFormField[];
+}> = [
+  {
+    name: "AImetos - Atención automatizada 24/7",
+    slug: "atencion-automatizada-24-7",
+    description: "Formulario de diagnóstico para el servicio de atención automatizada.",
+    fields: [
+      { label: "1. ¿Qué está pasando cuando un cliente escribe fuera de horario?", name: "afterHoursResponse", type: "RADIO", required: true, options: ["Se responde al día siguiente", "Se responde cuando alguien puede", "Muchas consultas se pierden", "Siempre respondemos rápido"] },
+      { label: "2. ¿Qué volumen aproximado de mensajes recibís al día?", name: "dailyMessageVolume", type: "RADIO", required: true, options: ["Menos de 10", "10-30", "30-100", "Más de 100"] },
+      { label: "3. ¿Dónde recibís más consultas?", name: "inquiryChannels", type: "MULTI_CHECKBOX", required: true, options: ["WhatsApp", "Instagram / Facebook", "Web", "Email", "Llamadas"] },
+      { label: "4. ¿Qué es lo que más os frustra del sistema actual?", name: "currentFrustrations", type: "MULTI_CHECKBOX", required: true, options: ["Perdemos oportunidades por tardar en responder", "Nos quita tiempo de tareas importantes", "No sabemos qué consultas convierten", "No tenemos un sistema claro"] },
+      { label: "5. ¿Estás buscando una solución puntual o una mejora estructural de tu proceso comercial?", name: "improvementScope", type: "RADIO", required: true, options: ["Algo puntual", "Mejorar una parte concreta", "Reestructurar todo el sistema"] },
+      { label: "6. ¿Cuándo te gustaría tenerlo funcionando?", name: "implementationTimeline", type: "RADIO", required: true, options: ["En menos de 30 días", "En 1–3 meses", "Solo estoy explorando opciones"] },
+      { label: "7. Describe brevemente cómo gestionáis ahora la atención al cliente", name: "currentServiceProcess", type: "TEXTAREA", required: false, placeholder: "Respuesta corta" },
+      ...commonContactFields(),
+    ],
+  },
+  {
+    name: "AImetos - Reservas automatizadas",
+    slug: "reservas-automatizadas",
+    description: "Formulario de diagnóstico para el servicio de reservas automatizadas.",
+    fields: [
+      { label: "1. ¿Cómo gestionáis actualmente las citas?", name: "appointmentManagement", type: "MULTI_CHECKBOX", required: true, options: ["Manualmente por WhatsApp", "Llamadas", "Calendario online básico", "No tenemos sistema claro"] },
+      { label: "2. ¿Qué problemas son habituales?", name: "appointmentProblems", type: "MULTI_CHECKBOX", required: true, options: ["Citas duplicadas", "Cancelación sin aviso", "Errores en horarios", "Demasiado tiempo gestionando agenda"] },
+      { label: "3. ¿Cuántas citas gestionáis al mes?", name: "monthlyAppointments", type: "RADIO", required: true, options: ["Menos de 50", "50-100", "150-300", "Más de 300"] },
+      { label: "4. ¿A qué sector pertenece tu empresa?", name: "sector", type: "TEXT", required: true, placeholder: "Respuesta corta" },
+      { label: "5. ¿Qué impacto tendría automatizar esto?", name: "automationImpact", type: "MULTI_CHECKBOX", required: true, options: ["Más tiempo para clientes", "Menos errores", "Más reservas", "Más control del negocio"] },
+      { label: "6. ¿Estás buscando una solución puntual o una mejora estructural de tu proceso comercial?", name: "improvementScope", type: "RADIO", required: true, options: ["Algo puntual", "Mejorar una parte concreta", "Restructurar todo el sistema"] },
+      { label: "7. ¿Cuándo te gustaría tenerlo funcionando?", name: "implementationTimeline", type: "RADIO", required: true, options: ["En menos de 30 días", "En 1–3 meses", "Solo estoy explorando opciones"] },
+      ...commonContactFields(false),
+    ],
+  },
+  {
+    name: "AImetos - Cualificación de leads",
+    slug: "cualificacion-de-leads",
+    description: "Formulario de diagnóstico para el servicio de cualificación de leads.",
+    fields: [
+      { label: "1. ¿Qué pasa cuando entra un nuevo lead?", name: "newLeadProcess", type: "RADIO", required: true, options: ["Lo llamamos cuando podemos", "Se pierde si no respondemos rápido", "No sabemos qué leads son realmente buenos", "Tenemos un proceso definido"] },
+      { label: "2. ¿De dónde vienen la mayoría de vuestros leads?", name: "leadSources", type: "MULTI_CHECKBOX", required: true, options: ["Google Ads", "Meta Ads", "Orgánico", "Referencias", "No tenemos claro el canal"] },
+      { label: "3. ¿Qué es lo que más os preocupa?", name: "leadConcerns", type: "MULTI_CHECKBOX", required: true, options: ["Perder oportunidades", "Perder tiempo con leads no cualificados", "Falta de seguimiento", "No saber qué canal convierte mejor"] },
+      { label: "4. ¿Tenéis CRM actualmente?", name: "hasCrm", type: "RADIO", required: true, options: ["Sí", "No", "Usamos Excel / Otros formatos"] },
+      { label: "5. ¿Estás buscando una solución puntual o una mejora estructural de tu proceso comercial?", name: "improvementScope", type: "RADIO", required: true, options: ["Algo puntual", "Mejorar una parte concreta", "Restructurar todo el sistema"] },
+      { label: "6. ¿Cuándo te gustaría tenerlo funcionando?", name: "implementationTimeline", type: "RADIO", required: true, options: ["En menos de 30 días", "En 1–3 meses", "Solo estoy explorando opciones"] },
+      { label: "7. Describe brevemente vuestro proceso actual de seguimiento", name: "currentFollowUpProcess", type: "TEXTAREA", required: true, placeholder: "Respuesta corta" },
+      ...commonContactFields(),
+    ],
+  },
+  {
+    name: "AImetos - Integración total",
+    slug: "integracion-total",
+    description: "Formulario de diagnóstico para conectar el sistema comercial.",
+    fields: [
+      { label: "1. ¿Qué herramientas utilizáis actualmente?", name: "currentTools", type: "MULTI_CHECKBOX", required: true, options: ["CRM", "WhatsApp Business", "Google Calendar", "Email marketing", "Excel", "Varias herramientas desconectadas"] },
+      { label: "2. ¿Dónde crees que se rompe el flujo comercial?", name: "flowBreaks", type: "MULTI_CHECKBOX", required: true, options: ["Asignación de leads", "Seguimiento", "Gestión de citas", "Reportes y métricas", "No tenemos claridad"] },
+      { label: "3. ¿Qué consecuencia tiene esto hoy?", name: "currentConsequences", type: "MULTI_CHECKBOX", required: true, options: ["Leads perdidos", "Datos duplicados", "Tiempo perdido copiando información", "Falta de visibilidad"] },
+      { label: "4. ¿Cuántas personas forman parte del equipo comercial?", name: "salesTeamSize", type: "RADIO", required: true, options: ["1 persona", "2-5 personas", "Más de 5"] },
+      { label: "5. ¿Estás buscando una solución puntual o una mejora estructural de tu proceso comercial?", name: "improvementScope", type: "RADIO", required: true, options: ["Algo puntual", "Mejorar una parte concreta", "Restructurar todo el sistema"] },
+      { label: "6. ¿Cuándo te gustaría tenerlo funcionando?", name: "implementationTimeline", type: "RADIO", required: true, options: ["En menos de 30 días", "En 1–3 meses", "Solo estoy explorando opciones"] },
+      { label: "7. Describe brevemente vuestro sistema actual", name: "currentSystem", type: "TEXTAREA", required: true, placeholder: "Respuesta corta" },
+      ...commonContactFields(),
+    ],
+  },
+];
 
 function dateAt(daysFromToday: number, utcHour = 9): Date {
   const date = new Date();
@@ -38,7 +125,10 @@ async function main() {
   }
 
   const passwordHash = await hash(adminPassword, 12);
-  const year = new Date().getUTCFullYear();
+  const now = new Date();
+  const dateParts = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, year: "2-digit", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const dateValue = (type: "year" | "month" | "day") => dateParts.find((part) => part.type === type)?.value;
+  const documentPeriodKey = `${dateValue("year")}${dateValue("month")}${dateValue("day")}`;
 
   const result = await prisma.$transaction(
     async (tx) => {
@@ -52,19 +142,24 @@ async function main() {
         where: { organizationId: organization.id },
         update: {
           tradeName: "AImetos",
+          legalName: "Roger Arnau Bach",
+          taxId: "45646645V",
           email: "hola@aimetos.com",
           website: "https://aimetos.com",
+          address: "C/ Soler i Palet 15",
+          city: "Terrassa",
+          postalCode: "08222",
           country: "ES",
           currency,
           defaultTaxRateBps: 2100,
           paymentTermsDays: 30,
           timezone,
-          quotePrefix: "P",
-          quoteNumberLength: 4,
+          quotePrefix: "PRE",
+          quoteNumberLength: 2,
           quoteValidityDays: 30,
           quoteFollowUpDays: [3, 7, 14],
-          invoicePrefix: "F",
-          invoiceNumberLength: 4,
+          invoicePrefix: "FAC",
+          invoiceNumberLength: 2,
           invoiceDueDays: 30,
           invoiceReminderOffsetsDays: [-3, 0, 3, 7],
           stripeTestMode: true,
@@ -72,19 +167,24 @@ async function main() {
         create: {
           organizationId: organization.id,
           tradeName: "AImetos",
+          legalName: "Roger Arnau Bach",
+          taxId: "45646645V",
           email: "hola@aimetos.com",
           website: "https://aimetos.com",
+          address: "C/ Soler i Palet 15",
+          city: "Terrassa",
+          postalCode: "08222",
           country: "ES",
           currency,
           defaultTaxRateBps: 2100,
           paymentTermsDays: 30,
           timezone,
-          quotePrefix: "P",
-          quoteNumberLength: 4,
+          quotePrefix: "PRE",
+          quoteNumberLength: 2,
           quoteValidityDays: 30,
           quoteFollowUpDays: [3, 7, 14],
-          invoicePrefix: "F",
-          invoiceNumberLength: 4,
+          invoicePrefix: "FAC",
+          invoiceNumberLength: 2,
           invoiceDueDays: 30,
           invoiceReminderOffsetsDays: [-3, 0, 3, 7],
           stripeTestMode: true,
@@ -128,10 +228,10 @@ async function main() {
             slug: "comercial",
           },
         },
-        update: { name: "Pipeline comercial", isDefault: true, isActive: true },
+        update: { name: "Embudo Clientes", isDefault: true, isActive: true },
         create: {
           organizationId: organization.id,
-          name: "Pipeline comercial",
+          name: "Embudo Clientes",
           slug: "comercial",
           isDefault: true,
           isActive: true,
@@ -139,15 +239,24 @@ async function main() {
       });
 
       const stageDefinitions = [
-        { name: "Lead nou", slug: "lead-nou", position: 0, type: "OPEN" as const, probability: 10, color: "#0e7490" },
-        { name: "Contactat", slug: "contactat", position: 1, type: "OPEN" as const, probability: 20, color: "#0284c7" },
-        { name: "Qualificat", slug: "qualificat", position: 2, type: "OPEN" as const, probability: 40, color: "#2563eb" },
-        { name: "Reunió programada", slug: "reunio-programada", position: 3, type: "OPEN" as const, probability: 55, color: "#4f46e5" },
-        { name: "Proposta enviada", slug: "proposta-enviada", position: 4, type: "OPEN" as const, probability: 70, color: "#7c3aed" },
-        { name: "Negociació", slug: "negociacio", position: 5, type: "OPEN" as const, probability: 85, color: "#9333ea" },
-        { name: "Guanyat", slug: "guanyat", position: 6, type: "WON" as const, probability: 100, color: "#0f766e" },
-        { name: "Perdut", slug: "perdut", position: 7, type: "LOST" as const, probability: 0, color: "#64748b" },
+        { name: "Nuevo Lead", slug: "lead-nou", position: 0, type: "OPEN" as const, probability: 8, color: "#0e7490" },
+        { name: "Contactado", slug: "contactat", position: 1, type: "OPEN" as const, probability: 15, color: "#0284c7" },
+        { name: "Cita Confirmada", slug: "reunio-programada", position: 2, type: "OPEN" as const, probability: 23, color: "#2563eb" },
+        { name: "Asistio a Llamada - Muy Interesado", slug: "qualificat", position: 3, type: "OPEN" as const, probability: 31, color: "#4f46e5" },
+        { name: "Asistio a Llamada - Interes medio", slug: "interes-medio", position: 4, type: "OPEN" as const, probability: 38, color: "#7c3aed" },
+        { name: "Asistio a Llamada - Interes bajo", slug: "interes-bajo", position: 5, type: "OPEN" as const, probability: 46, color: "#9333ea" },
+        { name: "Reagendar", slug: "reagendar", position: 6, type: "OPEN" as const, probability: 54, color: "#c026d3" },
+        { name: "Presupuesto enviado", slug: "proposta-enviada", position: 7, type: "OPEN" as const, probability: 62, color: "#db2777" },
+        { name: "Seguimiento / negociación", slug: "negociacio", position: 8, type: "OPEN" as const, probability: 69, color: "#e11d48" },
+        { name: "Ganado / pago anticipado", slug: "pago-anticipado", position: 9, type: "OPEN" as const, probability: 77, color: "#ea580c" },
+        { name: "Pago completo/venta", slug: "guanyat", position: 10, type: "WON" as const, probability: 85, color: "#0f766e" },
+        { name: "No cualificado / perdido", slug: "perdut", position: 11, type: "LOST" as const, probability: 92, color: "#64748b" },
       ];
+
+      await tx.pipelineStage.updateMany({
+        where: { pipelineId: pipeline.id },
+        data: { position: { increment: 100 } },
+      });
 
       const stages = new Map<string, { id: string }>();
       for (const definition of stageDefinitions) {
@@ -188,13 +297,26 @@ async function main() {
       };
 
       const productDefinitions = [
-        { sku: "BACKOFFICE-SMART", name: "Backoffice Smart", description: "Automatització del backoffice comercial i operatiu.", price: 250_000, billingType: "ONE_TIME" as const },
-        { sku: "BACKOFFICE-CORE", name: "Backoffice Core", description: "Base operativa automatitzada per a processos essencials.", price: 145_000, billingType: "ONE_TIME" as const },
-        { sku: "AGENT-TEXT", name: "Agent de text", description: "Agent conversacional de text per a atenció i qualificació.", price: 180_000, billingType: "ONE_TIME" as const },
-        { sku: "AGENT-INBOUND", name: "Agent inbound", description: "Agent per atendre i derivar consultes entrants.", price: 480_000, billingType: "ONE_TIME" as const },
-        { sku: "MAINT-BASIC", name: "Manteniment bàsic", description: "Manteniment preventiu i suport essencial.", price: 25_000, billingType: "RECURRING" as const },
-        { sku: "MAINT-MEDIUM", name: "Manteniment mitjà", description: "Manteniment, monitoratge i millores periòdiques.", price: 49_000, billingType: "RECURRING" as const },
-        { sku: "MAINT-PRO", name: "Manteniment professional", description: "Manteniment prioritari i evolució contínua.", price: 89_000, billingType: "RECURRING" as const },
+        { sku: "SETUP-GENERAL", name: "Setup general obligatori", description: "Alta de plataformes, APIs, credencials i estructura base. Pagament únic per client.", price: 19_000, billingType: "ONE_TIME" as const },
+        { sku: "BACKOFFICE-SMART", name: "Pack 1 - Backoffice Smart", description: "Agent intern simple. Requereix manteniment Bàsic.", price: 90_000, billingType: "ONE_TIME" as const },
+        { sku: "BACKOFFICE-CORE", name: "Pack 2 - Backoffice Core", description: "Agent intern crític o complex. Requereix manteniment Pro.", price: 290_000, billingType: "ONE_TIME" as const },
+        { sku: "AGENT-TEXT", name: "Pack 3 - Text (WhatsApp/Web)", description: "Atenció i generació de leads. Requereix manteniment Mitjà.", price: 190_000, billingType: "ONE_TIME" as const },
+        { sku: "AGENT-INBOUND", name: "Pack 4 - Inbound (Trucades)", description: "Recepció de trucades. Requereix manteniment Mitjà o Pro.", price: 160_000, billingType: "ONE_TIME" as const },
+        { sku: "INBOUND-MULTILINGUAL", name: "Pack 4+ - Extensió multilingüe", description: "Complement multilingüe per al Pack Inbound.", price: 150_000, billingType: "ONE_TIME" as const },
+        { sku: "AGENT-OUTBOUND", name: "Pack 5 - Outbound", description: "Trucades comercials. Requereix manteniment Pro.", price: 240_000, billingType: "ONE_TIME" as const },
+        { sku: "PACK-AUTONOM", name: "Pack 6 - Autònom", description: "Generació de pressupostos i factures. Manteniment bàsic amb oferta del 50% segons acord comercial.", price: 49_500, billingType: "ONE_TIME" as const },
+        { sku: "MAINT-BASIC", name: "Manteniment Bàsic", description: "Monitorització i ajustos mínims. Ideal per al Pack 1.", price: 9_000, billingType: "RECURRING" as const },
+        { sku: "MAINT-MEDIUM", name: "Manteniment Mitjà", description: "Optimització i ajustos mensuals. Ideal per als Packs 3 i 4.", price: 19_000, billingType: "RECURRING" as const },
+        { sku: "MAINT-PRO", name: "Manteniment Pro", description: "Prioritat, agents crítics i seguiment continu. Obligatori per als Packs 2 i 5.", price: 39_000, billingType: "RECURRING" as const },
+        { sku: "VOLUME-BASIC", name: "Escalat +10 agents - Bàsic", description: "Preu per agent a partir de 10 agents amb Pla Bàsic.", price: 7_000, billingType: "RECURRING" as const },
+        { sku: "VOLUME-MEDIUM", name: "Escalat +10 agents - Mitjà", description: "Preu per agent a partir de 10 agents amb Pla Mitjà.", price: 16_000, billingType: "RECURRING" as const },
+        { sku: "MONTHLY-PACK-1", name: "Membresia Pack 1 - Backoffice Smart", description: "Modalitat mensual flexible equivalent al Pack 1.", price: 19_000, billingType: "RECURRING" as const },
+        { sku: "MONTHLY-PACK-2", name: "Membresia Pack 2 - Backoffice Core", description: "Modalitat mensual flexible equivalent al Pack 2.", price: 79_000, billingType: "RECURRING" as const },
+        { sku: "MONTHLY-PACK-3", name: "Membresia Pack 3 - Text", description: "Modalitat mensual flexible equivalent al Pack 3.", price: 42_000, billingType: "RECURRING" as const },
+        { sku: "MONTHLY-PACK-4", name: "Membresia Pack 4 - Inbound", description: "Modalitat mensual flexible equivalent al Pack 4.", price: 39_000, billingType: "RECURRING" as const },
+        { sku: "MONTHLY-PACK-4-PLUS", name: "Membresia Pack 4+ - Multilingüe", description: "Complement mensual multilingüe per al Pack Inbound.", price: 22_000, billingType: "RECURRING" as const },
+        { sku: "MONTHLY-PACK-5", name: "Membresia Pack 5 - Outbound", description: "Modalitat mensual flexible equivalent al Pack 5.", price: 69_000, billingType: "RECURRING" as const },
+        { sku: "MONTHLY-PACK-6", name: "Membresia Pack 6 - Autònom", description: "Modalitat mensual flexible per a pressupostos i factures.", price: 15_000, billingType: "RECURRING" as const },
       ];
 
       const products = new Map<string, { id: string; unitPriceCents: number }>();
@@ -230,6 +352,60 @@ async function main() {
           select: { id: true, unitPriceCents: true },
         });
         products.set(definition.sku, product);
+      }
+
+      const consentText = "Al marcar esta casilla, doy mi consentimiento para recibir mensajes transaccionales relacionados con mi cuenta, pedidos o servicios que he solicitado. Estos mensajes pueden incluir recordatorios de citas, confirmaciones de pedidos y notificaciones de cuenta, entre otros. La frecuencia de los mensajes puede variar. Se pueden aplicar tarifas por mensajes y datos. Responda \"HELP\" para obtener ayuda o \"STOP\" para cancelar la suscripción.";
+      for (const definition of serviceFormDefinitions) {
+        const serviceForm = await tx.form.upsert({
+          where: { slug: definition.slug },
+          update: {
+            organizationId: organization.id,
+            name: definition.name,
+            description: definition.description,
+            isActive: true,
+            pipelineId: pipeline.id,
+            initialStageId: stageId("lead-nou"),
+            ownerId: admin.id,
+            successMessage: "Gracias. Hemos recibido tu solicitud y te contactaremos pronto.",
+            submitLabel: "Confirmación demo 30'",
+            consentText,
+            createFollowUpTask: true,
+            followUpTaskDelayHours: 24,
+            webhookEnabled: false,
+            archivedAt: null,
+          },
+          create: {
+            organizationId: organization.id,
+            name: definition.name,
+            slug: definition.slug,
+            description: definition.description,
+            isActive: true,
+            pipelineId: pipeline.id,
+            initialStageId: stageId("lead-nou"),
+            ownerId: admin.id,
+            successMessage: "Gracias. Hemos recibido tu solicitud y te contactaremos pronto.",
+            submitLabel: "Confirmación demo 30'",
+            consentText,
+            createFollowUpTask: true,
+            followUpTaskDelayHours: 24,
+            webhookEnabled: false,
+          },
+        });
+
+        await tx.formField.deleteMany({ where: { formId: serviceForm.id } });
+        await tx.formField.createMany({
+          data: definition.fields.map((field, position) => ({
+            organizationId: organization.id,
+            formId: serviceForm.id,
+            label: field.label,
+            name: field.name,
+            type: field.type,
+            required: field.required,
+            placeholder: field.placeholder,
+            options: field.options ?? [],
+            position,
+          })),
+        });
       }
 
       if (!includeDemoData) {
@@ -735,7 +911,7 @@ async function main() {
           consentText: "Accepto que AImetos tracti les dades per respondre aquesta sol·licitud.",
           createFollowUpTask: true,
           followUpTaskDelayHours: 24,
-          webhookEnabled: true,
+          webhookEnabled: false,
           archivedAt: null,
         },
         create: {
@@ -751,7 +927,7 @@ async function main() {
           consentText: "Accepto que AImetos tracti les dades per respondre aquesta sol·licitud.",
           createFollowUpTask: true,
           followUpTaskDelayHours: 24,
-          webhookEnabled: true,
+          webhookEnabled: false,
         },
       });
 
@@ -955,51 +1131,48 @@ async function main() {
 
       await tx.documentSequence.upsert({
         where: {
-          organizationId_type_year: {
+          organizationId_type_periodKey: {
             organizationId: organization.id,
             type: "QUOTE",
-            year,
+            periodKey: documentPeriodKey,
           },
         },
-        update: { prefix: "P", padding: 4 },
+        update: { prefix: "PRE", padding: 2 },
         create: {
           organizationId: organization.id,
           type: "QUOTE",
-          year,
-          prefix: "P",
-          padding: 4,
+          periodKey: documentPeriodKey,
+          prefix: "PRE",
+          padding: 2,
           nextValue: 2,
         },
       });
 
       await tx.documentSequence.upsert({
         where: {
-          organizationId_type_year: {
+          organizationId_type_periodKey: {
             organizationId: organization.id,
             type: "INVOICE",
-            year,
+            periodKey: documentPeriodKey,
           },
         },
-        update: { prefix: "F", padding: 4 },
+        update: { prefix: "FAC", padding: 2 },
         create: {
           organizationId: organization.id,
           type: "INVOICE",
-          year,
-          prefix: "F",
-          padding: 4,
+          periodKey: documentPeriodKey,
+          prefix: "FAC",
+          padding: 2,
           nextValue: 2,
         },
       });
 
-      const quoteNumber = `P-${year}-0001`;
+      const quoteNumber = `PRE-${documentPeriodKey}-01`;
+      const quotePublicToken = longSeedToken("quote", organization.id);
       const quote = await tx.quote.upsert({
-        where: {
-          organizationId_number: {
-            organizationId: organization.id,
-            number: quoteNumber,
-          },
-        },
+        where: { publicToken: quotePublicToken },
         update: {
+          number: quoteNumber,
           status: "ACCEPTED",
           companyId: architectureCompany.id,
           contactId: architectureContact.id,
@@ -1015,7 +1188,7 @@ async function main() {
           totalCents: 302_500,
           notesText: "Pressupost de demostració. No és un document fiscal real.",
           terms: "Validesa de 30 dies. Pagament segons condicions acordades.",
-          publicToken: longSeedToken("quote", organization.id),
+          publicToken: quotePublicToken,
           sentAt: dateAt(-11),
           viewedAt: dateAt(-10),
           acceptedAt: dateAt(-5),
@@ -1044,7 +1217,7 @@ async function main() {
           totalCents: 302_500,
           notesText: "Pressupost de demostració. No és un document fiscal real.",
           terms: "Validesa de 30 dies. Pagament segons condicions acordades.",
-          publicToken: longSeedToken("quote", organization.id),
+          publicToken: quotePublicToken,
           sentAt: dateAt(-11),
           viewedAt: dateAt(-10),
           acceptedAt: dateAt(-5),
@@ -1077,15 +1250,12 @@ async function main() {
         },
       });
 
-      const invoiceNumber = `F-${year}-0001`;
+      const invoiceNumber = `FAC-${documentPeriodKey}-01`;
+      const invoicePublicToken = longSeedToken("invoice", organization.id);
       const invoice = await tx.invoice.upsert({
-        where: {
-          organizationId_number: {
-            organizationId: organization.id,
-            number: invoiceNumber,
-          },
-        },
+        where: { publicToken: invoicePublicToken },
         update: {
+          number: invoiceNumber,
           status: "PARTIALLY_PAID",
           companyId: architectureCompany.id,
           contactId: architectureContact.id,
@@ -1102,7 +1272,7 @@ async function main() {
           remainingAmountCents: 202_500,
           notesText: "Factura de demostració. No representa compliment complet de VeriFactu.",
           terms: "Venciment a 30 dies.",
-          publicToken: longSeedToken("invoice", organization.id),
+          publicToken: invoicePublicToken,
           issuedAt: dateAt(-4),
           sentAt: dateAt(-4),
           paidAt: null,
@@ -1131,7 +1301,7 @@ async function main() {
           remainingAmountCents: 202_500,
           notesText: "Factura de demostració. No representa compliment complet de VeriFactu.",
           terms: "Venciment a 30 dies.",
-          publicToken: longSeedToken("invoice", organization.id),
+          publicToken: invoicePublicToken,
           issuedAt: dateAt(-4),
           sentAt: dateAt(-4),
           remindersEnabled: true,
@@ -1475,7 +1645,7 @@ async function main() {
           action: "seed.initialized",
           entityType: "Organization",
           entityId: organization.id,
-          after: { demoData: true, year },
+          after: { demoData: true, documentPeriodKey },
           metadata: { source: "prisma/seed.ts" },
           occurredAt: new Date(Date.now() - DAY_MS),
         },
@@ -1486,7 +1656,7 @@ async function main() {
           action: "seed.initialized",
           entityType: "Organization",
           entityId: organization.id,
-          after: { demoData: true, year },
+          after: { demoData: true, documentPeriodKey },
           metadata: { source: "prisma/seed.ts" },
           occurredAt: new Date(Date.now() - DAY_MS),
         },

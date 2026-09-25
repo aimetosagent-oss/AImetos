@@ -358,7 +358,7 @@ export async function createOpportunityAction(formData: FormData) {
   redirect("/pipeline?created=1");
 }
 
-const formFieldTypes = ["TEXT", "EMAIL", "PHONE", "TEXTAREA", "NUMBER", "SELECT", "CHECKBOX", "HIDDEN"] as const;
+const formFieldTypes = ["TEXT", "EMAIL", "PHONE", "TEXTAREA", "NUMBER", "SELECT", "RADIO", "MULTI_CHECKBOX", "CHECKBOX", "HIDDEN"] as const;
 const formFieldSchema = z.object({
   label: z.string().trim().min(1).max(120),
   name: z.string().trim().regex(/^[a-z][a-zA-Z0-9_]*$/, "El nom intern no és vàlid").max(80),
@@ -371,7 +371,7 @@ const formFieldSchema = z.object({
 });
 
 function parseFormFields(formData: FormData, failurePath: string) {
-  const fields = Array.from({ length: 10 }, (_, index) => {
+  const fields = Array.from({ length: 24 }, (_, index) => {
     const label = formData.get(`field_${index}_label`);
     const name = formData.get(`field_${index}_name`);
     if (typeof label !== "string" || !label.trim() || typeof name !== "string" || !name.trim()) return null;
@@ -408,6 +408,7 @@ const formSchema = z.object({
   pipelineId: z.string().min(1),
   initialStageId: z.string().min(1),
   successMessage: z.string().trim().min(2).max(500),
+  submitLabel: z.string().trim().min(2).max(120),
   redirectUrl: optionalUrl,
   consentText: optionalText(2_000),
   createFollowUpTask: z.boolean(),

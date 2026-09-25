@@ -22,16 +22,18 @@ test("generated ideas include one customer, one problem, funnel, consequence and
   assert.ok(ideas.every((idea) => idea.language === "es" && idea.editorialFamily.length > 0));
 });
 
-test("editorial variety and active temporal context prioritize August operations", () => {
+test("editorial variety avoids repeating an August angle that is already consumed", () => {
   const config = loadConfig();
   const calendar = JSON.parse(readFileSync(new URL("../../config/editorial-calendar.json", import.meta.url), "utf8")) as EditorialCalendar;
   const now = new Date("2026-08-09T10:00:00+02:00");
   const ideas = generateFiveIdeas(analyzePerformance(metrics, config), "normal", resolveTemporalContext(calendar, now));
   const selected = selectBestIdeas(ideas, config, now);
-  assert.equal(selected[0]?.id, "idea_august_process_stress");
-  assert.equal(selected[0]?.editorialFamily, "processes_operations");
-  assert.ok(selected[0]?.temporalBonus > 0);
-  assert.ok(editorialScore(selected[0]) > editorialScore(ideas.find((idea) => idea.id === "idea_ai_criterion")!));
+  assert.equal(selected[0]?.id, "idea_measure_hidden_losses");
+  assert.equal(selected[0]?.editorialFamily, "real_cases");
+  const august = ideas.find((idea) => idea.id === "idea_august_process_stress")!;
+  assert.ok(august.temporalBonus > 0);
+  assert.ok(august.repetitionPenalty > august.temporalBonus);
+  assert.ok(editorialScore(selected[0]) > editorialScore(august));
   assert.equal(new Set(selected.map((idea) => idea.editorialFamily)).size, selected.length);
 });
 

@@ -45,6 +45,7 @@ export async function createInvoice(context: TenantContext, input: CreateInvoice
         issueDate,
         prefix: settings.invoicePrefix,
         padding: settings.invoiceNumberLength,
+        timeZone: settings.timezone,
       });
       const invoice = await tx.invoice.create({
         data: {
@@ -108,6 +109,7 @@ export async function convertQuoteToInvoice(context: TenantContext, quoteId: str
         issueDate,
         prefix: settings.invoicePrefix,
         padding: settings.invoiceNumberLength,
+        timeZone: settings.timezone,
       });
       const invoice = await tx.invoice.create({
         data: {

@@ -21,6 +21,21 @@ The content dashboard includes a closed-by-default conversation drawer. It build
 
 To enable the server-side OpenAI provider, set `CHAT_PROVIDER=openai`, `OPENAI_API_KEY` and optionally `OPENAI_MODEL`. The browser never receives the API key. `prompts/content-director.md` is the single source of behavioral instructions for both providers.
 
+The same backend Responses API client powers `POST /api/editorial-report`. This endpoint creates a structured editorial synthesis from the current deterministic report; it never reads chat history and falls back to the deterministic result if OpenAI is unavailable or returns invalid JSON. The report-specific instructions live in `prompts/editorial-report.md`.
+
+Manual checks:
+
+```bash
+curl -X POST http://127.0.0.1:4317/api/content-director -H "content-type: application/json" -d '{"message":"Quina publicació ha tingut més abast?"}'
+curl -X POST http://127.0.0.1:4317/api/editorial-report
+```
+
+## LinkedIn automatic ingestion
+
+PAS 3 adds official LinkedIn OAuth, post analytics, follower snapshots and an idempotent 24 h / 72 h / 7 day sync. Existing exports remain `manual_export`; official data is stored separately as `linkedin_api` and flows into the same Content Decision Engine.
+
+The integration is ready to connect but requires LinkedIn Community Management approval. Follow [docs/LINKEDIN_API_SETUP.md](docs/LINKEDIN_API_SETUP.md); no scraping, browser automation or auto-publishing is used.
+
 ## Main flow
 
 ```text

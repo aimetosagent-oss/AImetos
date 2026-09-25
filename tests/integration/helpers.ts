@@ -14,10 +14,11 @@ export async function createTestFixture(label = "test") {
   });
   const pipeline = await db.pipeline.create({ data: { organizationId: organization.id, name: "Pipeline test", slug: `pipeline-${suffix}`, isDefault: true } });
   const stages = await Promise.all([
-    db.pipelineStage.create({ data: { organizationId: organization.id, pipelineId: pipeline.id, name: "Lead nou", slug: "lead-nou", position: 0, type: "OPEN", defaultProbability: 10 } }),
-    db.pipelineStage.create({ data: { organizationId: organization.id, pipelineId: pipeline.id, name: "Proposta enviada", slug: "proposta-enviada", position: 1, type: "OPEN", defaultProbability: 60 } }),
-    db.pipelineStage.create({ data: { organizationId: organization.id, pipelineId: pipeline.id, name: "Guanyat", slug: "guanyat", position: 2, type: "WON", defaultProbability: 100 } }),
-    db.pipelineStage.create({ data: { organizationId: organization.id, pipelineId: pipeline.id, name: "Perdut", slug: "perdut", position: 3, type: "LOST", defaultProbability: 0 } }),
+    db.pipelineStage.create({ data: { organizationId: organization.id, pipelineId: pipeline.id, name: "Nuevo Lead", slug: "nuevo-lead", position: 0, type: "OPEN", defaultProbability: 8 } }),
+    db.pipelineStage.create({ data: { organizationId: organization.id, pipelineId: pipeline.id, name: "Presupuesto enviado", slug: "presupuesto-enviado", position: 1, type: "OPEN", defaultProbability: 62 } }),
+    db.pipelineStage.create({ data: { organizationId: organization.id, pipelineId: pipeline.id, name: "Ganado / pago anticipado", slug: "ganado-pago-anticipado", position: 2, type: "OPEN", defaultProbability: 77 } }),
+    db.pipelineStage.create({ data: { organizationId: organization.id, pipelineId: pipeline.id, name: "Pago completo/venta", slug: "pago-completo-venta", position: 3, type: "WON", defaultProbability: 85 } }),
+    db.pipelineStage.create({ data: { organizationId: organization.id, pipelineId: pipeline.id, name: "No cualificado / perdido", slug: "no-cualificado-perdido", position: 4, type: "LOST", defaultProbability: 92 } }),
   ]);
   const company = await db.company.create({ data: { organizationId: organization.id, name: `Empresa ${suffix}`, email: `client-${suffix}@example.test`, emailNormalized: `client-${suffix}@example.test`, ownerId: user.id } });
   const contact = await db.contact.create({ data: { organizationId: organization.id, firstName: "Anna", lastName: "Test", email: `anna-${suffix}@example.test`, emailNormalized: `anna-${suffix}@example.test`, companyId: company.id, ownerId: user.id } });

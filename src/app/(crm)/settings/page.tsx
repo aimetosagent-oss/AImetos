@@ -28,7 +28,7 @@ export default async function SettingsPage({
     db.webhookEndpoint.findMany({ where: { organizationId: context.organizationId, archivedAt: null }, orderBy: { createdAt: "desc" }, include: { _count: { select: { deliveries: true } } } }),
   ]);
   const settings = existingSettings ?? {
-    tradeName: organization?.name ?? "AImetos", legalName: null, taxId: null, email: null, phone: null, website: null, address: null, city: null, postalCode: null, country: "ES", currency: "EUR", defaultTaxRateBps: 2100, paymentTermsDays: 30, timezone: "Europe/Madrid", quotePrefix: "P", quoteNumberLength: 4, quoteValidityDays: 30, quoteFollowUpDays: [3, 7, 14], invoicePrefix: "F", invoiceNumberLength: 4, invoiceDueDays: 30, invoiceReminderOffsetsDays: [-3, 0, 3, 7], stripeEnabled: false, stripeTestMode: true, onboardingTaskOnPayment: true,
+    tradeName: organization?.name ?? "AImetos", legalName: null, taxId: null, email: null, phone: null, website: null, address: null, city: null, postalCode: null, country: "ES", currency: "EUR", defaultTaxRateBps: 2100, paymentTermsDays: 30, timezone: "Europe/Madrid", quotePrefix: "PRE", quoteNumberLength: 2, quoteValidityDays: 30, quoteFollowUpDays: [3, 7, 14], invoicePrefix: "FAC", invoiceNumberLength: 2, invoiceDueDays: 30, invoiceReminderOffsetsDays: [-3, 0, 3, 7], stripeEnabled: false, stripeTestMode: true, onboardingTaskOnPayment: true,
   };
   const isAdmin = context.role === "ADMIN";
   const encryptionReady = Boolean(

@@ -17,16 +17,21 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
       <section className="public-card public-form-card">
         <header className="public-brand">
           <Image src="/brand/logo-web.png" alt="AImetos" width={189} height={62} priority />
-          <span>Formulari segur</span>
+          <span>Formulario seguro</span>
         </header>
         <div className="public-heading">
-          <p className="eyebrow">Parlem del teu projecte</p>
+          <p className="eyebrow">Hablemos de tu proyecto</p>
           <h1>{form.name}</h1>
           {form.description ? <p>{form.description}</p> : null}
         </div>
-        <PublicForm slug={form.slug} fields={form.fields} consentText={form.consentText} />
+        <PublicForm slug={form.slug} fields={form.fields} consentText={form.consentText} submitLabel={form.submitLabel} />
       </section>
-      <p className="public-footer">Les dades només s’utilitzaran per respondre la teva sol·licitud.</p>
+      <p className="public-footer">
+        Los datos solo se utilizarán para responder a tu solicitud.<br />
+        <a href="https://aimetos.com/politica-de-privacidad">Política de privacidad</a>
+        <span> · </span>
+        <a href="https://aimetos.com/terminos-de-servicio">Términos de servicio</a>
+      </p>
     </main>
   );
 }

@@ -1,5 +1,7 @@
 const formatter = new Intl.NumberFormat("ca-ES");
 const chatState = { conversationId: null, initialized: false };
+let currentReport = null;
+let currentLinkedInStatus = null;
 
 function byId(id) {
   return document.getElementById(id);
@@ -48,6 +50,43 @@ function confidenceLabel(report) {
 
 function effortLabel(effort) {
   return { low: "baixa", medium: "mitjana", high: "alta" }[effort] || effort;
+}
+
+function decisionConfidenceLabel(value) {
+  const labels = {
+    insufficient_data: "dades insuficients",
+    early_signal: "senyal inicial",
+    developing_pattern: "patró en desenvolupament",
+    moderate_evidence: "evidència moderada",
+    strong_pattern: "patró fort",
+    validated_pattern: "patró validat"
+  };
+  return labels[value] || String(value || "-").replaceAll("_", " ");
+}
+
+function learningObjectiveLabel(value) {
+  const labels = {
+    catalog_validation: "Validar un senyal comercial",
+    audience_validation: "Validar l'encaix amb l'audiència",
+    format_validation: "Validar el format",
+    timing_validation: "Validar la franja horària",
+    visual_validation: "Validar l'estil visual"
+  };
+  return labels[value] || String(value || "-").replaceAll("_", " ");
+}
+
+function experimentVariableLabel(value) {
+  const labels = {
+    topic: "Tema",
+    hook: "Hook",
+    visual: "Visual",
+    time: "Hora",
+    day: "Dia",
+    format: "Format",
+    length: "Longitud",
+    cta: "CTA"
+  };
+  return labels[value] || String(value || "-").replaceAll("_", " ");
 }
 
 function renderTopContent(items) {
@@ -163,7 +202,10 @@ function renderRealIntelligence(data) {
   instagram.append(
     metric("Publicacions", formatter.format(data.instagram.posts)),
     metric("Visualitzacions", formatter.format(data.instagram.views)),
-    metric("M'agrada", formatter.format(data.instagram.reactions)),
+    metric("Interaccions", formatter.format(data.instagram.interactions)),
+    metric("Visites perfil", formatter.format(data.instagram.profileVisits)),
+    metric("Clics bio", formatter.format(data.instagram.bioLinkTaps)),
+    metric("Fora de seguidors", `${data.instagram.nonFollowersViewsPercent}%`),
     metric("Millor abast", data.instagram.bestReach),
     metric("Millor interès relatiu", data.instagram.bestRelativeEngagement),
     metric("Facebook empresa", data.instagram.facebookBusinessStatus === "pending" ? "Mètriques pendents" : "Dades disponibles")
@@ -220,12 +262,25 @@ function recommendationDetail(item) {
     insufficient_data: "Dades insuficients",
     early_signal: "Senyal inicial",
     developing_pattern: "Patró en desenvolupament",
+    moderate_evidence: "Evidència moderada",
+    strong_pattern: "Patró fort",
     validated_pattern: "Patró validat"
   };
   const timingDetails =
     '<details class="timing-details"><summary>Confiança horària: ' +
     (timingLabels[item.timing_confidence] || item.timing_confidence) +
     '</summary><p>' + item.timing_reason + "</p></details>";
+  const experiment = item.experiment
+    ? '<div class="brief"><strong>Experiment d’aquesta peça</strong><p>Variable principal: ' +
+      item.experiment.primary_variable + '. ' + item.experiment.hypothesis +
+      '</p><p>Controls: ' + item.experiment.controls.join(" · ") + '</p></div>'
+    : "";
+  const confidence = item.confidence
+    ? '<div class="brief"><strong>Confiança</strong><p>Contingut: ' + decisionConfidenceLabel(item.confidence.content) +
+      ' · Horari: ' + decisionConfidenceLabel(item.confidence.timing) +
+      ' · Format: ' + decisionConfidenceLabel(item.confidence.format) +
+      ' · Visual: ' + decisionConfidenceLabel(item.confidence.visual) + '</p></div>'
+    : "";
   return (
     '<div class="brief"><strong>Text del post</strong><p>' + item.postCopy + "</p></div>" +
     '<div class="brief-grid"><div class="brief"><strong>' + item.publishTimeLabel + '</strong><p>' + item.bestPublishTime +
@@ -239,6 +294,7 @@ function recommendationDetail(item) {
     '</strong></div><div><span>Conseqüència</span><strong>' + item.businessConsequence +
     '</strong></div><div><span>Prova</span><strong>' + item.proofOrExample + "</strong></div></div>" +
     '<div class="brief"><strong>Què mesurarem després</strong><div class="metric-tags">' + metrics + "</div></div>" +
+    experiment + confidence +
     articleAction +
     '<div class="footer-line"><span>' + item.displayChannel + " · " + item.displayFormat +
     "</span><strong>Dificultat " + effortLabel(item.effort) + "</strong></div>"
@@ -273,7 +329,7 @@ function renderRecommendations(items) {
 
 function distributionLabel(value) {
   const labels = {
-    publish_now: "Publicar ara",
+    publish_now: "Publicar segons calendari",
     adapt_and_publish: "Adaptar i publicar",
     reuse_and_publish: "Reutilitzar i publicar",
     not_recommended: "No recomanat"
@@ -351,7 +407,45 @@ function renderLinkedInStart(data) {
   }
 }
 
+function renderLinkedInIntegration(data) {
+  currentLinkedInStatus = data;
+  const labels = {
+    connected: "Connectat",
+    disconnected: "Desconnectat",
+    warning: "Requereix atenció",
+    awaiting_linkedin_approval: "Pendent d’aprovació de LinkedIn"
+  };
+  const connectionLabel = labels[data.integrationStatus] || data.integrationStatus;
+  const syncLabels = {
+    not_run: "No executat",
+    pending: "Pendent",
+    ok: "Correcte",
+    warning: "Avís",
+    error: "Error",
+    token_expired: "Token caducat",
+    approval_required: "Aprovació pendent"
+  };
+  setText("linkedinIntegrationStatus", connectionLabel);
+  setText("linkedinConnection", connectionLabel);
+  setText("linkedinLastSync", data.lastSync ? new Date(data.lastSync).toLocaleString("ca-ES") : "Encara no executat");
+  setText("linkedinSyncStatus", syncLabels[data.syncStatus] || String(data.syncStatus || "not_run").replaceAll("_", " "));
+  setText("linkedinRegisteredPosts", `${data.registeredPosts} · ${data.postsWithValidatedUrn} URN validades`);
+  setText("linkedinApiVersion", data.apiVersion ? `${data.apiVersion} · ${data.apiVersionStatus}` : "No configurada");
+  const details = [];
+  if (data.blocker) details.push(data.blocker);
+  if (data.missingConfig?.length) details.push(`Configuració pendent: ${data.missingConfig.join(", ")}.`);
+  if (data.postsAwaitingUrnValidation) details.push(`${data.postsAwaitingUrnValidation} URN pendents de validació oficial.`);
+  details.push(data.dataQualityNote);
+  setText("linkedinIntegrationNote", details.join(" "));
+  const connect = byId("linkedinConnect");
+  connect.textContent = data.connected || data.reconnectRequired ? "Reconnectar LinkedIn" : "Connectar LinkedIn";
+  connect.disabled = !data.configured;
+  byId("linkedinSyncNow").disabled = !data.connected;
+  byId("linkedinDisconnect").disabled = !data.connected && data.integrationStatus !== "warning";
+}
+
 function render(report) {
+  currentReport = report;
   setText("period", report.period);
   setText("nextAction", report.decision.nextAction);
   setText("decisionJustification", report.decision.justification);
@@ -373,6 +467,19 @@ function render(report) {
   setText("workflows", report.technicalStatus.n8nWorkflowsValidated + " validats");
   setText("credentials", report.technicalStatus.credentialsRequiredNow ? "Pendents" : "No requerides ara");
   setText("chatStatus", report.technicalStatus.chatEnabled ? `${report.technicalStatus.chatProvider} actiu` : "Desactivat");
+  const contentDecision = report.contentDecision;
+  if (contentDecision) {
+    const cadenceLabel = contentDecision.weekly_cadence === 1 ? "publicació" : "publicacions";
+    setText(
+      "learningObjective",
+      `${learningObjectiveLabel(contentDecision.learning_objective)} · ${contentDecision.weekly_cadence} ${cadenceLabel} aquesta setmana`
+    );
+    setText("experimentVariable", experimentVariableLabel(contentDecision.experiment.primary_variable));
+    setText(
+      "decisionConfidenceDimensions",
+      `Contingut ${decisionConfidenceLabel(contentDecision.confidence.content)} · Horari ${decisionConfidenceLabel(contentDecision.confidence.timing)} · Format ${decisionConfidenceLabel(contentDecision.confidence.format)} · Visual ${decisionConfidenceLabel(contentDecision.confidence.visual)}`
+    );
+  }
 
   renderRealIntelligence(report.realIntelligence);
   renderExecutiveReading(report.executiveReading || [report.executiveSummary]);
@@ -404,6 +511,56 @@ function render(report) {
       item.format +
       "</span></div>"
   );
+}
+
+async function sendDecisionAction(action, reason = "") {
+  if (!currentReport?.contentDecision) return;
+  const buttons = ["approveDecision", "rejectDecision", "regenerateDecision"].map(byId);
+  buttons.forEach((button) => { button.disabled = true; });
+  setText("decisionActionStatus", "Desant la decisió...");
+  try {
+    const response = await fetch("/api/content-decision/actions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action,
+        decisionId: currentReport.contentDecision.decision_id,
+        reason,
+        conversationId: chatState.conversationId
+      })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "No s'ha pogut desar la decisió.");
+    render(result.report);
+    byId("rejectionPanel").hidden = true;
+    byId("rejectionReason").value = "";
+    const messages = {
+      approve: "Decisió aprovada i experiment planificat.",
+      reject: "Decisió rebutjada. S'ha carregat la millor alternativa disponible.",
+      regenerate_alternative: "Alternativa carregada sense modificar les dades ni les regles."
+    };
+    setText("decisionActionStatus", messages[action]);
+  } catch (error) {
+    setText("decisionActionStatus", error.message);
+  } finally {
+    buttons.forEach((button) => { button.disabled = false; });
+  }
+}
+
+function setupDecisionActions() {
+  byId("approveDecision").addEventListener("click", () => sendDecisionAction("approve"));
+  byId("rejectDecision").addEventListener("click", () => {
+    byId("rejectionPanel").hidden = false;
+    byId("rejectionReason").focus();
+  });
+  byId("confirmRejection").addEventListener("click", () => sendDecisionAction("reject", byId("rejectionReason").value));
+  byId("regenerateDecision").addEventListener("click", () => sendDecisionAction("regenerate_alternative"));
+  byId("debateDecision").addEventListener("click", async () => {
+    await setChatOpen(true);
+    const input = byId("contentDirectorInput");
+    input.value = "Vull debatre aquesta recomanació. Per què és millor que les alternatives i què no sabem encara?";
+    input.focus();
+  });
 }
 
 function appendChatMessage(role, content) {
@@ -600,6 +757,56 @@ function setupManualMetricsForm() {
   });
 }
 
+function setupLinkedInIntegration() {
+  byId("linkedinConnect").addEventListener("click", () => {
+    window.location.assign("/api/linkedin/connect");
+  });
+  byId("linkedinSyncNow").addEventListener("click", async () => {
+    const button = byId("linkedinSyncNow");
+    button.disabled = true;
+    setText("linkedinActionStatus", "Sincronitzant...");
+    try {
+      const response = await fetch("/api/linkedin/sync", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No s’ha pogut sincronitzar LinkedIn.");
+      setText("linkedinActionStatus", `Sync ${result.run.status}: ${result.run.snapshotsCreated} snapshots nous.`);
+      await loadReport();
+    } catch (error) {
+      setText("linkedinActionStatus", error.message);
+    } finally {
+      button.disabled = !currentLinkedInStatus?.connected;
+    }
+  });
+  byId("linkedinDisconnect").addEventListener("click", async () => {
+    const response = await fetch("/api/linkedin/disconnect", { method: "POST" });
+    const result = await response.json();
+    if (!response.ok) return setText("linkedinActionStatus", result.error || "No s’ha pogut desconnectar.");
+    setText("linkedinActionStatus", "Compte desconnectat. Les dades històriques es conserven.");
+    await loadReport();
+  });
+  byId("linkedinPostForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form).entries());
+    if (data.publishedAt) data.publishedAt = new Date(data.publishedAt).toISOString();
+    setText("linkedinActionStatus", "Registrant publicació...");
+    try {
+      const response = await fetch("/api/linkedin/posts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No s’ha pogut registrar el post.");
+      setText("linkedinActionStatus", `Post registrat. Estat URN: ${result.post.urnValidationStatus}.`);
+      form.reset();
+      await loadReport();
+    } catch (error) {
+      setText("linkedinActionStatus", error.message);
+    }
+  });
+}
+
 function setDefaultCaptureTime() {
   const input = byId("manualMetricsForm").elements.namedItem("capturedAt");
   const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000);
@@ -611,11 +818,17 @@ async function loadReport() {
   button.disabled = true;
   button.textContent = "Actualitzant...";
   try {
-    const [response, linkedinResponse] = await Promise.all([fetch("/api/client-report"), fetch("/api/linkedin-start")]);
+    const [response, linkedinResponse, linkedinStatusResponse] = await Promise.all([
+      fetch("/api/client-report"),
+      fetch("/api/linkedin-start"),
+      fetch("/api/linkedin/status")
+    ]);
     if (!response.ok) throw new Error("No s'ha pogut carregar l'informe");
     if (!linkedinResponse.ok) throw new Error("No s'ha pogut carregar LinkedIn");
     render(await response.json());
     renderLinkedInStart(await linkedinResponse.json());
+    if (linkedinStatusResponse.ok) renderLinkedInIntegration(await linkedinStatusResponse.json());
+    else setText("linkedinIntegrationNote", "No s’ha pogut llegir l’estat de la integració LinkedIn.");
   } finally {
     button.disabled = false;
     button.textContent = "Actualitzar informe";
@@ -624,7 +837,9 @@ async function loadReport() {
 
 setupTabs();
 setupManualMetricsForm();
+setupLinkedInIntegration();
 setupContentDirector();
+setupDecisionActions();
 setDefaultCaptureTime();
 byId("refreshReport").addEventListener("click", loadReport);
 loadReport().catch((error) => {

@@ -80,19 +80,21 @@ export function analyzePublicationTiming(records: RealContentRecord[]): Publicat
 
   const comparableSlots = slots.filter((slot) => slot.comparable_24h_posts > 0);
   const slotsWithMinimum = slots.filter((slot) => slot.comparable_24h_posts >= 3);
+  const slotsWithModerateSample = slots.filter((slot) => slot.comparable_24h_posts >= 5);
   const totalComparable = slots.reduce((total, slot) => total + slot.comparable_24h_posts, 0);
   let timingConfidence: TimingConfidence = "insufficient_data";
 
   if (slotsWithMinimum.length > 0 && comparableSlots.length >= 2) timingConfidence = "early_signal";
   if (slotsWithMinimum.length >= 2 && totalComparable >= 6) timingConfidence = "developing_pattern";
-  if (slots.filter((slot) => slot.comparable_24h_posts >= 5).length >= 2 && totalComparable >= 10) {
-    timingConfidence = "validated_pattern";
-  }
+  if (slotsWithModerateSample.length >= 2 && totalComparable >= 10) timingConfidence = "moderate_evidence";
+  if (slotsWithModerateSample.length >= 3 && totalComparable >= 18) timingConfidence = "strong_pattern";
 
-  const canClaimBestTime = timingConfidence !== "insufficient_data";
+  const canClaimBestTime = timingConfidence === "moderate_evidence" || timingConfidence === "strong_pattern";
   const timingReason = canClaimBestTime
     ? `Hi ha ${totalComparable} publicacions comparables a 24 h distribuïdes en ${comparableSlots.length} franges.`
-    : `Només hi ha dades comparables a 24 h en ${comparableSlots.length} franja. Calen almenys 3 publicacions comparables en una franja i dades equivalents en una segona franja abans de parlar d'una hora guanyadora.`;
+    : timingConfidence === "early_signal"
+      ? `Hi ha ${totalComparable} publicacions comparables a 24 h en ${comparableSlots.length} franges, però encara és un senyal inicial. Es manté la franja més testada com a baseline i no s'atribueix el resultat a l'hora.`
+      : `Només hi ha dades comparables a 24 h en ${comparableSlots.length} franja. Calen almenys 3 publicacions comparables en cadascuna de 2 franges abans de comparar-les, i més mostra abans de parlar d'una hora guanyadora.`;
 
   return {
     timing_confidence: timingConfidence,

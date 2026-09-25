@@ -25,7 +25,8 @@ test("context for tomorrow selects recommendation, editorial memory and temporal
   assert.ok(context.selectedSections.includes("recommendation"));
   assert.ok(context.selectedSections.includes("editorial_memory"));
   assert.ok(context.selectedSections.includes("temporal"));
-  assert.equal(context.recommendation?.family, "processes_operations");
+  assert.equal(context.recommendation?.family, "commercial_signals");
+  assert.equal(context.deterministicDecision.candidate_id, "commercial-signals-job-offers");
   assert.equal(context.languages.content, "es");
   assert.equal(context.temporal?.date, "2026-08-12");
 });
@@ -63,7 +64,7 @@ test("mock follow-up chooses from the posts compared in the previous turn", asyn
   const context = contextFor("Quin repetiríes?", history);
   const provider = createChatProvider("mock");
   const reply = await provider.reply([...history, { role: "user", content: context.query }], context);
-  assert.match(reply, /em quedo amb LI-03/);
+  assert.match(reply, /em quedo amb 21\/07\/2026 · .*LI-03/);
   assert.match(reply, /no el text literal/);
 });
 
@@ -71,9 +72,23 @@ test("mock provider compares equivalent 24h snapshots and stays in scope", async
   const provider = createChatProvider("mock");
   const context = contextFor("Compara LI-01 i LI-03 a 24h.");
   const reply = await provider.reply([{ role: "user", content: context.query }], context);
-  assert.match(reply, /LI-01 lidera visibilitat/);
+  assert.match(reply, /14\/07\/2026 · .*LI-01.* lidera visibilitat/);
   assert.match(reply, /24 h/);
   assert.match(reply, /senyal inicial/);
+});
+
+test("mock provider evaluates a concrete alternative idea instead of leaking prior timing intent", async () => {
+  const history = [
+    { role: "user" as const, content: "Què publicaries ara?" },
+    { role: "assistant" as const, content: "Mantindria l'hora actual a les 08:40." }
+  ];
+  const query = "No seria millor fer una trucada sense context si un email abans ja era suficient?";
+  const context = contextFor(query, history);
+  const provider = createChatProvider("mock");
+  const reply = await provider.reply([...history, { role: "user", content: query }], context);
+  assert.match(reply, /aquest angle és més concret/);
+  assert.match(reply, /no cal posar IA a tot arreu/);
+  assert.doesNotMatch(reply, /Confiança horària/);
 });
 
 test("out-of-scope questions are declined", async () => {
@@ -89,7 +104,7 @@ test("public content is generated in Spanish while explanation remains Catalan",
   const context = contextFor("Genera el text final per LinkedIn.");
   const reply = await provider.reply([{ role: "user", content: context.query }], context);
   assert.match(reply, /Text final per a LinkedIn/);
-  assert.match(reply, /Agosto es una prueba/);
+  assert.match(reply, /oferta de empleo también puede ser una señal comercial/);
   assert.equal(context.languages.ui, "ca");
   assert.equal(context.languages.content, "es");
 });

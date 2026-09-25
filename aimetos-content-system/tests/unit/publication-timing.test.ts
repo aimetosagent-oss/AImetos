@@ -21,17 +21,19 @@ test("time slots follow the configured publication ranges", () => {
   assert.equal(timeSlotFromHour(10), undefined);
 });
 
-test("current timing evidence is insufficient despite repeated morning posts", () => {
+test("current timing evidence is an early signal across two time slots", () => {
   const analysis = analyzePublicationTiming(records);
   const morning = analysis.slots.find((slot) => slot.time_slot === "morning")!;
   const earlyMorning = analysis.slots.find((slot) => slot.time_slot === "early_morning")!;
 
-  assert.equal(analysis.timing_confidence, "insufficient_data");
+  assert.equal(analysis.timing_confidence, "early_signal");
   assert.equal(analysis.can_claim_best_time, false);
-  assert.equal(analysis.comparable_time_slots, 1);
-  assert.equal(morning.comparable_24h_posts, 3);
-  assert.equal(morning.impressions_24h, 131.67);
-  assert.equal(earlyMorning.comparable_24h_posts, 0);
+  assert.equal(analysis.comparable_time_slots, 2);
+  assert.equal(morning.comparable_24h_posts, 6);
+  assert.equal(morning.impressions_24h, 115.83);
+  assert.equal(earlyMorning.comparable_24h_posts, 1);
+  assert.equal(earlyMorning.impressions_24h, 64);
+  assert.match(analysis.timing_reason, /baseline/);
 });
 
 test("a new editorial variable keeps timing stable", () => {

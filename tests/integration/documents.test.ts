@@ -26,7 +26,7 @@ describe("cicle de pressupost, factura i pagament", () => {
     });
     quoteId = quote.id;
     publicToken = quote.publicToken;
-    expect(quote.number).toMatch(/^P-\d{4}-0001$/);
+    expect(quote.number).toMatch(/^PRE-\d{6}-01$/);
     expect(quote.items).toHaveLength(2);
     expect(quote.totalCents).toBe(131_890);
   });
@@ -46,13 +46,13 @@ describe("cicle de pressupost, factura i pagament", () => {
     await decideQuote(publicToken, "accept", "Endavant");
     expect(await db.quote.findUnique({ where: { id: quoteId } })).toMatchObject({ status: "ACCEPTED", decisionComment: "Endavant" });
     expect(await db.scheduledJob.count({ where: { quoteId, status: "PENDING", type: { in: ["QUOTE_REMINDER", "QUOTE_EXPIRE"] } } })).toBe(0);
-    expect(await db.opportunity.findUnique({ where: { id: fixture.opportunity.id } })).toMatchObject({ status: "WON", stageId: fixture.stages[2].id });
+    expect(await db.opportunity.findUnique({ where: { id: fixture.opportunity.id } })).toMatchObject({ status: "OPEN", stageId: fixture.stages[2].id });
   });
 
   it("converteix en factura copiant línies i programa recordatoris en enviar", async () => {
     const invoice = await convertQuoteToInvoice(fixture.context, quoteId);
     invoiceId = invoice.id;
-    expect(invoice.number).toMatch(/^F-\d{4}-0001$/);
+    expect(invoice.number).toMatch(/^FAC-\d{6}-01$/);
     expect(invoice.items).toHaveLength(2);
     expect(invoice.totalCents).toBe(131_890);
     const sent = await sendInvoice(fixture.context, invoice.id);
@@ -69,6 +69,7 @@ describe("cicle de pressupost, factura i pagament", () => {
     expect(second.id).toBe(first.id);
     expect(await db.payment.count({ where: { invoiceId } })).toBe(1);
     expect(await db.invoice.findUnique({ where: { id: invoiceId } })).toMatchObject({ status: "PAID", remainingAmountCents: 0 });
+    expect(await db.opportunity.findUnique({ where: { id: fixture.opportunity.id } })).toMatchObject({ status: "WON", stageId: fixture.stages[3].id });
     expect(await db.outboxEvent.count({ where: { aggregateId: invoiceId, eventType: "invoice.paid" } })).toBe(1);
   });
 

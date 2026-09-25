@@ -8,6 +8,7 @@ const files: string[] = [];
 
 function walk(dir: string) {
   for (const name of readdirSync(dir)) {
+    if (name === "node_modules") continue;
     const path = join(dir, name);
     const stat = statSync(path);
     if (stat.isDirectory()) walk(path);

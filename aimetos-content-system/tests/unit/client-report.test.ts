@@ -7,15 +7,22 @@ test("client report keeps the simplified editorial decision contract", async () 
 
   assert.equal(report.executiveReading.length, 4);
   assert.equal(report.recommendations.length, 3);
-  assert.equal(report.recommendations[0]?.editorialFamily, "processes_operations");
-  assert.match(report.decision.nextAction, /Agosto es una prueba de estrés/);
-  assert.equal(report.decision.temporalContext, "Context temporal: Vacances d'agost");
-  assert.equal(report.decision.timing_confidence, "insufficient_data");
+  assert.equal(report.period, "Dades disponibles fins al 24/09/2026");
+  assert.equal(report.recommendations[0]?.editorialFamily, "commercial_signals");
+  assert.match(report.decision.nextAction, /oferta de empleo.*señal comercial/);
+  assert.equal(report.decision.temporalContext, undefined);
+  assert.equal(report.decision.timing_confidence, "early_signal");
   assert.equal(report.recommendations[0]?.publishTimeLabel, "Hora recomanada actual");
-  assert.equal(report.recommendations[0]?.bestPublishTime, "Dimarts a les 08:40");
+  assert.match(report.recommendations[0]?.bestPublishTime || "", /Dimarts 29\/09.*08:40/);
   assert.equal(report.recommendations[0]?.timing_strategy, "maintain_time");
-  assert.match(report.recommendations[0]?.timing_reason || "", /temporalitat/);
-  assert.ok(report.recommendations.every((item) => item.postCopy.includes("¿") || item.postCopy.includes("Una ")));
+  assert.match(report.recommendations[0]?.timing_reason || "", /baseline/);
+  assert.equal(report.decision.testObjective, "qualified_conversation");
+  assert.equal(report.decision.evidenceWindow, "7d");
+  assert.equal(report.decision.multivariableTest, false);
+  assert.equal(report.decision.causalConfidence, "medium");
+  assert.equal(report.contentDecision.candidate_id, "commercial-signals-job-offers");
+  assert.equal(report.contentDecision.weekly_cadence, 1);
+  assert.ok(report.recommendations.every((item) => item.postCopy.includes("¿") || item.postCopy.includes("Una ") || item.postCopy.includes("Un ")));
 });
 
 test("Meta is one public channel with separate internal platform metrics", async () => {

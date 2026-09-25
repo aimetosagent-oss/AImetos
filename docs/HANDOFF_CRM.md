@@ -1,6 +1,6 @@
 # Traspàs de treball — AImetos CRM
 
-Actualitzat el 14 de juliol de 2026. Aquest document permet reprendre el treball
+Actualitzat el 12 d'agost de 2026. Aquest document permet reprendre el treball
 des d'un altre ordinador sense dependre de l'historial de la conversa.
 
 ## Estat actual
@@ -110,27 +110,92 @@ npm.cmd run test:e2e
 - Els pagaments i decisions de pressupost estan protegits contra concurrència.
 - No és una implementació completa de VeriFactu.
 
+## Migració inicial des de GoHighLevel
+
+El 9 d'agost de 2026 s'ha incorporat la primera configuració real d'AImetos:
+
+- pipeline `Embudo Clientes` amb les dotze etapes facilitades, des de `Nuevo Lead` fins a `No cualificado / perdido`;
+- pressupostos amb numeració diària `PRE-AAMMDD-01`;
+- factures amb numeració diària `FAC-AAMMDD-01`;
+- seqüències independents per tipus de document i dia, calculades amb la zona horària de l'organització;
+- quatre formularis públics equivalents als formularis de les pàgines de serveis: atenció 24/7, reserves, qualificació de leads i integració total;
+- camps de resposta única i selecció múltiple, dades de contacte, empresa, càrrec i sector;
+- creació automàtica de contacte, empresa, lead, oportunitat i tasca de seguiment;
+- webhooks desactivats per defecte.
+
+Els formularis nous queden disponibles al CRM amb aquests identificadors:
+
+- `/f/atencion-automatizada-24-7`
+- `/f/reservas-automatizadas`
+- `/f/cualificacion-de-leads`
+- `/f/integracion-total`
+
+La validació local del 12 d'agost de 2026 ha completat:
+
+- instal·lació exacta des de `package-lock.json`;
+- `prisma format`, generació del client i validació de l'esquema;
+- aplicació correcta de les tres migracions sobre PostgreSQL local;
+- seed verificat amb 12 etapes, 4 formularis de servei i documents
+  `PRE-260812-01` / `FAC-260812-01`;
+- `73/73` tests, typecheck i build de producció correctes;
+- lint sense errors i amb un únic avís preexistent a
+  `workflows/apollo/Apollo_buscar_i_enriquir_NODE_COMPLET.js`;
+- comprovació al navegador del login, dashboard, pipeline, formularis,
+  pressupostos, factures i configuració;
+- comprovació responsive dels quatre formularis i el pipeline. Les capçaleres
+  llargues del pipeline ara fan salt de línia sense quedar truncades.
+
+El fitxer `opportunities.csv` contenia 5 oportunitats. La importació definitiva
+del 12 d'agost ha descartat les dues proves de Roger Arnau i ha incorporat:
+
+- Ramon Figueras Alsius, empresa `La Cabina`, a `Asistio a Llamada - Interes medio`;
+- Jordi Olivé Currius, sense empresa perquè és autònom, a `Asistio a Llamada - Interes bajo`;
+- Víctor Gutiérrez Parron, empresa `Saló Guttié`, a `Presupuesto enviado`.
+
+La importació és idempotent i es pot repetir amb
+`npm run import:ghl-opportunities -- <ruta-al-csv>` sense duplicar contactes,
+empreses, oportunitats ni notes.
+
+També s'ha carregat el catàleg comercial del document de Drive
+`AImetos – Estructura Comercial (Intern)`: setup general, sis packs, extensió
+multilingüe, tres manteniments, dos escalats per volum i sis membresies. Hi ha
+20 productes actius en total.
+
+Les dades fiscals configurades són `Roger Arnau Bach`, NIF `45646645V`,
+`C/ Soler i Palet 15`, `08222 Terrassa`.
+
+Els PDF es lliuren amb el número del document com a nom de fitxer, per exemple
+`FAC-260812-01.pdf` i `PRE-260812-01.pdf`.
+
+Continua pendent substituir els iframes de GoHighLevel a la web i definir els
+textos exactes dels correus/SMS de les automatitzacions.
+
+## Domini de correu, enllaços i pagaments
+
+`mail.aimetos.com` està configurat a GoHighLevel com a domini dedicat de correu
+de LeadConnector. S'ha de conservar per a l'enviament. La recomanació per als
+enllaços públics del CRM, formularis, pàgines de gràcies, pressupostos i factures
+és un subdomini separat com `crm.aimetos.com`; aquest valor es configura a
+`APP_URL` i els correus generen els enllaços a partir d'aquesta variable.
+
+La factura pública ja admet pagament amb Stripe en mode test. Quan
+`STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` i
+`STRIPE_WEBHOOK_SECRET` estiguin configurats, la pàgina pública de la factura
+mostra el botó de pagament. No s'han activat claus live.
+
+El CRM registra correus pendents, enviats i fallits. Les mètriques de lliurament,
+obertura, clic, rebot i baixa requereixen els esdeveniments del proveïdor de
+correu via API/webhook; no s'ha activat aquesta integració perquè els webhooks
+continuen ajornats.
+
 ## Estat de Git i bloquejos pendents
 
-El 14 de juliol de 2026 s'ha comprovat que `main` està net i que el commit del
-CRM MVP és visible al remot `https://github.com/aimetosagent-oss/AImetos.git`.
+El CRM MVP continua visible al remot
+`https://github.com/aimetosagent-oss/AImetos.git`. Els canvis de migració des de
+GoHighLevel descrits a l'apartat anterior són locals i encara no s'han publicat.
 
-En aquesta màquina encara no es poden repetir totes les validacions perquè
-`node`, `npm` i `docker` no estan instal·lats al `PATH`, i tampoc hi ha un
-fitxer `.env` local. Quan l'entorn tingui Node/npm i Docker disponibles, la
-propera feina és:
-
-```powershell
-npm.cmd ci
-Copy-Item .env.example .env
-npm.cmd run lint
-npm.cmd run typecheck
-npm.cmd run test:unit
-npm.cmd run test:integration
-npm.cmd run build
-npm.cmd run test:e2e
-docker compose build
-```
-
-El desplegament EasyPanel continua pendent de prova en una màquina amb Docker.
+En aquesta màquina s'utilitza el runtime Node agrupat amb Codex i `prisma dev`
+com a PostgreSQL local. Docker continua sense estar instal·lat. El desplegament
+EasyPanel i `docker compose build` queden pendents d'una màquina amb Docker o
+de l'accés al panell de desplegament.
 

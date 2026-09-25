@@ -1,0 +1,218 @@
+{
+  "dataCutoff": "2026-09-24T13:10:00+02:00",
+  "scope": "Dades agregades i finestres mòbils. No substitueixen exports individuals ni totals històrics.",
+  "linkedin": {
+    "rolling90DaySnapshots": [
+      {
+        "capturedAt": "2026-09-18T12:00:00+02:00",
+        "window": "rolling_90d",
+        "sourceType": "real_screenshot",
+        "impressions": 3044,
+        "reach": 588,
+        "inNetworkPercent": 84,
+        "outOfNetworkPercent": 16,
+        "socialInteractions": 61,
+        "reactions": 51,
+        "comments": 10,
+        "shares": 0,
+        "saves": 0,
+        "sends": 0,
+        "followersTotal": 1097,
+        "notes": "Finestra mòbil; utilitzar valors absoluts i no interpretar el percentatge de creixement com a causalitat."
+      },
+      {
+        "capturedAt": "2026-09-24T13:10:00+02:00",
+        "window": "rolling_90d",
+        "sourceType": "real_screenshot",
+        "impressions": 3339,
+        "reach": 670,
+        "inNetworkPercent": 82,
+        "outOfNetworkPercent": 18,
+        "socialInteractions": 67,
+        "reactions": 52,
+        "comments": 13,
+        "shares": 0,
+        "saves": 1,
+        "sends": 1,
+        "followersTotal": 1098,
+        "profileViews": 115,
+        "searchAppearances": 54,
+        "last7DayPostImpressions": 322,
+        "notes": "Últim snapshot agregat disponible. +750% és un indicador rolling i no una acceleració causal."
+      }
+    ],
+    "rolling28DaySnapshots": [
+      {
+        "capturedAt": "2026-08-14",
+        "window": "rolling_28d",
+        "sourceType": "real_screenshot",
+        "impressions": 1185,
+        "impressionsChangePercent": 66,
+        "reach": 335,
+        "inNetworkPercent": 83,
+        "outOfNetworkPercent": 17,
+        "socialInteractions": 26,
+        "reactions": 20,
+        "comments": 6,
+        "shares": 0,
+        "saves": 0,
+        "sends": 0,
+        "followersTotal": 1090,
+        "followersChangePercent": 2,
+        "audienceView": {
+          "inexperiencedPercent": 36,
+          "location": { "label": "Barcelona i voltants", "percent": 32 },
+          "companySize": { "label": "11-50", "percent": 16 },
+          "sector": { "label": "Fabricació de maquinària industrial", "percent": 9 },
+          "company": { "label": "CIRCONTROL", "percent": 8 },
+          "role": { "label": "Director de projecte", "percent": 3 }
+        }
+      },
+      {
+        "capturedAt": "2026-08-20",
+        "window": "rolling_28d",
+        "sourceType": "real_screenshot",
+        "impressions": 1105,
+        "impressionsChangePercent": 5,
+        "reach": 352,
+        "inNetworkPercent": 81,
+        "outOfNetworkPercent": 19,
+        "socialInteractions": 18,
+        "reactions": 16,
+        "comments": 2,
+        "shares": 0,
+        "followersTotal": 1092,
+        "followersChangePercent": 1,
+        "notes": "Comparar amb el 14/08 només com dues fotografies de finestres mòbils, no com una cohort fixa."
+      }
+    ],
+    "currentAudienceViews": [
+      {
+        "view": "A",
+        "inexperiencedPercent": 36,
+        "location": { "label": "Barcelona i voltants", "percent": 32 },
+        "companySize": { "label": "11-50", "percent": 16 },
+        "sector": { "label": "Fabricació de maquinària industrial", "percent": 9 },
+        "company": { "label": "CIRCONTROL", "percent": 8 },
+        "role": { "label": "Director de projecte", "percent": 3 }
+      },
+      {
+        "view": "B",
+        "inexperiencedPercent": 38,
+        "location": { "label": "Barcelona i voltants", "percent": 25 },
+        "companySize": { "label": "201-500", "percent": 18 },
+        "sector": { "label": "Fabricació de maquinària industrial", "percent": 9 },
+        "company": { "label": "CIRCONTROL", "percent": 11 },
+        "role": { "label": "Director de projecte", "percent": 5 },
+        "notes": "Captura diferent; no assumir la mateixa finestra o filtre que la vista A."
+      },
+      {
+        "view": "2026-09-24",
+        "inexperiencedPercent": 36,
+        "location": { "label": "Barcelona i voltants", "percent": 24 },
+        "companySize": { "label": "11-50", "percent": 16 },
+        "sector": { "label": "Fabricació de maquinària industrial", "percent": 10 },
+        "company": { "label": "CIRCONTROL", "percent": 7 },
+        "role": { "label": "Director de projecte", "percent": 5 },
+        "notes": "Vista agregada més recent; l'audiència continua sent mixta."
+      }
+    ],
+    "profileDiscovery": {
+      "period": "2026-08-04/2026-08-10",
+      "profileAppearances": 392,
+      "changePercent": 52,
+      "searchAppearances": 37,
+      "searchChangePercent": 0,
+      "originsPercent": {
+        "publications": 78.3,
+        "search": 9.4,
+        "networkRecommendations": 8.7,
+        "comments": 3.6
+      },
+      "searcherRolesPercent": {
+        "directorExecutiu": 13.5,
+        "comercial": 13.5,
+        "fundador": 10.8,
+        "enginyerDeXarxes": 8.1,
+        "professorUniversitari": 5.4
+      }
+    },
+    "profileInteraction": {
+      "window": "displayed_90d",
+      "profileImpressions": 219,
+      "profileImpressionsChangePercent": -52.7,
+      "clicks": 13,
+      "clicksChangePercent": -100,
+      "averageViewSeconds": 68,
+      "averageViewChangePercent": 214.2,
+      "clicksBySection": [
+        { "section": "Experiència", "clicks": 6, "percent": 46.2 },
+        { "section": "Activitat", "clicks": 4, "percent": 30.8 },
+        { "section": "Presentació", "clicks": 3, "percent": 23.1 }
+      ],
+      "impressionsBySection": [
+        { "section": "Activitat", "impressions": 80, "percent": 36.5 },
+        { "section": "Acerca de", "impressions": 76, "percent": 34.7 },
+        { "section": "Altres", "impressions": 14, "percent": 6.4 },
+        { "section": "Educació", "impressions": 12, "percent": 5.5 },
+        { "section": "Experiència", "impressions": 9, "percent": 4.1 },
+        { "section": "Llicències i certificacions", "impressions": 9, "percent": 4.1 },
+        { "section": "Aptituds", "impressions": 6, "percent": 2.7 },
+        { "section": "Recomanacions", "impressions": 4, "percent": 1.8 },
+        { "section": "Interessos", "impressions": 3, "percent": 1.4 },
+        { "section": "Cursos", "impressions": 3, "percent": 1.4 },
+        { "section": "Publicacions", "impressions": 3, "percent": 1.4 }
+      ]
+    },
+    "rollingRanking20260820": [
+      { "rank": 1, "contentId": "LI-08", "title": "Mañana ocurrirá algo excepcional. Pero no inesperado.", "impressions": 270, "reactions": 3 },
+      { "rank": 2, "contentId": "LI-09", "title": "No hacía falta IA. Hacían falta dos correos.", "impressions": 226, "reactions": 1 },
+      { "rank": 3, "title": "La IA lo dijo. Nadie lo cuestionó.", "impressions": 185, "reactions": 4, "comments": 2 },
+      { "rank": 4, "contentId": "LI-07", "title": "Tu empresa no necesita otra herramienta. Necesita que las que ya tiene se hablen.", "impressions": 121, "reactions": 2 },
+      { "rank": 5, "contentId": "LI-06", "title": "El mayor riesgo no es que se vaya una persona. Es que se vaya el conocimiento con ella.", "impressions": 101, "reactions": 2 },
+      { "rank": 6, "contentId": "LI-04", "title": "Automatizar no significa eliminar la atención humana.", "impressions": 85, "reactions": 4, "comments": 2 },
+      { "rank": 7, "title": "La demo funcionó. Producción falló.", "impressions": 46 },
+      { "rank": 8, "contentId": "LI-03", "title": "¿De verdad todas las empresas necesitan automatizar sus llamadas? No.", "impressions": 42, "reactions": 2, "comments": 2 },
+      { "rank": 9, "contentId": "LI-02", "title": "Muchas empresas automatizan procesos... pero pocas saben si realmente están obteniendo resultados.", "impressions": 9, "reactions": 3, "notes": "Valor de finestra mòbil; no és el total històric." },
+      { "rank": 10, "contentId": "LI-01", "title": "¿Tiene sentido automatizar las llamadas de tu empresa? No siempre.", "impressions": 8, "reactions": 6, "notes": "Valor de finestra mòbil; no és el total històric." }
+    ]
+  },
+  "instagram": {
+    "rolling30DaySnapshots": [
+      {
+        "capturedAt": "2026-08-07",
+        "window": "rolling_30d",
+        "views": 68,
+        "interactions": 3,
+        "sourceType": "real_screenshot"
+      },
+      {
+        "capturedAt": "2026-08-14",
+        "window": "rolling_30d",
+        "views": 112,
+        "interactions": 23,
+        "netFollowers": null,
+        "netFollowersStatus": "unavailable",
+        "followersViewsPercent": 86.6,
+        "nonFollowersViewsPercent": 13.4,
+        "uniqueViewers": 10,
+        "viewsByType": { "posts": 100, "stories": 12, "reels": 0, "liveVideos": 0 },
+        "interactionsByType": { "posts": 19, "stories": 4, "reels": 0, "liveVideos": 0 },
+        "profileVisits": 17,
+        "bioLinkTaps": 0,
+        "businessAddressTaps": 0,
+        "sourceType": "real_screenshot",
+        "notes": "Finestra mòbil i mostra petita; Instagram és una font complementària."
+      }
+    ],
+    "topVisibleContent": [
+      { "title": "No hacía falta IA", "views": 18, "likes": 2, "comments": 0, "reposts": 1, "sends": 0, "associatedEntry": { "views": 2, "likes": 1 } },
+      { "title": "Tu empresa no necesita otra herramienta", "views": 15, "likes": 2, "comments": 0, "reposts": 0, "sends": 0, "associatedEntry": { "views": 4, "likes": 0 } },
+      { "title": "No todas las empresas necesitan automatizar sus llamadas", "views": 12 },
+      { "title": "Mañana habrá un eclipse", "views": 10, "likes": 2, "comments": 0, "reposts": 0, "sends": 0, "associatedEntry": { "views": 4, "likes": 2 } },
+      { "title": "La IA lo dijo. Nadie lo cuestionó", "views": 7, "likes": 3, "comments": 1, "reposts": 0, "sends": 0, "associatedEntry": { "views": 2, "likes": 1 } },
+      { "title": "El mayor riesgo no es que se vaya una persona", "views": 7, "likes": 3, "comments": 0, "reposts": 0, "sends": 0 }
+    ],
+    "duplicateHandling": "No sumar entrades associades sense content_id: poden ser feed, story, cross-post o una altra unitat publicada."
+  }
+}

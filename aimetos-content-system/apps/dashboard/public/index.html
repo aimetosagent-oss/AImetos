@@ -58,6 +58,37 @@
           </div>
         </section>
 
+        <section class="decision-controls" aria-label="Accions sobre la decisió">
+          <div class="decision-learning">
+            <div>
+              <span>Què aprendrem</span>
+              <strong id="learningObjective">-</strong>
+            </div>
+            <div>
+              <span>Variable principal</span>
+              <strong id="experimentVariable">-</strong>
+            </div>
+            <div>
+              <span>Confiança separada</span>
+              <strong id="decisionConfidenceDimensions">-</strong>
+            </div>
+          </div>
+          <div class="decision-actions">
+            <button id="approveDecision" type="button">Aprovar</button>
+            <button id="rejectDecision" class="secondary-button" type="button">Rebutjar</button>
+            <button id="debateDecision" class="secondary-button" type="button">Debatre</button>
+            <button id="regenerateDecision" class="secondary-button" type="button">Alternativa</button>
+          </div>
+          <div id="rejectionPanel" class="rejection-panel" hidden>
+            <label for="rejectionReason">Motiu del rebuig (opcional)</label>
+            <div>
+              <input id="rejectionReason" type="text" maxlength="300" placeholder="Ex.: massa semblant a l'últim post" />
+              <button id="confirmRejection" type="button">Confirmar rebuig</button>
+            </div>
+          </div>
+          <p id="decisionActionStatus" class="decision-action-status" aria-live="polite"></p>
+        </section>
+
         <section class="simple-flow" aria-label="Informe simplificat">
           <article class="focus-panel executive-panel">
             <div class="section-heading">
@@ -134,10 +165,42 @@
       </section>
 
       <section id="adminPanel" class="tab-panel" aria-label="Perfil administrador tècnic">
+        <section class="linkedin-start" aria-label="Ingestió automàtica LinkedIn">
+          <div class="section-heading">
+            <h2>Ingestió automàtica LinkedIn</h2>
+            <span id="linkedinIntegrationStatus">Comprovant...</span>
+          </div>
+          <div class="integration-status-grid">
+            <div><span>Connexió</span><strong id="linkedinConnection">-</strong></div>
+            <div><span>Última sincronització</span><strong id="linkedinLastSync">-</strong></div>
+            <div><span>Estat del sync</span><strong id="linkedinSyncStatus">-</strong></div>
+            <div><span>Posts registrats</span><strong id="linkedinRegisteredPosts">-</strong></div>
+            <div><span>API versionada</span><strong id="linkedinApiVersion">-</strong></div>
+          </div>
+          <p id="linkedinIntegrationNote" class="warning-note"></p>
+          <div class="integration-actions">
+            <button id="linkedinConnect" type="button">Connectar LinkedIn</button>
+            <button id="linkedinSyncNow" class="secondary-button" type="button">Sincronitzar ara</button>
+            <button id="linkedinDisconnect" class="secondary-button" type="button">Desconnectar</button>
+            <span id="linkedinActionStatus" aria-live="polite"></span>
+          </div>
+          <details class="data-details">
+            <summary>Registrar una publicació una sola vegada</summary>
+            <form id="linkedinPostForm" class="linkedin-post-form">
+              <label>URL del post<input name="url" type="url" placeholder="https://www.linkedin.com/posts/..." required /></label>
+              <label>URN oficial, si el coneixes<input name="linkedinUrn" placeholder="urn:li:share:..." /></label>
+              <label>ID intern<input name="internalContentId" placeholder="LI-18" /></label>
+              <label>Data de publicació<input name="publishedAt" type="datetime-local" /></label>
+              <button type="submit">Registrar post</button>
+            </form>
+            <p class="note">L’URN derivada d’una URL queda pendent de validació oficial. El sistema no inventa relacions entre un activity ID i una share/ugcPost URN.</p>
+          </details>
+        </section>
+
         <section class="linkedin-start" aria-label="Entrada manual de mètriques">
           <div class="section-heading">
             <h2>Entrada manual de mètriques</h2>
-            <span>Sense API ni credencials</span>
+            <span>Fallback temporal</span>
           </div>
           <form id="manualMetricsForm" class="manual-form">
             <label>Plataforma<select name="platform" required><option value="linkedin">LinkedIn</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option></select></label>

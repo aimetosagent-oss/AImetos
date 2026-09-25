@@ -69,7 +69,9 @@ export type EditorialFamily =
   | "knowledge_continuity"
   | "dashboards_measurement"
   | "technical_robustness"
-  | "real_cases";
+  | "real_cases"
+  | "project_management_automation"
+  | "commercial_signals";
 
 export type Platform =
   | "blog"
@@ -120,6 +122,8 @@ export type ContentIdea = {
 
 export type DataSourceType =
   | "real_export"
+  | "manual_export"
+  | "linkedin_api"
   | "real_screenshot"
   | "manual_user_report"
   | "dashboard_derived"
@@ -138,7 +142,26 @@ export type PublishedWeekday =
   | "sunday"
   | "unknown";
 
-export type TimingConfidence = "insufficient_data" | "early_signal" | "developing_pattern" | "validated_pattern";
+export type TimingConfidence =
+  | "insufficient_data"
+  | "early_signal"
+  | "developing_pattern"
+  | "moderate_evidence"
+  | "strong_pattern"
+  | "validated_pattern";
+export type CausalConfidence = "high" | "medium" | "low";
+export type ContentNature = "temporal" | "evergreen";
+export type TestVariable =
+  | "topic"
+  | "hook"
+  | "format"
+  | "visual"
+  | "time"
+  | "hour"
+  | "day"
+  | "cta"
+  | "length"
+  | "channel";
 export type SnapshotPeriod = "24h" | "48h" | "72h" | "7d" | "30d" | "latest";
 export type SnapshotLabel = "~24h" | "~48h" | "~72h" | "~7d" | "latest_available";
 export type ConfidenceLevel =
@@ -189,6 +212,7 @@ export type MetricSnapshot = {
   };
   audience?: AudienceBreakdown;
   sourceType: DataSourceType;
+  valid?: boolean;
   notes?: string;
 };
 
@@ -199,7 +223,12 @@ export type RealContentRecord = {
   topic: string;
   editorialAngle: string;
   editorialFamily: EditorialFamily;
+  hook?: string;
   format: string;
+  visualStyle?: string;
+  cta?: string;
+  realCase?: boolean;
+  authorityFit?: number;
   publishedAt?: string;
   publishedAtManual?: string;
   publishedAtExport?: string;
@@ -208,6 +237,10 @@ export type RealContentRecord = {
   published_hour?: number;
   published_minute?: number;
   time_slot?: PublicationTimeSlot;
+  contentNature?: ContentNature;
+  multivariable_test?: boolean;
+  causal_confidence?: CausalConfidence;
+  changedVariables?: TestVariable[];
   dataNote?: string;
   url?: string;
   metricsStatus?: "available" | "pending";

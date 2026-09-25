@@ -11,7 +11,7 @@ describe("pipeline i separació d’organitzacions", () => {
 
   it("registra el canvi d’etapa i l’outbox", async () => {
     await moveOpportunity(first.context, { opportunityId: first.opportunity.id, stageId: first.stages[1].id, reason: "Proposta preparada" });
-    expect(await db.opportunity.findUnique({ where: { id: first.opportunity.id } })).toMatchObject({ stageId: first.stages[1].id, probability: 60 });
+    expect(await db.opportunity.findUnique({ where: { id: first.opportunity.id } })).toMatchObject({ stageId: first.stages[1].id, probability: 62 });
     expect(await db.opportunityStageHistory.count({ where: { organizationId: first.organization.id, opportunityId: first.opportunity.id } })).toBe(1);
     expect(await db.outboxEvent.count({ where: { organizationId: first.organization.id, eventType: "opportunity.stage_changed" } })).toBe(1);
   });

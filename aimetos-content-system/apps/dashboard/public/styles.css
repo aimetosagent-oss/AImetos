@@ -150,6 +150,71 @@ main {
   background: var(--panel);
 }
 
+.decision-controls {
+  display: grid;
+  gap: 12px;
+  margin: -8px 0 18px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.decision-learning {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.decision-learning div {
+  min-width: 0;
+}
+
+.decision-learning span,
+.rejection-panel label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.decision-learning strong {
+  display: block;
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rejection-panel[hidden] {
+  display: none;
+}
+
+.rejection-panel > div {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.rejection-panel input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 10px;
+  font: inherit;
+}
+
+.decision-action-status {
+  min-height: 18px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .business-strip {
   display: grid;
   grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr));
@@ -684,6 +749,79 @@ article,
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
+}
+
+.integration-status-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.integration-status-grid div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f7f9fb;
+}
+
+.integration-status-grid span,
+.integration-status-grid strong {
+  display: block;
+}
+
+.integration-status-grid span {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.integration-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.integration-actions span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.linkedin-post-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.linkedin-post-form label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.linkedin-post-form input {
+  width: 100%;
+  margin-top: 5px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.linkedin-post-form button {
+  align-self: end;
+  justify-self: start;
+}
+
+@media (max-width: 900px) {
+  .integration-status-grid,
+  .linkedin-post-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 .small-summary {
@@ -1390,8 +1528,14 @@ dd {
   }
 
   .decision-facts,
-  .strategy-details {
+  .strategy-details,
+  .decision-learning {
     grid-template-columns: 1fr;
+  }
+
+  .rejection-panel > div {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .decision-facts article:last-child {

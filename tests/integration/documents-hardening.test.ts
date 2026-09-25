@@ -104,11 +104,11 @@ describe("document concurrency and tenant invariants", () => {
 
     const opportunity = await db.opportunity.findUniqueOrThrow({ where: { id: fixture.opportunity.id } });
     const wonTransitions = await db.opportunityStageHistory.count({
-      where: { opportunityId: fixture.opportunity.id, toStageId: fixture.stages[2].id },
+      where: { opportunityId: fixture.opportunity.id, toStageId: fixture.stages[3].id },
     });
     if (stored.status === "ACCEPTED") {
-      expect(opportunity).toMatchObject({ status: "WON", stageId: fixture.stages[2].id });
-      expect(wonTransitions).toBe(1);
+      expect(opportunity).toMatchObject({ status: "OPEN", stageId: fixture.stages[2].id });
+      expect(wonTransitions).toBe(0);
     } else {
       expect(stored.status).toBe("REJECTED");
       expect(opportunity).toMatchObject({ status: "OPEN", stageId: fixture.stages[1].id });

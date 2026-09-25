@@ -11,6 +11,8 @@ test("small samples never produce high confidence", () => {
   assert.equal(confidenceFromSample(0), "insufficient_data");
   assert.equal(confidenceFromSample(2), "early_signal");
   assert.equal(confidenceFromSample(5), "developing_pattern");
+  assert.equal(confidenceFromSample(7), "developing_pattern");
+  assert.equal(confidenceFromSample(12), "moderate_confidence");
   assert.notEqual(confidenceFromSample(5), "high_confidence");
 });
 
@@ -18,7 +20,7 @@ test("business score is transparent and bounded", () => {
   const linkedin = records.filter((record) => record.platform === "linkedin" && record.comparable !== false && record.snapshots.length > 0);
   const result = scoreRealContent(linkedin[0], linkedin, signals);
   assert.ok(result.total >= 0 && result.total <= 100);
-  assert.equal(result.comparablePosts, 5);
+  assert.equal(result.comparablePosts, 10);
   assert.equal(result.confidence, "developing_pattern");
   assert.ok(result.breakdown.profileInterest > 0);
 });
@@ -30,8 +32,12 @@ test("probable invitations do not become confirmed leads", () => {
   assert.ok(result.breakdown.commercialSignal > 0);
 });
 
-test("real ranking keeps workflow robustness as the weakest early LinkedIn result", () => {
+test("real ranking only includes the strongest common maturity cohort", () => {
   const linkedin = records.filter((record) => record.platform === "linkedin");
   const ranked = rankRealContent(linkedin, signals);
-  assert.equal(ranked.at(-1)?.record.id, "LI-05");
+  assert.deepEqual(
+    [...ranked.map((item) => item.record.id)].sort(),
+    ["LI-01", "LI-02", "LI-03", "LI-08", "LI-09", "LI-12", "LI-15", "LI-16"].sort()
+  );
+  assert.ok(ranked.every((item) => item.record.snapshots.some((snapshot) => snapshot.period === "24h")));
 });

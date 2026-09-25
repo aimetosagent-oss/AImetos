@@ -14,7 +14,7 @@ export type GenericConnector = Connector<Record<string, string | undefined>, Rec
 export const connectorSpecs: ConnectorSpec[] = [
   { name: "ga4", kind: "analytics", envFlag: "ga4", requiredEnv: ["GA4_PROPERTY_ID"] },
   { name: "search_console", kind: "analytics", envFlag: "searchConsole", requiredEnv: ["SEARCH_CONSOLE_SITE_URL"] },
-  { name: "linkedin_analytics", kind: "analytics", envFlag: "linkedIn", requiredEnv: ["LINKEDIN_ORGANIZATION_ID"] },
+  { name: "linkedin_analytics", kind: "analytics", envFlag: "linkedIn", requiredEnv: ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET", "LINKEDIN_REDIRECT_URI", "LINKEDIN_API_VERSION", "LINKEDIN_TOKEN_ENCRYPTION_KEY"] },
   { name: "facebook_insights", kind: "analytics", envFlag: "facebook", requiredEnv: ["META_ACCOUNT_ID"] },
   { name: "instagram_insights", kind: "analytics", envFlag: "instagram", requiredEnv: ["META_ACCOUNT_ID"] },
   { name: "youtube_analytics", kind: "analytics", envFlag: "youtube", requiredEnv: ["YOUTUBE_CHANNEL_ID"] },
@@ -24,7 +24,6 @@ export const connectorSpecs: ConnectorSpec[] = [
   { name: "openai", kind: "ai", envFlag: "openai", requiredEnv: ["OPENAI_API_KEY"] },
   { name: "anthropic", kind: "ai", envFlag: "anthropic", requiredEnv: ["ANTHROPIC_API_KEY"] },
   { name: "mock_ai", kind: "ai", envFlag: "publishing", requiredEnv: [] },
-  { name: "linkedin_publishing", kind: "publishing", envFlag: "linkedIn", requiredEnv: ["LINKEDIN_ORGANIZATION_ID"] },
   { name: "wordpress", kind: "publishing", envFlag: "publishing", requiredEnv: [] },
   { name: "instagram_publishing", kind: "publishing", envFlag: "instagram", requiredEnv: ["META_ACCOUNT_ID"] },
   { name: "facebook_publishing", kind: "publishing", envFlag: "facebook", requiredEnv: ["META_ACCOUNT_ID"] },
