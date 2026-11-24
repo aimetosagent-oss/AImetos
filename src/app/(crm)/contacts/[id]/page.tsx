@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { BriefcaseBusiness, CheckSquare2, FileText, MessageSquareText, ReceiptText } from "lucide-react";
+import { BriefcaseBusiness, CheckSquare2, FileText, MessageSquareText, ReceiptText, Pencil } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -50,6 +50,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
       <PageHeader
         breadcrumbs={[{ label: "Contactes", href: "/contacts" }, { label: fullName }]}
         title={fullName}
+        actions={<><ButtonLink href={`/edit/contacts/${contact.id}`} variant="outline"><Pencil size={17} /> Edita</ButtonLink><ButtonLink href={`/pipeline/new?contactId=${contact.id}&companyId=${contact.companyId ?? ""}`}><BriefcaseBusiness size={17} /> Crea oportunitat</ButtonLink></>}
         description={[contact.position, contact.company?.name].filter(Boolean).join(" · ") || "Fitxa comercial del contacte"}
       />
       <section className="metrics-grid" aria-label="Resum del contacte">

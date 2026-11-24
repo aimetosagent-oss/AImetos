@@ -27,6 +27,7 @@ export default async function NewInvoicePage() {
           <Field label="Quantitat" htmlFor="quantity" required><Input id="quantity" name="quantity" type="number" min="1" step="1" defaultValue="1" required /></Field>
           <Field label="Preu unitari (€)" htmlFor="unitPrice" required><Input id="unitPrice" name="unitPrice" inputMode="decimal" required placeholder="0,00" /></Field>
           <Field label="IVA (%)" htmlFor="taxRate" required><Input id="taxRate" name="taxRate" type="number" min="0" max="100" step="0.01" defaultValue={(settings?.defaultTaxRateBps ?? 2100) / 100} required /></Field>
+          <Field label="Descompte (%)" htmlFor="discountRate"><Input id="discountRate" name="discountRate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></Field>
         </FormGrid></FormSection>
         <FormSection title="Notes i condicions"><FormGrid><Field label="Notes" htmlFor="notes"><Textarea id="notes" name="notes" rows={4} /></Field><Field label="Condicions" htmlFor="terms"><Textarea id="terms" name="terms" rows={4} defaultValue={`Pagament a ${settings?.invoiceDueDays ?? 30} dies des de l’emissió.`} /></Field></FormGrid></FormSection>
       </CardContent><FormActions><ButtonLink href="/invoices" variant="ghost">Cancel·lar</ButtonLink><Button type="submit">Crear factura</Button></FormActions></Card></form>

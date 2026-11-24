@@ -16,6 +16,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
     include: { company: true, contact: true, opportunity: true, items: { orderBy: { position: "asc" } }, invoice: true, scheduledJobs: { orderBy: { runAt: "asc" } } },
   });
   if (!quote) notFound();
+  const emails = await db.emailMessage.findMany({ where: { organizationId: context.organizationId, quoteId: id }, select: { id: true, status: true }, orderBy: { createdAt: "desc" }, take: 3 });
   return (
     <div className="page-stack">
       <PageHeader
@@ -24,6 +25,8 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         breadcrumbs={[{ label: "Pressupostos", href: "/quotes" }, { label: quote.number }]}
         actions={<><StatusBadge status={quote.status} label={labels[quote.status]} />{quote.status !== "DRAFT" ? <ButtonLink href={`/q/${quote.publicToken}`} target="_blank" variant="outline"><ExternalLink size={16} /> Enllaç públic</ButtonLink> : null}</>}
       />
+      {!process.env.SMTP_HOST ? <p className="inline-note">Correu no configurat. Cap missatge es lliurarà fins a configurar l’enviament.</p> : null}
+      {emails.map(email => <p key={email.id}>Estat del correu: {email.status === "SENT" ? "Lliurat al servidor de correu" : email.status === "FAILED" ? "Fallat" : "Pendent d'enviament"}</p>)}
       <div className="content-grid">
         <Card className="span-8">
           <CardHeader><CardTitle>Detall del pressupost</CardTitle></CardHeader>
@@ -37,7 +40,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         <div className="span-4 side-stack">
           <Card><CardHeader><CardTitle>Accions</CardTitle></CardHeader><CardContent className="action-stack">
             {quote.status === "DRAFT" ? <form action={sendQuoteAction}><input type="hidden" name="id" value={quote.id} /><Button type="submit"><Mail size={16} /> Enviar per correu</Button></form> : null}
-            {quote.status !== "DRAFT" ? <ButtonLink href={`/q/${quote.publicToken}/pdf`} target="_blank" variant="outline"><Download size={16} /> Veure PDF</ButtonLink> : null}
+            <ButtonLink href={`/api/documents/quotes/${quote.id}/pdf`} target="_blank" variant="outline"><Download size={16} /> Veure PDF</ButtonLink>
             <form action={duplicateQuoteAction}><input type="hidden" name="id" value={quote.id} /><Button type="submit" variant="outline"><Copy size={16} /> Duplicar</Button></form>
             {quote.status === "ACCEPTED" && !quote.invoice ? <form action={convertQuoteAction}><input type="hidden" name="id" value={quote.id} /><Button type="submit"><ReceiptText size={16} /> Convertir en factura</Button></form> : null}
             {quote.invoice ? <ButtonLink href={`/invoices/${quote.invoice.id}`} variant="secondary"><FileCheck2 size={16} /> Obrir factura {quote.invoice.number}</ButtonLink> : null}

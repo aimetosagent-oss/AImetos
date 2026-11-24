@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { log, logErrorMessage } from "@/lib/logger";
 
 export async function sendQueuedEmail(emailMessageId: string) {
   const message = await db.emailMessage.findUnique({ where: { id: emailMessageId } });
@@ -16,6 +17,11 @@ export async function sendQueuedEmail(emailMessageId: string) {
     disableUrlAccess: true,
   });
   await db.emailMessage.update({ where: { id: message.id }, data: { status: "PROCESSING", attempts: { increment: 1 } } });
+  log("info", "smtp.send_started", {
+    organizationId: message.organizationId,
+    emailMessageId: message.id,
+    attempt: message.attempts + 1,
+  });
   try {
     const sent = await transport.sendMail({
       from: { name: config.SMTP_FROM_NAME, address: config.SMTP_FROM_EMAIL },
@@ -31,8 +37,20 @@ export async function sendQueuedEmail(emailMessageId: string) {
       db.emailMessage.update({ where: { id: message.id }, data: { status: "SENT", sentAt: new Date(), providerMessageId: sent.messageId } }),
       db.activity.create({ data: { organizationId: message.organizationId, type: "EMAIL_SENT", summary: `Correu enviat: ${message.subject}`, contactId: message.contactId, quoteId: message.quoteId, invoiceId: message.invoiceId } }),
     ]);
+    log("info", "smtp.sent", {
+      organizationId: message.organizationId,
+      emailMessageId: message.id,
+      providerMessageId: sent.messageId,
+    });
   } catch (error) {
-    await db.emailMessage.update({ where: { id: message.id }, data: { status: "FAILED", lastError: error instanceof Error ? error.message.slice(0, 4_000) : "Error SMTP" } });
+    const errorMessage = logErrorMessage(error);
+    await db.emailMessage.update({ where: { id: message.id }, data: { status: "FAILED", lastError: errorMessage || "Error SMTP" } });
+    log("error", "smtp.failed", {
+      organizationId: message.organizationId,
+      emailMessageId: message.id,
+      attempt: message.attempts + 1,
+      error: errorMessage,
+    });
     throw error;
   }
 }

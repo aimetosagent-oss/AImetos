@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+/aimetos-content-system/.n8n-local.env
 *.pem
 *.key
 *.p12
@@ -46,6 +47,8 @@ docker-compose.override.yml
 *.log
 tmp/
 temp/
+backups/postgres/
+backups/migration/
 
 # n8n local data and sensitive exports
 .n8n/

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { unstable_rethrow } from "next/navigation";
 import { publicError } from "@/lib/errors";
+import { log } from "@/lib/logger";
 import { requireTenant } from "@/lib/tenant";
 import { createInvoiceCheckoutSession, createPublicInvoiceCheckoutSession } from "@/modules/integrations/stripe";
 
@@ -16,11 +17,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ? await createPublicInvoiceCheckoutSession(id, publicToken)
       : await createInvoiceCheckoutSession(await requireTenant(), id);
 
+    log("info", "stripe.checkout_created", {
+      invoiceId: id,
+      publicCheckout: Boolean(publicToken),
+      reused: checkout.reused,
+    });
+
     if (jsonRequested) return NextResponse.json({ checkout }, { status: checkout.reused ? 200 : 201 });
     return NextResponse.redirect(checkout.url, 303);
   } catch (error) {
     unstable_rethrow(error);
     const safe = publicError(error);
+    log(safe.status >= 500 ? "error" : "warn", "stripe.checkout_failed", {
+      code: safe.code,
+      status: safe.status,
+    });
     if (jsonRequested) return NextResponse.json({ message: safe.message, code: safe.code }, { status: safe.status });
     return new NextResponse(safe.message, { status: safe.status, headers: { "content-type": "text/plain; charset=utf-8" } });
   }

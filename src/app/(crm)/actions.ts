@@ -268,6 +268,7 @@ export async function addNoteAction(formData: FormData) {
   if (input.entityType === "COMPANY") revalidatePath(`/companies/${input.entityId}`);
   if (input.entityType === "CONTACT") revalidatePath(`/contacts/${input.entityId}`);
   if (input.entityType === "OPPORTUNITY") revalidatePath("/pipeline");
+  if (input.entityType === "OPPORTUNITY") revalidatePath(`/pipeline/${input.entityId}`);
 }
 
 const opportunitySchema = z.object({
@@ -277,6 +278,9 @@ const opportunitySchema = z.object({
   companyId: optionalText(100),
   contactId: optionalText(100),
   value: z.coerce.number().min(0).max(20_000_000),
+  recurringAmount: z.coerce.number().min(0).max(20_000_000).default(0),
+  recurringInterval: z.enum(["", "MONTHLY", "QUARTERLY", "YEARLY"]).default(""),
+  serviceStartDate: optionalText(40),
   currency: z.string().trim().length(3).default("EUR"),
   probability: z.coerce.number().int().min(0).max(100),
   expectedCloseDate: optionalText(40),
@@ -308,6 +312,9 @@ export async function createOpportunityAction(formData: FormData) {
   if (input.contactId && !contact) fail("/pipeline/new", "El contacte seleccionat no és vàlid.");
   const closeDate = parseDateTime(input.expectedCloseDate);
   if (input.expectedCloseDate && !closeDate) fail("/pipeline/new", "La data prevista no és vàlida.");
+  const startDate = parseDateTime(input.serviceStartDate);
+  if (input.serviceStartDate && !startDate) fail("/pipeline/new", "La data d'inici no és vàlida.");
+  if (input.recurringAmount > 0 && !input.recurringInterval) fail("/pipeline/new", "Indica la periodicitat de l'import recurrent.");
 
   await db.$transaction(async (tx) => {
     const opportunity = await tx.opportunity.create({
@@ -320,6 +327,9 @@ export async function createOpportunityAction(formData: FormData) {
         contactId: input.contactId,
         ownerId: context.userId,
         valueCents: Math.round(input.value * 100),
+        recurringAmountCents: Math.round(input.recurringAmount * 100),
+        recurringInterval: input.recurringInterval || null,
+        serviceStartDate: startDate,
         currency: input.currency.toUpperCase(),
         probability: input.probability,
         expectedCloseDate: closeDate,
@@ -684,6 +694,33 @@ export async function reopenTaskAction(formData: FormData) {
   await setTaskCompletion(formData, false);
 }
 
+export async function rescheduleTaskAction(formData: FormData) {
+  const context = await requireTenant();
+  const taskId = String(formData.get("taskId") || "");
+  const path = `/tasks/${taskId}`;
+  const input = parseOrFail(z.object({
+    title: z.string().trim().min(2).max(180), description: optionalText(3_000),
+    dueAt: z.string().min(1), assignedToId: z.string().min(1),
+  }), Object.fromEntries(formData), path);
+  const dueAt = parseDateTime(input.dueAt);
+  if (!dueAt) fail(path, "Data no vàlida");
+  await db.$transaction(async tx => {
+    const task = await tx.task.findFirst({ where: { id: taskId, organizationId: context.organizationId, deletedAt: null, status: { in: ["PENDING", "IN_PROGRESS"] } } });
+    if (!task) fail("/tasks", "No s'ha trobat una tasca pendent");
+    if (!await tx.membership.findFirst({ where: { organizationId: context.organizationId, userId: input.assignedToId, isActive: true, user: { isActive: true } } })) fail(path, "Responsable no vàlid");
+    await tx.task.update({ where: { id: task.id }, data: { title: input.title, description: input.description ?? null, dueAt, assignedToId: input.assignedToId } });
+    const key = { organizationId: context.organizationId, deduplicationKey: `task-due:${task.id}` };
+    await tx.scheduledJob.upsert({ where: { organizationId_deduplicationKey: key },
+      create: { ...key, type: "TASK_DUE", runAt: dueAt, taskId: task.id, payload: { taskId: task.id } },
+      update: { status: "PENDING", runAt: dueAt, attempts: 0, completedAt: null, cancelledAt: null, lockedAt: null, lockedBy: null, lastError: null },
+    });
+    await writeAudit(tx, context, "TASK_RESCHEDULED", "Task", task.id, { dueAt: dueAt.toISOString(), assignedToId: input.assignedToId });
+    if (task.opportunityId) revalidatePath(`/pipeline/${task.opportunityId}`);
+  });
+  revalidatePath("/tasks"); revalidatePath("/dashboard");
+  redirect("/tasks?updated=1");
+}
+
 const productSchema = z.object({
   name: z.string().trim().min(2, "El nom és obligatori").max(180),
   description: optionalText(2_000),
@@ -936,4 +973,70 @@ export async function logoutAction() {
     },
   });
   await signOut({ redirectTo: "/login" });
+}
+
+export async function updateCommercialRecordAction(formData: FormData) {
+  const context = await requireTenant();
+  const id = String(formData.get("id") || "");
+  const type = String(formData.get("type") || "");
+  if (!["companies", "contacts", "opportunities"].includes(type) || !id) fail("/dashboard", "Registre no vàlid");
+  const path = `/edit/${type}/${id}`;
+  const raw = Object.fromEntries(formData);
+  try {
+    await db.$transaction(async (tx) => {
+      const where = { id, organizationId: context.organizationId, deletedAt: null };
+      if (type === "companies") {
+        if (!await tx.company.findFirst({ where })) fail("/companies", "Registre no trobat");
+        const input = parseOrFail(companySchema, raw, path);
+        await tx.company.update({ where: { id }, data: {
+          ...Object.fromEntries(Object.entries(input).map(([key, value]) => [key, value ?? null])),
+          name: input.name, country: input.country.toUpperCase(),
+          email: normalizeEmail(input.email), emailNormalized: normalizeEmail(input.email),
+          phoneNormalized: normalizePhone(input.phone),
+        } });
+      } else if (type === "contacts") {
+        if (!await tx.contact.findFirst({ where })) fail("/contacts", "Registre no trobat");
+        const input = parseOrFail(contactSchema, raw, path);
+        if (input.companyId && !await tx.company.findFirst({ where: { id: input.companyId, organizationId: context.organizationId, deletedAt: null } })) fail(path, "Empresa no vàlida");
+        await tx.contact.update({ where: { id }, data: {
+          ...Object.fromEntries(Object.entries(input).map(([key, value]) => [key, value ?? null])),
+          firstName: input.firstName, preferredLanguage: input.preferredLanguage,
+          email: normalizeEmail(input.email), emailNormalized: normalizeEmail(input.email),
+          phoneNormalized: normalizePhone(input.phone),
+        } });
+      } else {
+        const existing = await tx.opportunity.findFirst({ where });
+        if (!existing) fail("/pipeline", "Registre no trobat");
+        const input = parseOrFail(opportunitySchema, { ...raw, pipelineId: existing.pipelineId, stageId: existing.stageId }, path);
+        for (const [kind, relationId] of [["company", input.companyId], ["contact", input.contactId]] as const) {
+          if (relationId) {
+            const valid = kind === "company"
+              ? await tx.company.findFirst({ where: { id: relationId, organizationId: context.organizationId, deletedAt: null } })
+              : await tx.contact.findFirst({ where: { id: relationId, organizationId: context.organizationId, deletedAt: null } });
+            if (!valid) fail(path, "Relació no vàlida");
+          }
+        }
+        const ownerId = String(formData.get("ownerId") || context.userId);
+        if (!await tx.membership.findFirst({ where: { organizationId: context.organizationId, userId: ownerId, isActive: true, user: { isActive: true } } })) fail(path, "Responsable no vàlid");
+        const closeDate = parseDateTime(input.expectedCloseDate);
+        if (input.expectedCloseDate && !closeDate) fail(path, "Data no vàlida");
+        const startDate = parseDateTime(input.serviceStartDate);
+        if (input.serviceStartDate && !startDate) fail(path, "Data d'inici no vàlida");
+        if (input.recurringAmount > 0 && !input.recurringInterval) fail(path, "Indica la periodicitat de l'import recurrent");
+        await tx.opportunity.update({ where: { id }, data: {
+          title: input.title, companyId: input.companyId ?? null, contactId: input.contactId ?? null,
+          valueCents: Math.round(input.value * 100), currency: input.currency.toUpperCase(),
+          recurringAmountCents: Math.round(input.recurringAmount * 100), recurringInterval: input.recurringInterval || null, serviceStartDate: startDate,
+          probability: input.probability, expectedCloseDate: closeDate, source: input.source ?? null,
+          ownerId, version: { increment: 1 },
+        } });
+      }
+      await writeAudit(tx, context, "RECORD_UPDATED", type, id);
+    });
+  } catch (error) {
+    if (isUniqueError(error)) fail(path, "Aquest NIF, correu o telèfon ja existeix.");
+    throw error;
+  }
+  for (const route of ["/companies", "/contacts", "/pipeline", "/dashboard", "/search"]) revalidatePath(route);
+  redirect(type === "opportunities" ? `/pipeline/${id}` : `/${type}/${id}`);
 }

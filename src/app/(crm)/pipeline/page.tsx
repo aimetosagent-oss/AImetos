@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Plus } from "lucide-react";
+import { BriefcaseBusiness, Download, Plus } from "lucide-react";
 
 import { KanbanBoard, type KanbanStageKind } from "@/components/kanban-board";
 import { ButtonLink } from "@/components/ui/button";
@@ -10,17 +10,17 @@ import { requireTenant } from "@/lib/tenant";
 export default async function PipelinePage({
   searchParams,
 }: {
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ created?: string; view?: string }>;
 }) {
   const { organizationId } = await requireTenant();
-  const { created } = await searchParams;
+  const { created, view } = await searchParams;
   const pipeline = await db.pipeline.findFirst({
     where: { organizationId, isActive: true },
     orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
     include: {
       stages: { orderBy: { position: "asc" } },
       opportunities: {
-        where: { deletedAt: null },
+        where: { deletedAt: null, ...(view === "unfollowed" ? { status: "OPEN" as const, tasks: { none: { deletedAt: null, status: { in: ["PENDING" as const, "IN_PROGRESS" as const] }, dueAt: { gte: new Date() }, assignedTo: { isActive: true } } } } : {}) },
         orderBy: { updatedAt: "desc" },
         include: {
           company: { select: { name: true } },
@@ -37,9 +37,10 @@ export default async function PipelinePage({
         eyebrow="Vendes"
         title={pipeline?.name ?? "Pipeline comercial"}
         description="Arrossega les oportunitats entre etapes o utilitza el selector de cada targeta."
-        actions={<ButtonLink href="/pipeline/new"><Plus size={17} /> Crea oportunitat</ButtonLink>}
+        actions={<><ButtonLink href="/api/exports/opportunities" variant="outline"><Download size={17} /> Exporta CSV</ButtonLink><ButtonLink href="/pipeline/new"><Plus size={17} /> Crea oportunitat</ButtonLink></>}
       />
       {created ? <div className="ui-badge ui-badge--success">Oportunitat creada correctament.</div> : null}
+      <nav className="toolbar__filters" aria-label="Filtra oportunitats"><ButtonLink href="/pipeline" variant={view !== "unfollowed" ? "primary" : "outline"}>Totes</ButtonLink><ButtonLink href="/pipeline?view=unfollowed" variant={view === "unfollowed" ? "primary" : "outline"}>Obertes sense pròxima acció</ButtonLink></nav>
       {pipeline ? (
         <KanbanBoard
           stages={pipeline.stages.map((stage) => ({
@@ -50,6 +51,7 @@ export default async function PipelinePage({
           }))}
           opportunities={pipeline.opportunities.map((opportunity) => ({
             id: opportunity.id,
+            href: `/pipeline/${opportunity.id}`,
             title: opportunity.title,
             stageId: opportunity.stageId,
             companyName: opportunity.company?.name,

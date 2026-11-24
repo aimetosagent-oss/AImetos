@@ -53,6 +53,8 @@ export default async function DashboardPage() {
     receivedPayments,
     stages,
     recentActivity,
+    unfollowed,
+    upcoming,
   ] = await Promise.all([
     db.lead.count({ where: { organizationId, status: "NEW", deletedAt: null, createdAt: { gte: thirtyDaysAgo } } }),
     db.opportunity.count({ where: { organizationId, status: "OPEN", deletedAt: null } }),
@@ -105,6 +107,8 @@ export default async function DashboardPage() {
         opportunity: { select: { title: true } },
       },
     }),
+    db.opportunity.count({ where: { organizationId, status: "OPEN", deletedAt: null, tasks: { none: { deletedAt: null, status: { in: ["PENDING", "IN_PROGRESS"] }, dueAt: { gte: now }, assignedTo: { isActive: true } } } } }),
+    db.task.count({ where: { organizationId, deletedAt: null, status: { in: ["PENDING", "IN_PROGRESS"] }, dueAt: { gte: endOfToday } } }),
   ]);
 
   const activityColumns: DataTableColumn<(typeof recentActivity)[number]>[] = [
@@ -175,6 +179,8 @@ export default async function DashboardPage() {
         <MetricCard label="Valor del pipeline" value={formatMoney(pipelineValue._sum.valueCents ?? 0)} icon={TrendingUp} href="/pipeline" />
         <MetricCard label="Tasques vençudes" value={overdueTasks} icon={Clock3} href="/tasks?view=overdue" tone={overdueTasks ? "danger" : "success"} />
         <MetricCard label="Tasques d’avui" value={todayTasks} icon={CalendarCheck2} href="/tasks?view=today" tone="blue" />
+        <MetricCard label="Sense pròxima acció" value={unfollowed} icon={Clock3} href="/pipeline?view=unfollowed" tone={unfollowed ? "warning" : "success"} />
+        <MetricCard label="Pròxims seguiments" value={upcoming} icon={CalendarCheck2} href="/tasks?view=upcoming" />
         <MetricCard label="Pressupostos pendents" value={pendingQuotes} detail={`${acceptedQuotes} acceptats`} icon={FileText} href="/quotes" tone="warning" />
         <MetricCard label="Factures pendents" value={pendingInvoices} detail={`${overdueInvoices} vençudes`} icon={ReceiptText} href="/invoices" tone={overdueInvoices ? "danger" : "blue"} />
         <MetricCard label="Import cobrat" value={formatMoney(receivedPayments._sum.amountCents ?? 0)} icon={CircleDollarSign} tone="success" />

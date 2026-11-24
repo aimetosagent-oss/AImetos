@@ -46,7 +46,7 @@ export default async function TasksPage({
     },
   });
   const columns: DataTableColumn<(typeof tasks)[number]>[] = [
-    { key: "task", header: "Tasca", render: (task) => <div><span className="table-primary">{task.title}</span><span className="table-secondary">{task.description || task.opportunity?.title || "Sense descripció"}</span></div> },
+    { key: "task", header: "Tasca", render: (task) => <div>{["PENDING", "IN_PROGRESS"].includes(task.status) ? <Link className="link-inline" href={`/tasks/${task.id}`}>{task.title}</Link> : <span className="table-primary">{task.title}</span>}<span className="table-secondary">{task.description || task.opportunity?.title || "Sense descripció"}</span></div> },
     { key: "status", header: "Estat", render: (task) => <StatusBadge status={task.status} label={statusLabel[task.status]} /> },
     { key: "priority", header: "Prioritat", render: (task) => task.priority === "URGENT" ? <span className="ui-badge ui-badge--danger">Urgent</span> : task.priority === "HIGH" ? <span className="ui-badge ui-badge--warning">Alta</span> : task.priority === "LOW" ? "Baixa" : "Normal" },
     { key: "relation", header: "Relacionada amb", render: (task) => task.company ? <Link className="link-inline" href={`/companies/${task.company.id}`}>{task.company.name}</Link> : task.contact ? <Link className="link-inline" href={`/contacts/${task.contact.id}`}>{[task.contact.firstName, task.contact.lastName].filter(Boolean).join(" ")}</Link> : task.opportunity?.title || "—" },

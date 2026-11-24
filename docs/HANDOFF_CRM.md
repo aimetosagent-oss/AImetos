@@ -1,9 +1,142 @@
 # Traspàs de treball — AImetos CRM
 
-Actualitzat el 12 d'agost de 2026. Aquest document permet reprendre el treball
+Actualitzat el 24 de novembre de 2026. Aquest document permet reprendre el treball
 des d'un altre ordinador sense dependre de l'historial de la conversa.
 
 ## Estat actual
+
+### Prioritat vigent: producció del pipeline manual
+
+La migració/auditoria GHL queda ajornada. L'objectiu actual és posar en marxa
+el CRM existent a `https://crm.aimetos.com`, aïllat del Control Center i de tots
+els altres serveis del VPS Hostinger. **Encara no està desplegat en producció.**
+
+Configuració acordada:
+
+- Projecte intern existent `aimetos-control-center`, sense reanomenar-lo.
+  `aimetos-internal` és només el nom funcional. No cal ampliar la llicència.
+- Serveis `crm-app` i `crm-worker` creats com a configuració buida sense
+  desplegar. `crm-postgres` creat i arrencat: postgres:16-alpine, aimetos_crm,
+  usuari crm_app, port exposat 0. Volum propi verificat a
+  /etc/easypanel/projects/aimetos-control-center/crm-postgres/data, muntat a
+  /var/lib/postgresql/data. Encara sense esquema CRM ni dades comercials.
+- Admin `aimetos.agent@gmail.com`, variable `ADMIN_PASSWORD` independent de
+  `CONTROL_CENTER_PASSWORD`, que no s'ha consultat ni reutilitzat.
+- Backup diari extern a Google Drive amb rclone crypt, sense contractar serveis.
+- Sense GHL, Stripe live, SMTP real ni migració de formularis/workflows.
+- No s'ha modificat, reiniciat ni eliminat cap servei del VPS.
+
+### Canvis comercials mínims completats
+
+- Creació manual existent d'empreses, contactes i oportunitats conservada.
+- Edició web afegida per als tres registres, amb validació, auditoria i
+  autorització per organització. Enllaç `Edita` a cada fitxa.
+- Fitxa d'oportunitat accessible des del títol de la targeta Kanban, amb notes
+  de reunió, compromisos i tasques relacionades.
+- Acció `Programa seguiment` amb oportunitat preseleccionada, data i responsable.
+- Filtre `Obertes sense pròxima acció`: oportunitats obertes sense tasca activa
+  futura amb responsable actiu; els seguiments vençuts tornen a sortir aquí.
+- Kanban i filtres Avui/Properes/Vençudes/Completades conservats.
+- Imports inicials/recurrents, periodicitat i data d'inici accessibles des de
+  l'edició/creació d'oportunitat. Tres camps nous en migració additiva, sense
+  sistema de subscripcions ni càrrecs. Catàleg existent conservat.
+- Reprogramació de tasques amb data/hora i responsable; es reprograma el mateix
+  job, no se'n creen duplicats. Historial d'etapes i motiu de pèrdua visibles.
+- Dashboard amb pròxims seguiments i oportunitats sense pròxima acció.
+- Descomptes accessibles als formularis de documents; PDF privat d'esborrany
+  sense enviament ni emissió. SMTP no configurat indicat explícitament.
+- Emissió fiscal bloquejada al servidor en producció tret d'activació explícita
+  posterior a validació normativa. No es declara compatibilitat VeriFactu.
+
+### Preparació productiva
+
+- `scripts/bootstrap-production.ts`: bootstrap explícit, idempotent i sense
+  demos; només admin, organització, dades fiscals i pipeline de 12 etapes.
+  No reescriu organitzacions existents ni crea formularis.
+- `scripts/production-preflight.mjs`: bloqueja runtime productiu sense flag
+  explícit, HTTPS/domini correcte, secrets forts, base privada i demos desactivades.
+- Worker amb heartbeat renovat després de consultar PostgreSQL i health check
+  basat en antiguitat, no només en l'existència d'un fitxer.
+- Backups, temporals i fitxers de secrets exclosos també del context Docker.
+- `docker/backup-postgres.sh`: pg_dump, timestamp, lock, còpia Drive xifrada,
+  verificació SHA256 rellegint la còpia externa; retenció configurable de
+  7 còpies diàries, 4 setmanals i 3 mensuals; 14 dies locals per defecte.
+- Valors exactes no secrets: `docker/production.env.example`.
+- Instruccions operatives completes: `docs/PRODUCTION_CRM_RUNBOOK.md`.
+
+### Validació d'aquesta fase
+
+- 59 tests unitaris superats; typecheck i build de producció correctes.
+- Bootstrap verificat en una instància de tests separada: 12 etapes, cap
+  contacte/empresa/oportunitat/tasca/document/formulari demo, segona execució
+  sense sobreescriptura.
+- E2E manual: crear i editar empresa/contacte/oportunitat, nota de reunió,
+  seguiment amb data i responsable, filtre sense pròxima acció i canvi d'etapa.
+- Persistència local confirmada al navegador després de reiniciar l'aplicació
+  i el servidor PostgreSQL de desenvolupament, sense seed ni reset.
+- E2E existent de formulari → pressupost → acceptació → factura: 2/2.
+- Recuperació comprovada també després d'un nou build de producció i arrencada
+  en un altre port, amb la mateixa base. Peticions anònimes a contactes,
+  pipeline, tasques i CSV redirigeixen al login. En total: 5 comprovacions E2E
+  superades entre flux manual, recuperació, accés anònim i els dos fluxos antics.
+- Previsualització local en execució: `http://localhost:3000`, només loopback;
+  no confondre-la amb el domini productiu ni barrejar localhost i 127.0.0.1
+  en la sessió (la cookie d'autenticació és específica del hostname).
+- Lint sense errors (un avís preexistent al workflow Apollo).
+- Sintaxi de docker/entrypoint.sh i docker/backup-postgres.sh validada amb Bash.
+- Auditoria npm del 24/11, repetida abans de preparar la release: aplicats
+  pedaços compatibles amb npm audit fix, sense force ni versions majors.
+  Resten 4 avisos high de Prisma/config, deepmerge-ts i effect, i 3 moderate
+  de Vitest/coverage/mocker; npm update no ofereix correcció compatible ara.
+  El CLI és present a la imatge perquè executa migracions. No considerar la
+  imatge lliure de vulnerabilitats: revisar/acceptar aquest risc abans de publicar;
+  no s'ha fet una migració major de Prisma ni overrides incompatibles.
+- 33/33 proves d'integració superades a la instància local de validació,
+  no contra cap base del VPS. L'auxiliar `test:integration:isolated` exigeix
+  `TEST_DATABASE_URL` local, separada i buida per al primer bootstrap.
+- E2E actualitzats: 5/5 amb recurrència, reprogramació, accés anònim i flux
+  complet de documents; captures desktop/mòbil de l'oportunitat revisades.
+- Còpia local prèvia a migració:
+  backups/postgres/aimetos-crm-20261124T172456Z.json.gz.
+- Transferència controlada preparada a
+  backups/migration/approved-commercial-transfer.json (ignorat per Git):
+  Ramon Figueras/La Cabina, Jordi Olivé/autònom, Víctor Gutiérrez/Saló Guttié i
+  20 productes. No importat. Demos, proves, documents, seqüències i secrets exclosos.
+
+### Pendent abans de publicar
+
+Accés al panell confirmat el 24/11 a `http://72.62.31.48:3000/`, amb sessió
+iniciada. Recursos observats al panell: 4 cores, CPU 0,3%, RAM 1,9/15,6 GB
+(12,3%) i disc 20,6/192,7 GB (10,7%). Hi ha marge orientatiu; no s'ha executat
+cap benchmark ni comprovació del host per SSH.
+
+El límit FREE de tres projectes es resol amb la nova topologia autoritzada:
+CRM i Control Center independents dins d'`aimetos-control-center`. No s'ha
+renomenat cap projecte. `demo` i `aimetos-dashboard` preservats.
+S'han creat crm-app i crm-worker, encara sense font/build/execució, i
+crm-postgres amb base buida persistent i privada. Cap servei existent modificat.
+
+S'ha localitzat el domini HTTPS natiu del panell: https://abrfjv.easypanel.host/.
+Carrega sense advertiment de certificat i la sessió HTTPS ja està autenticada.
+Cap secret introduït per HTTP. SSH amb la clau
+local disponible ha estat refusat; no s'han canviat claus ni credencials.
+Segueixen pendents accés segur al host, Hostinger DNS, build Docker,
+migracions/bootstrap, OAuth Drive, cron, restore extern i DNS/TLS.
+No obrir el domini abans de validar-los. Estat actual: PARTIAL, no PASS.
+
+La revocació de la clau d'n8n de l'historial de Git continua sense acreditar.
+S'ha informat l'usuari abans de producció, sense provar-la ni tocar demo.
+Topologia, límits i rutina de manteniment: docs/INFRASTRUCTURE.md.
+
+L'arbre de treball continua sobre `main`, base SHA
+`95183de5c8734292564655c5445da1c4cf0dacb5`, amb canvis CRM sense commit i altres
+canvis aliens a `aimetos-content-system`. La release ha d'anar en branca dedicada
+`codex/crm-production` amb només el CRM i prerequisits de robustesa, revisada
+abans de fer commit/push. No s'ha publicat cap commit ni canviat la branca o
+configuració de desplegament del Control Center.
+
+Les seccions següents conserven l'estat i les validacions de fases anteriors;
+no impliquen validació del VPS ni del backup extern productiu.
 
 El CRM comercial d'AImetos està implementat com un monòlit modular amb Next.js
 16, React 19, TypeScript, PostgreSQL, Prisma 6 i Auth.js. Inclou:
@@ -23,12 +156,15 @@ byte amb l'original lliurat.
 
 ## Validació completada
 
-- ESLint: correcte.
+- ESLint: correcte, sense errors; queda un avís preexistent al workflow d'Apollo.
 - TypeScript estricte: correcte.
-- Build Next.js de producció: correcte.
-- Unit tests: 43/43.
-- Integration tests amb PostgreSQL: 23/23.
+- Build Next.js de producció: correcte amb Webpack. Turbopack 16.4.5 presenta
+  un pànic intern amb PostCSS en aquest entorn i per això l'script fixa
+  `next build --webpack`.
+- Unit tests: 57/57.
+- Integration tests amb PostgreSQL: 25/25.
 - Playwright E2E: 2/2 fluxos crítics.
+- Restauració real: 37 taules i 278 files verificades en una base temporal.
 - Migracions i seed: correctes.
 - PDF de sis pàgines: renderitzat i revisat visualment.
 - Worker i enviament SMTP real cap a Mailpit: validats.
@@ -36,6 +172,96 @@ byte amb l'original lliurat.
 
 Docker no estava instal·lat a l'ordinador d'origen; el build de la imatge i el
 desplegament EasyPanel encara s'han de provar en una màquina amb Docker.
+
+## Robustesa preproducció tancada
+
+El bloc local previ a qualsevol connexió amb GoHighLevel, Stripe live o SMTP
+real queda completat:
+
+- backup lògic de PostgreSQL consistent, comprimit i amb timestamp;
+- restore protegit contra la base activa i verificat sobre una base temporal;
+- exportació CSV d'empreses, contactes, oportunitats, pressupostos i factures;
+- protecció de CSV contra injecció de fórmules i descàrregues sense memòria cau;
+- logs JSON mínims per servidor, worker, SMTP, Stripe, webhooks i reintents;
+- dependències de runtime vulnerables actualitzades sense canviar arquitectura;
+- E2E encadenat: formulari → contacte/empresa → oportunitat/pipeline →
+  pressupost → acceptació/PDF → factura → emissió local.
+
+Les exportacions són accessibles des del botó `Exporta CSV` de cada llistat i
+des de `/api/exports/{companies|contacts|opportunities|quotes|invoices}`. Totes
+les consultes reben l'organització de la sessió; la prova d'integració crea dues
+organitzacions i confirma que cap CSV conté dades de l'altra.
+
+## Backup i restauració
+
+Crear un backup de la base indicada per `DATABASE_URL`:
+
+```powershell
+npm run backup:postgres
+```
+
+Es desa a `backups/postgres/aimetos-crm-AAAAMMDDTHHMMSSZ.json.gz`. Aquest
+directori està ignorat per Git i, en producció, s'haurà de replicar fora del
+servidor.
+
+Restaurar en una base separada que ja tingui les migracions aplicades:
+
+```powershell
+$env:RESTORE_DATABASE_URL = "postgresql://usuari:contrasenya@host:5432/aimetos_restore?schema=public"
+npm run restore:postgres -- --backup=backups/postgres/aimetos-crm-AAAAMMDDTHHMMSSZ.json.gz
+Remove-Item Env:RESTORE_DATABASE_URL
+```
+
+No s'ha d'usar `--allow-active-database` en operació normal. La comprovació
+completa i no destructiva sobre la base activa és:
+
+```powershell
+npm run test:restore
+```
+
+La prova final del 8 de novembre ha creat `aimetos_restore_1794143584370`, ha
+aplicat les migracions, ha restaurat 278 files de 37 taules, n'ha verificat els
+recomptes i ha eliminat la base temporal.
+
+## Revisió de seguretat
+
+- Auth.js usa credencials amb hash bcrypt, `AUTH_SECRET` obligatori i sessió JWT
+  amb caducitat de 8 hores.
+- Cada petició autenticada torna a validar usuari, organització i membership
+  actius a PostgreSQL; una revocació no espera que caduqui el JWT.
+- Les pàgines i APIs internes passen per autenticació i les operacions exigeixen
+  `requireTenant()` o `requireAdmin()` segons el cas.
+- Les consultes i mutacions sensibles filtren per `organizationId`; les proves
+  cobreixen revocació, moviments de pipeline entre tenants i exportacions entre
+  dues organitzacions.
+- `.env` i `backups/postgres/` estan ignorats i no estan versionats.
+- S'ha detectat una clau d'n8n al fitxer local `aimetos-content-system/.n8n-local.env`.
+  El fitxer queda exclòs de Git i es conserva al disc. Com que la clau consta
+  en commits anteriors, cal revocar-la i substituir-la a les configuracions
+  locals que la fan servir. Ignorar el fitxer no esborra l'historial.
+- El logger redueix missatges a 4.000 caràcters i censura contrasenyes de URL,
+  tokens Bearer, cookies, secrets i API keys.
+- Cal substituir la contrasenya demo abans de compartir o desplegar l'entorn.
+
+`npm audit` ja no assenyala les versions de runtime de Next, Auth.js,
+Nodemailer o Zod. Encara informa d'advisories transitives del CLI de
+desenvolupament Prisma 6; l'única correcció oferta és migrar a Prisma 7, canvi
+major que s'ha deixat fora d'aquest tancament per no alterar arquitectura.
+
+## Logs operatius
+
+Sense afegir cap plataforma de monitoring, els processos emeten JSON a stdout i
+stderr amb esdeveniments estables:
+
+- servidor: `server.request_error`;
+- worker i jobs: inici, claim, finalització, error, reintent, recuperació de
+  leases i error fatal;
+- SMTP: `smtp.send_started`, `smtp.sent`, `smtp.failed`;
+- Stripe: creació/error de checkout i recepció/resultat de webhook;
+- webhooks sortints: entrega, reintent programat i fallada final.
+
+No es registren cossos de correu, endpoints secrets, credencials ni payloads
+complets.
 
 ## Fitxers importants
 
@@ -187,6 +413,34 @@ El CRM registra correus pendents, enviats i fallits. Les mètriques de lliuramen
 obertura, clic, rebot i baixa requereixen els esdeveniments del proveïdor de
 correu via API/webhook; no s'ha activat aquesta integració perquè els webhooks
 continuen ajornats.
+
+## Fase ajornada: auditoria de GHL en només lectura
+
+Crear una [integració privada de HighLevel](https://marketplace.gohighlevel.com/docs/Authorization/PrivateIntegrationsToken/)
+limitada al subcompte d'AImetos, no a l'agència. Caldran el `Location ID` i el
+token en un fitxer local ignorat (per exemple, `.env.local` amb
+`GHL_LOCATION_ID` i `GHL_READONLY_TOKEN`). No posar el token al xat, al
+repositori, a l'historial de comandes ni als logs.
+
+- Començar amb `opportunities.readonly` i `forms.readonly` per inventariar
+  pipelines, etapes i formularis. Limitar les crides a una llista explícita
+  de consultes `GET` documentades; no llegir enviaments de formulari.
+- Només si cal ampliar l'inventari, afegir el
+  [permís de lectura corresponent](https://marketplace.gohighlevel.com/docs/Authorization/Scopes/):
+  `contacts.readonly`, `businesses.readonly`, `workflows.readonly`,
+  `calendars.readonly`, `invoices/estimate.readonly` o `invoices.readonly`.
+  No concedir cap permís d'escriptura. No cridar rutes de generació de números
+  de document, encara que siguin `GET`.
+- Lliurar un inventari amb recomptes, mapatge al model local i buits de cobertura.
+  No desar respostes amb dades personals ni interpretar un error de permisos
+  com un inventari buit. Si falta informació a l'API, anotar-la per revisar-la
+  manualment; no ampliar permisos d'ofici.
+- Sense importació ni escriptures a PostgreSQL o GHL, sense activar webhooks o
+  workflows i sense modificar formularis, dominis ni integracions existents.
+
+En aquest tancament no s'ha connectat GHL, no s'han importat workflows, no
+s'han canviat els formularis existents, no s'ha configurat Stripe real i no
+s'ha desplegat res a producció.
 
 ## Estat de Git i bloquejos pendents
 

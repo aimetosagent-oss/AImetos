@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, Plus, Search } from "lucide-react";
+import { Building2, Download, Plus, Search } from "lucide-react";
 
 import { ButtonLink } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -59,7 +59,7 @@ export default async function CompaniesPage({
         eyebrow="CRM"
         title="Empreses"
         description="Organitzacions comercials, contactes associats i historial d’activitat."
-        actions={<ButtonLink href="/companies/new"><Plus size={17} /> Crea empresa</ButtonLink>}
+        actions={<><ButtonLink href="/api/exports/companies" variant="outline"><Download size={17} /> Exporta CSV</ButtonLink><ButtonLink href="/companies/new"><Plus size={17} /> Crea empresa</ButtonLink></>}
       />
       <form className="toolbar" action="/companies">
         <SearchInput name="q" defaultValue={query} placeholder="Cerca per nom, NIF o correu…" aria-label="Cerca empreses" />

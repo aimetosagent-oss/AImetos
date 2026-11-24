@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, ReceiptText } from "lucide-react";
+import { Download, Plus, ReceiptText } from "lucide-react";
 import { Badge, ButtonLink, DataTable, EmptyState, PageHeader, StatusBadge } from "@/components";
 import { db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
@@ -12,7 +12,7 @@ export default async function InvoicesPage() {
   const invoices = await db.invoice.findMany({ where: { organizationId: context.organizationId }, include: { company: true }, orderBy: { createdAt: "desc" } });
   return (
     <div className="page-stack">
-      <PageHeader title="Factures" description="Emissió, venciments, pagaments parcials i saldo pendent." actions={<ButtonLink href="/invoices/new"><Plus size={17} /> Nova factura</ButtonLink>} />
+      <PageHeader title="Factures" description="Emissió, venciments, pagaments parcials i saldo pendent." actions={<><ButtonLink href="/api/exports/invoices" variant="outline"><Download size={17} /> Exporta CSV</ButtonLink><ButtonLink href="/invoices/new"><Plus size={17} /> Nova factura</ButtonLink></>} />
       <DataTable
         caption="Llista de factures"
         rows={invoices}

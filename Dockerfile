@@ -39,7 +39,9 @@ FROM base AS runner
 
 ENV NODE_ENV=production \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    TZ=Europe/Madrid \
+    WORKER_HEARTBEAT_PATH=/tmp/aimetos-worker-ready
 
 RUN apk add --no-cache dumb-init \
     && addgroup --system --gid 1001 nodejs \
@@ -57,6 +59,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/src ./src
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=nextjs:nodejs /app/docker ./docker
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
 RUN chmod +x ./docker/entrypoint.sh
 

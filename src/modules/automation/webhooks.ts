@@ -6,6 +6,7 @@ import { decryptSecret, webhookSignature } from "@/lib/crypto";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { nextRetryAt } from "@/lib/jobs";
+import { log } from "@/lib/logger";
 
 const WEBHOOK_TIMEOUT_MS = 10_000;
 const RESPONSE_BODY_LIMIT_BYTES = 32 * 1024;
@@ -355,6 +356,14 @@ export async function deliverWebhook(webhookDeliveryId: string, workerId: string
         },
       }),
     ]);
+    log("info", "webhook.delivered", {
+      organizationId: delivery.organizationId,
+      webhookDeliveryId: delivery.id,
+      endpointId: delivery.endpoint.id,
+      eventType: delivery.event.eventType,
+      attempt: delivery.attempts,
+      responseStatus: attempt.responseStatus,
+    });
     return;
   }
 
@@ -372,6 +381,18 @@ export async function deliverWebhook(webhookDeliveryId: string, workerId: string
       lockedAt: null,
       lockedBy: null,
     },
+  });
+
+  log(retry ? "warn" : "error", retry ? "webhook.retry_scheduled" : "webhook.failed", {
+    organizationId: delivery.organizationId,
+    webhookDeliveryId: delivery.id,
+    endpointId: delivery.endpoint.id,
+    eventType: delivery.event.eventType,
+    attempt: delivery.attempts,
+    maxAttempts: delivery.maxAttempts,
+    responseStatus: attempt.responseStatus ?? null,
+    nextAttemptAt: retry ? retryAt.toISOString() : null,
+    error: attempt.error,
   });
 
   if (retry) throw new WebhookRetryRequestedError(attempt.error ?? "Cal reintentar el webhook.");

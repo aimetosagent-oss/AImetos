@@ -11,12 +11,14 @@ async function login(page: Page) {
 
 test.describe.serial("fluxos crítics del CRM", () => {
   test.setTimeout(60_000);
+  const marker = Date.now();
+  const email = `e2e-${marker}@example.test`;
+  const company = `Empresa E2E ${marker}`;
+  const opportunity = `${company} · Demanar una demo`;
+  let contactId: string | undefined;
 
   test("login, formulari públic, contacte i oportunitat", async ({ page }) => {
     await login(page);
-    const marker = Date.now();
-    const email = `e2e-${marker}@example.test`;
-    const company = `Empresa E2E ${marker}`;
     const phone = `6${String(marker).slice(-8)}`;
     await page.goto("/f/demanar-una-demo?utm_source=playwright&utm_campaign=critical-flow");
     await page.getByLabel(/^Nom \*/).fill("Eulàlia");
@@ -27,19 +29,25 @@ test.describe.serial("fluxos crítics del CRM", () => {
     await page.getByLabel(/En què et podem ajudar/).fill("Validació end-to-end del CRM.");
     for (const checkbox of await page.getByRole("checkbox").all()) await checkbox.check();
     await page.getByRole("button", { name: "Enviar sol·licitud" }).click();
-    await expect(page.getByRole("heading", { name: "Sol·licitud rebuda" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Solicitud recibida" })).toBeVisible();
 
     await page.goto(`/search?q=${encodeURIComponent(email)}`);
-    await expect(page.locator('a[href^="/contacts/"]').filter({ hasText: email })).toBeVisible();
+    const contactLink = page.locator('a[href^="/contacts/"]').filter({ hasText: email });
+    await expect(contactLink).toBeVisible();
+    contactId = (await contactLink.getAttribute("href"))?.split("/").pop();
+    expect(contactId).toBeTruthy();
     await page.goto("/pipeline");
     await expect(page.getByRole("heading", { name: company, exact: false })).toBeVisible();
+    await expect(page.getByText("Nuevo Lead", { exact: true }).first()).toBeVisible();
   });
 
-  test("pressupost, acceptació pública i conversió en factura", async ({ page }) => {
+  test("mateixa oportunitat: pressupost, acceptació i conversió en factura", async ({ page }) => {
     await login(page);
     await page.goto("/quotes/new");
-    await page.locator("#companyId").selectOption({ label: "Alba Arquitectura Demo" });
-    await page.locator("#contactId").selectOption({ label: "Laia Serra" });
+    if (!contactId) throw new Error("No s'ha conservat l'ID del contacte creat pel formulari");
+    await page.locator("#companyId").selectOption({ label: company });
+    await page.locator("#contactId").selectOption(contactId);
+    await page.locator("#opportunityId").selectOption({ label: opportunity });
     await page.getByLabel("Descripció").fill(`Servei E2E ${Date.now()}`);
     await page.getByLabel("Quantitat").fill("1");
     await page.getByLabel("Preu unitari (€)").fill("1250,00");
@@ -64,6 +72,8 @@ test.describe.serial("fluxos crítics del CRM", () => {
     await page.goto(internalQuoteUrl);
     await page.getByRole("button", { name: "Convertir en factura" }).click();
     await expect(page).toHaveURL(/\/invoices\/[^/]+$/);
+    await expect(page.getByText(company, { exact: true })).toBeVisible();
+    await expect(page.getByText(/^Pressupost PRE-/)).toBeVisible();
     await expect(page.getByText("Factura manual")).not.toBeVisible();
     await page.getByRole("button", { name: "Emetre i enviar" }).click();
     await expect(page.getByRole("link", { name: "Enllaç públic" })).toBeVisible();

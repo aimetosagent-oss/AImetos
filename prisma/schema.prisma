@@ -544,6 +544,9 @@ model Opportunity {
   stageId           String
   ownerId           String?
   valueCents        Int               @default(0)
+  recurringAmountCents Int            @default(0)
+  recurringInterval String?          @db.VarChar(20)
+  serviceStartDate  DateTime?
   currency          String            @default("EUR") @db.VarChar(3)
   probability       Int               @default(0)
   expectedCloseDate DateTime?

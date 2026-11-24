@@ -9,9 +9,9 @@ import { requireTenant } from "@/lib/tenant";
 
 import { createTaskAction } from "../../actions";
 
-export default async function NewTaskPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function NewTaskPage({ searchParams }: { searchParams: Promise<{ error?: string; opportunityId?: string }> }) {
   const context = await requireTenant();
-  const { error } = await searchParams;
+  const { error, opportunityId } = await searchParams;
   const [members, companies, contacts, opportunities] = await Promise.all([
     db.membership.findMany({ where: { organizationId: context.organizationId, isActive: true }, include: { user: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" } }),
     db.company.findMany({ where: { organizationId: context.organizationId, deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -35,7 +35,7 @@ export default async function NewTaskPage({ searchParams }: { searchParams: Prom
             <FormSection title="Relacions" description="Pots associar la tasca a un o més elements.">
               <Field label="Empresa" htmlFor="companyId"><Select id="companyId" name="companyId"><option value="">Sense empresa</option>{companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</Select></Field>
               <Field label="Contacte" htmlFor="contactId"><Select id="contactId" name="contactId"><option value="">Sense contacte</option>{contacts.map((contact) => <option key={contact.id} value={contact.id}>{[contact.firstName, contact.lastName].filter(Boolean).join(" ")}</option>)}</Select></Field>
-              <Field className="form-field--full" label="Oportunitat" htmlFor="opportunityId"><Select id="opportunityId" name="opportunityId"><option value="">Sense oportunitat</option>{opportunities.map((opportunity) => <option key={opportunity.id} value={opportunity.id}>{opportunity.title}</option>)}</Select></Field>
+              <Field className="form-field--full" label="Oportunitat" htmlFor="opportunityId"><Select id="opportunityId" name="opportunityId" defaultValue={opportunityId ?? ""}><option value="">Sense oportunitat</option>{opportunities.map((opportunity) => <option key={opportunity.id} value={opportunity.id}>{opportunity.title}</option>)}</Select></Field>
             </FormSection>
             <FormActions><ButtonLink href="/tasks" variant="ghost">Cancel·la</ButtonLink><Button type="submit"><CheckSquare2 size={17} /> Desa la tasca</Button></FormActions>
           </form>

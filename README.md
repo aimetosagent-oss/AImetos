@@ -100,12 +100,16 @@ npm run typecheck         TypeScript estricte
 npm run test              tests Vitest
 npm run test:unit         tests unitaris
 npm run test:integration  tests amb PostgreSQL
+npm run test:integration:isolated  tests i bootstrap sobre TEST_DATABASE_URL local buida
 npm run test:e2e          Playwright
 npm run db:dev            PostgreSQL local de Prisma
 npm run db:migrate        aplica migracions versionades
 npm run db:migrate:dev    crea migracions durant desenvolupament
 npm run db:seed           dades inicials/demo
 npm run db:reset          reinicia la base local i executa el seed
+npm run backup:postgres   crea un backup lògic comprimit amb timestamp
+npm run restore:postgres  restaura un backup en una base separada
+npm run test:restore      prova backup i restore en una base temporal
 ```
 
 ## Variables d’entorn
@@ -208,19 +212,38 @@ El logotip adjunt original és a `public/brand/logo-web.png` i s’utilitza al l
 
 ## Backup de PostgreSQL
 
-Amb Docker:
+El backup local és lògic, consistent i comprimit. Llegeix totes les taules de
+`public` dins d'una transacció `REPEATABLE READ READ ONLY` i genera un fitxer
+amb timestamp a `backups/postgres/`:
 
-```bash
-docker compose exec -T postgres pg_dump -U aimetos -d aimetos_crm -Fc > aimetos-crm.dump
+```powershell
+npm run backup:postgres
 ```
 
-Restauració en una base buida:
+El nom té el format `aimetos-crm-AAAAMMDDTHHMMSSZ.json.gz`. El directori està
+ignorat per Git: cal copiar els backups a emmagatzematge extern abans d'usar el
+CRM en producció.
 
-```bash
-docker compose exec -T postgres pg_restore -U aimetos -d aimetos_crm --clean --if-exists < aimetos-crm.dump
+Per restaurar, crea una base separada, aplica-hi les migracions i indica la seva
+URL explícitament. L'script refusa `DATABASE_URL` per defecte per evitar
+sobreescriure accidentalment la base activa:
+
+```powershell
+$env:RESTORE_DATABASE_URL = "postgresql://usuari:contrasenya@host:5432/aimetos_restore?schema=public"
+npm run restore:postgres -- --backup=backups/postgres/aimetos-crm-AAAAMMDDTHHMMSSZ.json.gz
+Remove-Item Env:RESTORE_DATABASE_URL
 ```
 
-Prova periòdicament la restauració. Els PDFs es generen sota demanda i no requereixen backup de fitxers.
+L'usuari de restauració ha de poder truncar taules i establir
+`session_replication_role`. La prova automatitzada crea una base temporal,
+executa les migracions, restaura totes les files, verifica els recomptes i
+elimina la base temporal:
+
+```powershell
+npm run test:restore
+```
+
+Els PDFs es generen sota demanda i no requereixen backup de fitxers.
 
 ## Preparació per EasyPanel
 

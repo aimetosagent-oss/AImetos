@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { BriefcaseBusiness, CheckSquare2, ContactRound, FileText, MessageSquareText } from "lucide-react";
+import { BriefcaseBusiness, CheckSquare2, ContactRound, FileText, MessageSquareText, Pencil } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -50,6 +50,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
       <PageHeader
         breadcrumbs={[{ label: "Empreses", href: "/companies" }, { label: company.name }]}
         title={company.name}
+        actions={<ButtonLink href={`/edit/companies/${company.id}`} variant="outline"><Pencil size={17} /> Edita</ButtonLink>}
         description={[company.legalName, company.sector].filter(Boolean).join(" · ") || "Fitxa comercial de l’empresa"}
       />
       <section className="metrics-grid" aria-label="Resum de l’empresa">

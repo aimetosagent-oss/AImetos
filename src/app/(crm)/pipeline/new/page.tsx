@@ -45,6 +45,9 @@ export default async function NewOpportunityPage({
               <Field label="Contacte" htmlFor="contactId"><Select id="contactId" name="contactId" defaultValue={contactId || ""}><option value="">Sense contacte</option>{contacts.map((contact) => <option key={contact.id} value={contact.id}>{[contact.firstName, contact.lastName].filter(Boolean).join(" ")}</option>)}</Select></Field>
               <Field label="Valor" htmlFor="value" required><Input id="value" name="value" type="number" min="0" step="0.01" defaultValue="0" required /></Field>
               <Field label="Moneda" htmlFor="currency"><Input id="currency" name="currency" defaultValue="EUR" maxLength={3} /></Field>
+              <Field label="Import recurrent" htmlFor="recurringAmount"><Input id="recurringAmount" name="recurringAmount" type="number" min="0" step="0.01" defaultValue="0" /></Field>
+              <Field label="Periodicitat" htmlFor="recurringInterval"><Select id="recurringInterval" name="recurringInterval"><option value="">Sense recurrència</option><option value="MONTHLY">Mensual</option><option value="QUARTERLY">Trimestral</option><option value="YEARLY">Anual</option></Select></Field>
+              <Field label="Data prevista d'inici" htmlFor="serviceStartDate"><Input id="serviceStartDate" name="serviceStartDate" type="date" /></Field>
               <Field label="Probabilitat (%)" htmlFor="probability"><Input id="probability" name="probability" type="number" min="0" max="100" defaultValue={defaultStage?.defaultProbability ?? 0} /></Field>
               <Field label="Data prevista de tancament" htmlFor="expectedCloseDate"><Input id="expectedCloseDate" name="expectedCloseDate" type="date" /></Field>
               <Field label="Origen" htmlFor="source"><Input id="source" name="source" /></Field>

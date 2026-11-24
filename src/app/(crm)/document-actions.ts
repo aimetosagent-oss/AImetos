@@ -17,6 +17,7 @@ const documentSchema = z.object({
   quantity: z.coerce.number().int().min(1).max(10_000),
   unitPrice: z.string().trim().min(1),
   taxRate: z.coerce.number().min(0).max(100),
+  discountRate: z.coerce.number().min(0).max(100).default(0),
   notes: z.string().max(10_000).optional(),
   terms: z.string().max(10_000).optional(),
 });
@@ -37,7 +38,7 @@ export async function createQuoteAction(formData: FormData) {
     opportunityId: parsed.opportunityId || null,
     notes: parsed.notes,
     terms: parsed.terms,
-    lines: [{ description: parsed.description, quantity: parsed.quantity, unitPriceCents: moneyToCents(parsed.unitPrice), taxRateBps: Math.round(parsed.taxRate * 100), productId: parsed.productId || null }],
+    lines: [{ description: parsed.description, quantity: parsed.quantity, unitPriceCents: moneyToCents(parsed.unitPrice), taxRateBps: Math.round(parsed.taxRate * 100), discountBps: Math.round(parsed.discountRate * 100), productId: parsed.productId || null }],
   });
   revalidatePath("/quotes");
   redirect(`/quotes/${quote.id}`);
@@ -86,7 +87,7 @@ export async function createInvoiceAction(formData: FormData) {
     opportunityId: parsed.opportunityId || null,
     notes: parsed.notes,
     terms: parsed.terms,
-    lines: [{ description: parsed.description, quantity: parsed.quantity, unitPriceCents: moneyToCents(parsed.unitPrice), taxRateBps: Math.round(parsed.taxRate * 100), productId: parsed.productId || null }],
+    lines: [{ description: parsed.description, quantity: parsed.quantity, unitPriceCents: moneyToCents(parsed.unitPrice), taxRateBps: Math.round(parsed.taxRate * 100), discountBps: Math.round(parsed.discountRate * 100), productId: parsed.productId || null }],
   });
   revalidatePath("/invoices");
   redirect(`/invoices/${invoice.id}`);

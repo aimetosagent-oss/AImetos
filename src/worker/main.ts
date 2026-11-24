@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url";
+import { writeFile, unlink } from "node:fs/promises";
 
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -62,6 +63,7 @@ export async function runWorker(signal: AbortSignal): Promise<void> {
       if (dispatched > 0) log("info", "worker.outbox_dispatched", { workerId: config.WORKER_ID, events: dispatched });
 
       const job = await claimNextJob(config.WORKER_ID);
+      if (process.env.WORKER_HEARTBEAT_PATH) await writeFile(process.env.WORKER_HEARTBEAT_PATH, new Date().toISOString());
       if (!job) {
         await pause(config.WORKER_POLL_INTERVAL_MS, signal);
         continue;
@@ -124,6 +126,7 @@ async function main() {
   try {
     await runWorker(controller.signal);
   } finally {
+    if (process.env.WORKER_HEARTBEAT_PATH) await unlink(process.env.WORKER_HEARTBEAT_PATH).catch(() => undefined);
     await db.$disconnect();
   }
 }

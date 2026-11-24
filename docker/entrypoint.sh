@@ -6,6 +6,8 @@ if [ "$#" -gt 0 ]; then
   shift
 fi
 
+node scripts/production-preflight.mjs
+
 run_migrations() {
   echo '{"level":"info","component":"entrypoint","message":"Applying database migrations"}'
   npm run db:migrate
@@ -28,14 +30,20 @@ case "$role" in
     ;;
   worker)
     rm -f /tmp/aimetos-worker-ready
-    touch /tmp/aimetos-worker-ready
-    exec npm run worker -- "$@"
+    exec node node_modules/tsx/dist/cli.mjs src/worker/main.ts "$@"
     ;;
   migrate)
     run_migrations
     ;;
   seed)
+    if [ "${PRODUCTION_DEPLOYMENT:-false}" = "true" ]; then
+      echo 'Use bootstrap, not seed, in production' >&2
+      exit 1
+    fi
     run_seed
+    ;;
+  bootstrap)
+    exec node node_modules/tsx/dist/cli.mjs scripts/bootstrap-production.ts
     ;;
   *)
     exec "$role" "$@"

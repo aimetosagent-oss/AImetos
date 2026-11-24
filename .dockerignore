@@ -16,6 +16,15 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
+temp
+tmp
+backups
+secrets
+credentials
+*.pem
+*.key
+*.p12
+*.pfx
 
 .DS_Store
 Thumbs.db

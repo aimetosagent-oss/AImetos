@@ -186,6 +186,9 @@ async function recordInvoiceCreated(
 }
 
 export async function sendInvoice(context: TenantContext, invoiceId: string) {
+  if (process.env.PRODUCTION_DEPLOYMENT === "true" && process.env.FISCAL_INVOICING_ENABLED !== "true") {
+    throw new AppError("Emissió fiscal desactivada, pendent de validació normativa", "FISCAL_ISSUANCE_DISABLED", 409);
+  }
   const snapshot = await db.invoice.findFirst({
     where: { id: invoiceId, organizationId: context.organizationId },
     include: { company: true, contact: true },

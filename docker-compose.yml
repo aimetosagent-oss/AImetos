@@ -11,6 +11,7 @@ x-app-image: &app-image
 
 x-app-environment: &app-environment
   NODE_ENV: production
+  LOCAL_DEVELOPMENT: "true"
   PORT: "3000"
   HOSTNAME: 0.0.0.0
   DATABASE_URL: ${DATABASE_URL:-postgresql://aimetos:aimetos@postgres:5432/aimetos_crm?schema=public}
@@ -126,7 +127,7 @@ services:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "test -f /tmp/aimetos-worker-ready && kill -0 1"]
+      test: ["CMD", "node", "scripts/worker-health.mjs"]
       interval: 10s
       timeout: 5s
       retries: 6

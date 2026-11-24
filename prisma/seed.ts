@@ -107,6 +107,7 @@ function longSeedToken(scope: string, organizationId: string): string {
 }
 
 async function main() {
+  if (process.env.PRODUCTION_DEPLOYMENT === "true") throw new Error("Usa scripts/bootstrap-production.ts; seed prohibit en producció");
   const adminEmail = (process.env.ADMIN_EMAIL || "admin@aimetos.local").trim().toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD || "CanviaAquestaContrasenya123!";
   const adminName = (process.env.ADMIN_NAME || "Administrador AImetos").trim();

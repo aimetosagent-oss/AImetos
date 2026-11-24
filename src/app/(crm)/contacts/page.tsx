@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ContactRound, Plus, Search } from "lucide-react";
+import { ContactRound, Download, Plus, Search } from "lucide-react";
 
 import { ButtonLink } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -66,7 +66,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
         eyebrow="CRM"
         title="Contactes"
         description="Persones, empreses relacionades i context comercial compartit."
-        actions={<ButtonLink href="/contacts/new"><Plus size={17} /> Crea contacte</ButtonLink>}
+        actions={<><ButtonLink href="/api/exports/contacts" variant="outline"><Download size={17} /> Exporta CSV</ButtonLink><ButtonLink href="/contacts/new"><Plus size={17} /> Crea contacte</ButtonLink></>}
       />
       <form className="toolbar" action="/contacts">
         <SearchInput name="q" defaultValue={query} placeholder="Cerca per nom, empresa, correu…" aria-label="Cerca contactes" />

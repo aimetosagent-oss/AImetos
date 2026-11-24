@@ -1,5 +1,9 @@
 # Desplegament a EasyPanel
 
+> Per al desplegament real de novembre de 2026, seguir
+> [PRODUCTION_CRM_RUNBOOK.md](PRODUCTION_CRM_RUNBOOK.md). No fer el seed ni
+> activar SMTP/Stripe d'aquesta guia antiga. El bootstrap productiu és explícit.
+
 Aquest document prepara un desplegament futur a EasyPanel; no fixa cap domini ni inclou secrets. L'arquitectura de producció recomanada és:
 
 - un servei PostgreSQL persistent;

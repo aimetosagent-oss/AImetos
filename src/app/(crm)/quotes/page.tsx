@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Plus } from "lucide-react";
+import { Download, FileText, Plus } from "lucide-react";
 import { Badge, ButtonLink, DataTable, EmptyState, PageHeader, StatusBadge } from "@/components";
 import { db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
@@ -16,7 +16,7 @@ export default async function QuotesPage() {
   });
   return (
     <div className="page-stack">
-      <PageHeader title="Pressupostos" description="Propostes comercials, seguiments i acceptacions en un sol lloc." actions={<ButtonLink href="/quotes/new"><Plus size={17} /> Nou pressupost</ButtonLink>} />
+      <PageHeader title="Pressupostos" description="Propostes comercials, seguiments i acceptacions en un sol lloc." actions={<><ButtonLink href="/api/exports/quotes" variant="outline"><Download size={17} /> Exporta CSV</ButtonLink><ButtonLink href="/quotes/new"><Plus size={17} /> Nou pressupost</ButtonLink></>} />
       <DataTable
         caption="Llista de pressupostos"
         rows={quotes}

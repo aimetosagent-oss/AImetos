@@ -32,6 +32,7 @@ export default async function NewQuotePage() {
                 <Field label="Quantitat" htmlFor="quantity" required><Input id="quantity" name="quantity" type="number" min="1" step="1" defaultValue="1" required /></Field>
                 <Field label="Preu unitari (€)" htmlFor="unitPrice" required><Input id="unitPrice" name="unitPrice" inputMode="decimal" placeholder="0,00" required /></Field>
                 <Field label="IVA (%)" htmlFor="taxRate" required><Input id="taxRate" name="taxRate" type="number" min="0" max="100" step="0.01" defaultValue={(settings?.defaultTaxRateBps ?? 2100) / 100} required /></Field>
+                <Field label="Descompte (%)" htmlFor="discountRate"><Input id="discountRate" name="discountRate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></Field>
               </FormGrid>
             </FormSection>
             <FormSection title="Notes i condicions"><FormGrid><Field label="Notes" htmlFor="notes"><Textarea id="notes" name="notes" rows={4} /></Field><Field label="Condicions" htmlFor="terms"><Textarea id="terms" name="terms" rows={4} defaultValue="Validesa indicada al document. Els treballs s’iniciaran després de l’acceptació." /></Field></FormGrid></FormSection>
