@@ -7,14 +7,15 @@ ni les seves bases. No usar el docker-compose local en aquest VPS.
 
 ## 1. Accés i capacitat abans de crear serveis
 
-Accés EasyPanel confirmat: `http://72.62.31.48:3000/`. El 24/11 el panell
-mostra 4 cores, CPU 0,3%, RAM 1,9/15,6 GB i disc 20,6/192,7 GB. No s'han
-canviat DNS ni desplegat serveis. SSH i Hostinger DNS encara no estan validats.
+Acces EasyPanel HTTPS autenticat: https://abrfjv.easypanel.host/. Abans dels
+builds el panell mostrava 4 cores, CPU 0,3%, RAM 1,9/15,6 GB i disc 20,6/192,7 GB.
+App/worker ja desplegats privats. No s'han canviat DNS. SSH refusat amb la clau
+local i Hostinger DNS encara sense validar.
 
 La nova decisió de l'usuari és afegir serveis independents dins
 `aimetos-control-center`, sense canviar-ne el nom ni tocar control-center.
 El límit de tres projectes ja no exigeix despesa. crm-app i crm-worker estan
-creats però no desplegats. crm-postgres està creat i arrencat, encara sense esquema CRM.
+desplegats privats. crm-postgres esta arrencat, migrat i amb bootstrap sense demos.
 Accés HTTPS autenticat: https://abrfjv.easypanel.host/.
 SSH ha refusat la clau disponible; cal accés segur al host per cron i rclone.
 No introduir secrets mitjançant l'accés HTTP a la IP.
@@ -41,12 +42,12 @@ recursos mesurats. Si no hi ha marge, no desplegar ni reiniciar altres serveis.
   validada. Incloure exclusivament els canvis CRM i prerequisits de robustesa;
   no afegir els canvis locals d'aimetos-content-system.
 - Fer commit i push només després de revisar `git diff --cached --name-status`.
-  Release publicada: 7e7bb669a3543f6bbbe525ff839ecf1fa553f567. Cap SHA desplegat encara.
+  SHA desplegat privat a app/worker: b19ae55a86f64f4c5e4e9208b2430c6a2eefee0b.
 - No publicar `main` sense distingir els canvis del Control Center. No tocar
   la seva font, branca, webhook de desplegament ni credencials.
 - Revisar també l'auditoria npm de la release: el 24/11 resten advisories a la
-  cadena CLI de Prisma 6 (inclosa a la imatge per a migracions) i al paquet
-  baseline-browser-mapping. Cal resoldre o acceptar explícitament el risc abans
+  cadena CLI de Prisma 6 (inclosa a la imatge per a migracions) i Vitest:
+  4 high i 3 moderate despres dels pedaços compatibles. Cal revisar el risc abans
   de l'exposició pública; no s'ha ocultat ni fet cap actualització major aquí.
 - En EasyPanel usar **aimetos-control-center** com a projecte intern.
   Crear només **crm-postgres**, **crm-app**, **crm-worker**. No alterar el
@@ -89,8 +90,9 @@ automàtic als serveis App. Mantenir una rèplica cadascun.
    Crea només organització, dades fiscals, admin i 12 etapes; cap contacte,
    empresa, oportunitat, formulari, factura ni pressupost fictici. Si ja existeix
    l'organització, no la reescriu.
-3. crm-app: ordre/arguments `app`, port intern 3000, health HTTP `/api/health`.
-4. crm-worker: ordre/arguments `worker`, sense domini. Health command
+3. crm-app: Comando `dumb-init -- ./docker/entrypoint.sh app`, port intern
+   3000, health HTTP `/api/health`.
+4. crm-worker: Comando `dumb-init -- ./docker/entrypoint.sh worker`, sense domini. Health command
    `node scripts/worker-health.mjs`. La marca només es renova després de
    consultar la base. No iniciar SMTP ni Stripe.
 5. Límits inicials orientatius: app 768 MB, worker 384 MB, Postgres 512 MB.
@@ -222,7 +224,10 @@ Mai seed/reset, mai eliminar/recrear crm-postgres ni el volum. Rollback del
 codi només si és compatible amb l'esquema; restaurar sempre primer en còpia
 separada. No activar auto-deploy fins que el procés estigui comprovat.
 
-## 9. Intervencio manual immediata i represa
+## 9. Preparacio de secrets (completada)
+
+Els passos seguents es conserven com a referencia; ja estan completats.
+No repetir-los ni regenerar secrets. El punt actual es l'apartat 10.
 
 1. Obrir nomes https://abrfjv.easypanel.host/ amb la sessio autenticada.
 2. aimetos-control-center > crm-postgres > Credenciales: copiar la URL interna,
@@ -251,7 +256,31 @@ pot identificar inequívocament, no revocar claus a cegues; revisar-ho manualmen
 Actualitzar despres nomes les configuracions locals que l'usaven. No modificar
 el projecte demo ni workflows/serveis. La revocacio encara no esta acreditada.
 
-Estat: PARTIAL. Font/builders i plantilles d'entorn desats, PostgreSQL privat i
-persistent arrencat; secrets, build Docker, migracions/bootstrap, OAuth Drive,
-restore extern, persistencia VPS, DNS i certificat pendents. Les proves locals
-del codi publicat ja passen: 59 unit, 33 integracio i 5 E2E, lint/typecheck/build.
+## 10. Punt de represa verificat
+
+Estat PARTIAL: app/worker desplegats privats amb b19ae55, PostgreSQL persistent
+migrat i inicialitzat sense demos. Els dominis automatics estan retirats i no
+hi ha ports publics. Secrets desats i iguals. App health 200 database ok;
+contactes/pipeline/CSV anonims 307 /login. Worker health exit 0. Configuracio
+inicial preservada despres de redesplegar; hash de l'admin validat. Encara no
+s'ha provat login de navegador a crm.aimetos.com ni persistencia d'una operacio
+comercial en produccio. Cap dada real transferida.
+
+Les ordres simples app/worker no serveixen al camp Comando d'EasyPanel perque
+substitueix l'entrypoint complet. Les ordres completes de l'apartat 4 ja estan
+desades i desplegades. Esperar sempre notificacio de desament abans de navegar.
+Una execucio temporal de crm-app amb sleep 36000 va permetre aplicar migrate
+i bootstrap des de la consola; ja s'ha substituit per l'arrencada normal.
+
+Accio manual imprescindible ara: iniciar sessio a Hostinger en la pestanya
+preparada i obrir VPS 72.62.31.48 > Browser Terminal. No executar ordres, no
+canviar contrasenyes ni claus i retornar el control. No enviar secrets pel xat.
+Despres es configuraran cron/rclone i OAuth Drive amb permisos limitats, i es
+verificara download/desxifrat/restore abans d'obrir el domini. No instal·lar
+Duplicati ni cap servei nou per suplir nomes la falta d'acces al host.
+
+Backups externs, restore, health checks automatics, DNS/TLS, transferencia i
+E2E productiu encara pendents. Control Center login disponible i serveis
+existents intactes. CPU final observada 1%, RAM 2,6/15,6 GB, disc 28,2/192,7 GB.
+Cost recurrent nou 0 EUR. Proves locals ja fetes: 59 unit, 33 integracio,
+5 E2E, lint/typecheck/build; cap canvi de codi en aquest pas de desplegament.

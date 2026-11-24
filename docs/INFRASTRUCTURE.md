@@ -8,7 +8,7 @@ accessible encara a crm.aimetos.com. Cap cost recurrent addicional autoritzat.
 | Projecte EasyPanel real | Responsabilitat funcional | Serveis | Dominis |
 | --- | --- | --- | --- |
 | demo | Infraestructura d'automatitzacions | n8n, postgres, redis, evolution-api, evolution-api-db, evolution-api-redis | Existents, fora d'abast |
-| aimetos-control-center | AImetos Internal (nom funcional) | control-center existent; crm-app i crm-worker creats sense desplegar; crm-postgres creat i arrencat | control.aimetos.com; crm.aimetos.com pendent |
+| aimetos-control-center | AImetos Internal (nom funcional) | control-center existent; crm-app i crm-worker desplegats privats; crm-postgres persistent i migrat | control.aimetos.com; crm.aimetos.com pendent |
 | aimetos-dashboard | AImetos Clients (nom funcional) | dashboard existent preservat | dashboard.aimetos.com |
 
 No s'ha reanomenat cap projecte: els noms interns poden formar part del DNS,
@@ -25,23 +25,25 @@ només s'afegeixen serveis independents al projecte intern existent.
 - No s'han introduït secrets a HTTP ni canviat el domini del panell.
 - SSH amb la clau local existent ha estat refusat. No s'han provat contrasenyes
   ni modificat authorized_keys. Cal accés segur abans de cron/rclone al host.
-- Última lectura del panell: 4 cores, CPU 0,3%, RAM 1,9/15,6 GB, disc
-  20,6/192,7 GB. No és una mesura de consum del CRM ni del build, encara no executats.
+- Despres de desplegar: 4 cores, CPU 1%, RAM 2,6/15,6 GB, disc 28,2/192,7 GB.
+  Durant build observat: CPU 53,7%, RAM 3,2/15,6 GB. Sense proves agressives.
 
 ## CRM
 
 Mateixa arquitectura: Next.js/Auth.js/Prisma 6, worker separat i PostgreSQL 16.
 Sense Redis addicional, serveis SaaS, SMTP real ni Stripe live.
 
-- crm-app: font GitHub i Dockerfile desats; plantilla d'entorn desada amb secrets
-  pendents. No desplegat. Domini automatic pendent de retirar abans d'arrencar.
-- crm-worker: mateixa font i Dockerfile; ordre worker desada; plantilla d'entorn
-  amb secrets pendents. No desplegat. Domini automatic pendent de retirar.
+- crm-app: desplegat privat, 58,7 MB observats; health HTTP 200 amb database ok.
+  Ordre EasyPanel: dumb-init -- ./docker/entrypoint.sh app. Cap domini ni port public.
+- crm-worker: desplegat mateix SHA, 81,2 MB observats; worker-health exit 0.
+  Ordre: dumb-init -- ./docker/entrypoint.sh worker. Cap domini ni port public.
+- Secrets independents desats i coherents als dos serveis. No consten a Git.
 - crm-postgres: creat amb postgres:16-alpine, base aimetos_crm i usuari crm_app.
   Arrencada confirmada als logs, 69,4 MB RAM inicials. Port exposat 0 (privat).
   Muntatge persistent verificat a la consola del contenidor:
   /etc/easypanel/projects/aimetos-control-center/crm-postgres/data
-  sobre /var/lib/postgresql/data. Cap taula CRM ni dades comercials carregades.
+  sobre /var/lib/postgresql/data. Quatre migracions aplicades; bootstrap sense demos:
+  1 admin, 1 organitzacio i 12 etapes. Encara sense dades comercials carregades.
   Mai reutilitzar bases de demo o Control Center.
 - Servei temporal de prova quan calgui: crm-restore-test, privat, amb base pròpia.
 - Domini final de l'app: https://crm.aimetos.com, upstream intern 3000.
@@ -59,8 +61,8 @@ al servidor fins a validar el compliment fiscal; no s'acredita VeriFactu.
 - Nova migració additiva de tres camps de recurrència, sense eliminar dades.
 - Bootstrap productiu explícit: admin, organització, dades fiscals i 12 etapes.
   No reescriu una organització existent.
-- Branca release codex/crm-production; codi publicat en
-  7e7bb669a3543f6bbbe525ff839ecf1fa553f567. No hi ha SHA desplegat. No utilitzar main per
+- Branca release codex/crm-production; SHA desplegat als dos serveis:
+  b19ae55a86f64f4c5e4e9208b2430c6a2eefee0b. No utilitzar main per
   desplegar el CRM mentre inclogui canvis aliens o el codi validat no hi sigui.
 - App i worker han d'executar el mateix SHA i Dockerfile d'arrel. No modificar
   la branca, font o auto-deploy del Control Center.
@@ -112,8 +114,8 @@ No barrejar formats. Procediment complet a PRODUCTION_CRM_RUNBOOK.md.
 
 ## Bloquejos i seguretat
 
-Pendents: accés segur al host, migracions i bootstrap de PostgreSQL, codi release
-publicat, build Docker, DNS, OAuth/crypt/cron, restore extern i E2E productiu
+Pendents: acces segur al host (Hostinger login manual), DNS, OAuth/crypt/cron,
+health checks automatics, restore extern i E2E productiu
 en organització aïllada. No declarar PASS ni publicar dades reals abans.
 
 La clau n8n exposada en commits anteriors no consta com a revocada. El fitxer

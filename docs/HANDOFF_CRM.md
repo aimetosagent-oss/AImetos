@@ -7,30 +7,48 @@ des d'un altre ordinador sense dependre de l'historial de la conversa.
 
 ### Punt exacte de represa del desplegament
 
-Estat **PARTIAL**. Branca `codex/crm-production`, commit publicat
-`7e7bb669a3543f6bbbe525ff839ecf1fa553f567`. No hi ha cap commit desplegat encara.
-El 24/11 s'han desat a EasyPanel la font GitHub `aimetosagent-oss/AImetos`,
-branca `codex/crm-production`, context `/` i builder `Dockerfile` als serveis
-crm-app i crm-worker. Ordre del worker desada: `worker`; l'app usa CMD `app`.
-Les dues configuracions Entorno contenen la plantilla de produccio, encara
-amb placeholders a AUTH_SECRET, DATABASE_URL, DIRECT_DATABASE_URL i ADMIN_PASSWORD.
-No s'ha clicat Implementar ni executat migracions/bootstrap al VPS.
+Estat **PARTIAL**. App i worker desplegats privadament, sense domini public,
+amb SHA `b19ae55a86f64f4c5e4e9208b2430c6a2eefee0b` de `codex/crm-production`.
+Font GitHub `aimetosagent-oss/AImetos`, context `/`, builder `Dockerfile`.
+Cap canvi de codi des de la bateria validada de 7e7bb66; b19ae55 nomes era docs.
+No s'han activat desplegaments automatics.
 
-EasyPanel ha creat dominis automatics per als dos serveis. Encara no s'han
-eliminat; abans de desplegar cal retirar-los des de Dominios de cada servei.
-No hi ha processos d'app/worker escoltant darrere d'aquestes rutes. No crear
-crm.aimetos.com fins a validar autenticacio, persistencia i recuperacio externa.
+L'usuari ha introduit els secrets a crm-app i eliminat els dos dominis
+automatics. A la represa el worker encara tenia placeholders; s'han sincronitzat
+els valors existents de l'app al worker pel panell HTTPS i comprovat que
+coincideixen, sense copiar-los al repositori ni a aquesta documentacio.
 
-Intervencio manual immediata: completar els quatre secrets/URLs a Entorno dels
-dos serveis pel panell HTTPS i guardar. ADMIN_PASSWORD nou independent de
-Control Center, minim 20 caracters; AUTH_SECRET aleatori minim 48 caracters
-(recomanat 64). Copiar la URL interna de crm-postgres a les dues URLs. Mai
-enganxar aquests valors al xat. No activar Create env file ni clicar Implementar.
-Retirar tambe els dos dominis automatics abans de retornar el control.
+IMPORTANT: Comando d'EasyPanel substitueix tota l'arrencada, no nomes CMD.
+Valors correctes desats, confirmats i desplegats:
+- crm-app: `dumb-init -- ./docker/entrypoint.sh app`
+- crm-worker: `dumb-init -- ./docker/entrypoint.sh worker`
+No posar simplement app/worker: provoca `/bin/sh: app/worker: not found`.
+Esperar la notificacio de desament abans de navegar o desplegar; una navegacio
+prematura pot cancel·lar el desament pendent.
 
-Pendents posteriors: acces segur al host per cron/rclone, OAuth Drive,
-desxifrat/restore extern, DNS A crm -> 72.62.31.48, build Docker, migracions,
-bootstrap, health checks, transferencia idempotent i E2E productiu aillat.
+Verificacions productives del 24/11:
+- Base buida comprovada amb zero taules abans de migrar.
+- Quatre migracions aplicades amb migrate deploy, cap reset ni seed.
+- Bootstrap: 1 admin, 1 organitzacio, 12 etapes; cap empresa, contacte,
+  oportunitat, producte, formulari, pressupost, factura o job demo.
+- App: /api/health 200, database ok; /contacts, /pipeline i CSV anonims 307 /login.
+- Worker: scripts/worker-health.mjs retorna exit 0, heartbeat amb acces a DB.
+- Despres de redesplegar l'app: org/12 etapes preservades; bcrypt comprova la
+  contrasenya de l'admin sense revelar-la. Login real al navegador encara pendent.
+- Control Center continua mostrant el login public habitual; no s'ha modificat.
+- Consum observat: app 58,7 MB, worker 81,2 MB; VPS CPU 1%, RAM 2,6/15,6 GB,
+  disc 28,2/192,7 GB. Durant build: CPU 53,7%, RAM 3,2/15,6 GB.
+
+Intervencio manual immediata: iniciar sessio a Hostinger en la pestanya
+https://hpanel.hostinger.com/ (redirigeix a auth.hostinger.com/login) i obrir
+VPS 72.62.31.48 > Browser Terminal. No executar ordres ni canviar claus.
+La clau SSH local ha estat refusada i EasyPanel nomes dona consola de contenidor;
+cal terminal segur del host per cron/rclone. No enviar credencials pel xat.
+
+Pendents posteriors: cron/rclone, OAuth Drive, desxifrat/restore extern,
+health checks automatics del contenidor, DNS A crm -> 72.62.31.48, TLS,
+transferencia idempotent i E2E productiu aillat amb persistencia comercial.
+No crear crm.aimetos.com ni transferir dades reals abans de backup recuperable.
 L'exportacio aprovada esta preparada, pero el consumidor productiu i la prova
 de repeticio encara s'han de completar; no executar l'importador GHL generic.
 Revocacio de la clau antiga n8n pendent d'acreditacio; nomes l'usuari la revoca
@@ -51,17 +69,18 @@ Els apartats historics de sota queden subordinats a aquest punt de represa.
 
 La migració/auditoria GHL queda ajornada. L'objectiu actual és posar en marxa
 el CRM existent a `https://crm.aimetos.com`, aïllat del Control Center i de tots
-els altres serveis del VPS Hostinger. **Encara no està desplegat en producció.**
+els altres serveis del VPS Hostinger. **Desplegat privat, encara no disponible
+per a us comercial ni accessible a crm.aimetos.com.**
 
 Configuració acordada:
 
 - Projecte intern existent `aimetos-control-center`, sense reanomenar-lo.
   `aimetos-internal` és només el nom funcional. No cal ampliar la llicència.
-- Serveis `crm-app` i `crm-worker` creats com a configuració buida sense
-  desplegar. `crm-postgres` creat i arrencat: postgres:16-alpine, aimetos_crm,
+- Serveis `crm-app` i `crm-worker` desplegats privadament i health validat.
+  `crm-postgres` creat i arrencat: postgres:16-alpine, aimetos_crm,
   usuari crm_app, port exposat 0. Volum propi verificat a
   /etc/easypanel/projects/aimetos-control-center/crm-postgres/data, muntat a
-  /var/lib/postgresql/data. Encara sense esquema CRM ni dades comercials.
+  /var/lib/postgresql/data. Esquema i bootstrap productiu aplicats, sense dades comercials.
 - Admin `aimetos.agent@gmail.com`, variable `ADMIN_PASSWORD` independent de
   `CONTROL_CENTER_PASSWORD`, que no s'ha consultat ni reutilitzat.
 - Backup diari extern a Google Drive amb rclone crypt, sense contractar serveis.
@@ -155,15 +174,16 @@ cap benchmark ni comprovació del host per SSH.
 El límit FREE de tres projectes es resol amb la nova topologia autoritzada:
 CRM i Control Center independents dins d'`aimetos-control-center`. No s'ha
 renomenat cap projecte. `demo` i `aimetos-dashboard` preservats.
-S'han creat crm-app i crm-worker, encara sense font/build/execució, i
-crm-postgres amb base buida persistent i privada. Cap servei existent modificat.
+crm-app i crm-worker ja estan desplegats privats amb b19ae55, amb secrets
+coherents, health validat i dominis automatics retirats. crm-postgres esta
+migrat i inicialitzat sense demos. Cap servei existent modificat.
 
 S'ha localitzat el domini HTTPS natiu del panell: https://abrfjv.easypanel.host/.
 Carrega sense advertiment de certificat i la sessió HTTPS ja està autenticada.
 Cap secret introduït per HTTP. SSH amb la clau
 local disponible ha estat refusat; no s'han canviat claus ni credencials.
-Segueixen pendents accés segur al host, Hostinger DNS, build Docker,
-migracions/bootstrap, OAuth Drive, cron, restore extern i DNS/TLS.
+Segueixen pendents acces segur al host, Hostinger DNS, OAuth Drive, cron,
+restore extern, health checks automatics, E2E productiu i DNS/TLS.
 No obrir el domini abans de validar-los. Estat actual: PARTIAL, no PASS.
 
 La revocació de la clau d'n8n de l'historial de Git continua sense acreditar.
