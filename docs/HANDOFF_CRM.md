@@ -5,6 +5,29 @@ des d'un altre ordinador sense dependre de l'historial de la conversa.
 
 ## Estat actual
 
+### Restriccio d'acces vigent
+
+L'usuari NO autoritza acces autonom al terminal root ni al compte Hostinger.
+La cessio de navegador anterior queda cancel·lada. No tornar a demanar sessio
+del VPS ni iniciar SSH/Hostinger en nom de l'usuari. Nomes preparar comandes
+perque ell les revisi i executi; cap canvi global de servidor, cron, systemd,
+paquets, xarxes, volums o serveis aliens. EasyPanel nomes en ambit CRM.
+
+Guia autoritativa d'operacions pendents: `docs/CRM_MANUAL_VPS.md`. Inclou abast
+de cada bloc, deteccio estricta dels tres contenidors CRM, health via consoles
+natives, copia protegida de l'script existent i comprovacio del seu hash,
+Drive amb rclone config separat, backup i restore en una DB nova del mateix
+crm-postgres (sense servei addicional), i DNS A crm -> 72.62.31.48, TTL 300.
+Comandes preparades, no executades al VPS. Primer pas: l'usuari executa nomes
+el bloc 1 de lectura i retorna eines disponibles i consum CRM, sense secrets.
+
+La programacio diaria no esta resolta: no crear crontab ni /etc/cron.d sota
+l'autoritzacio actual. Backups programats natius d'EasyPanel requereixen una
+llicencia que els inclogui; no ampliar el pla ni donar-los per disponibles.
+No s'ha substituit aquest bloqueig per infraestructura nova ni per un servei
+extern de cron. No declarar PASS ni us comercial amb nomes backups manuals.
+No s'ha executat cap ordre del VPS ni fet servir Hostinger en aquesta entrega.
+
 ### Punt exacte de represa del desplegament
 
 Estat **PARTIAL**. App i worker desplegats privadament, sense domini public,
@@ -39,13 +62,10 @@ Verificacions productives del 24/11:
 - Consum observat: app 58,7 MB, worker 81,2 MB; VPS CPU 1%, RAM 2,6/15,6 GB,
   disc 28,2/192,7 GB. Durant build: CPU 53,7%, RAM 3,2/15,6 GB.
 
-Intervencio manual immediata: iniciar sessio a Hostinger en la pestanya
-https://hpanel.hostinger.com/ (redirigeix a auth.hostinger.com/login) i obrir
-VPS 72.62.31.48 > Browser Terminal. No executar ordres ni canviar claus.
-La clau SSH local ha estat refusada i EasyPanel nomes dona consola de contenidor;
-cal terminal segur del host per cron/rclone. No enviar credencials pel xat.
+Intervencio manual immediata: nomes bloc 1 de docs/CRM_MANUAL_VPS.md, executat
+per l'usuari. No donar acces del terminal a Codex. No enviar credencials pel xat.
 
-Pendents posteriors: cron/rclone, OAuth Drive, desxifrat/restore extern,
+Pendents posteriors: programacio diaria compatible, rclone, OAuth Drive, desxifrat/restore extern,
 health checks automatics del contenidor, DNS A crm -> 72.62.31.48, TLS,
 transferencia idempotent i E2E productiu aillat amb persistencia comercial.
 No crear crm.aimetos.com ni transferir dades reals abans de backup recuperable.

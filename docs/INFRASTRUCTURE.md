@@ -3,6 +3,11 @@
 Estat verificat el 24 de novembre de 2026. Desplegament CRM: **PARTIAL**, no
 accessible encara a crm.aimetos.com. Cap cost recurrent addicional autoritzat.
 
+Restriccio posterior de l'usuari: cap acces autonom de Codex a Hostinger o
+terminal root, ni configuracio global del VPS. Operacions manuals revisables
+a CRM_MANUAL_VPS.md; aquesta guia substitueix qualsevol instruccio anterior
+de cron global o cessio de terminal. Cap operacio remota executada en preparar-la.
+
 ## Projectes reals
 
 | Projecte EasyPanel real | Responsabilitat funcional | Serveis | Dominis |
@@ -23,8 +28,9 @@ només s'afegeixen serveis independents al projecte intern existent.
   https://abrfjv.easypanel.host/. Certificat acceptat pel navegador, sense
   intersticial; sessió HTTPS autenticada i operativa.
 - No s'han introduït secrets a HTTP ni canviat el domini del panell.
-- SSH amb la clau local existent ha estat refusat. No s'han provat contrasenyes
-  ni modificat authorized_keys. Cal accés segur abans de cron/rclone al host.
+- SSH amb la clau local existent va ser refusat. No s'han provat contrasenyes
+  ni modificat authorized_keys. No tornar-ho a intentar: l'usuari executa les
+  operacions del host manualment, sense donar acces a Codex.
 - Despres de desplegar: 4 cores, CPU 1%, RAM 2,6/15,6 GB, disc 28,2/192,7 GB.
   Durant build observat: CPU 53,7%, RAM 3,2/15,6 GB. Sense proves agressives.
 
@@ -45,7 +51,8 @@ Sense Redis addicional, serveis SaaS, SMTP real ni Stripe live.
   sobre /var/lib/postgresql/data. Quatre migracions aplicades; bootstrap sense demos:
   1 admin, 1 organitzacio i 12 etapes. Encara sense dades comercials carregades.
   Mai reutilitzar bases de demo o Control Center.
-- Servei temporal de prova quan calgui: crm-restore-test, privat, amb base pròpia.
+- Restore de prova previst: DB nova aimetos_crm_restore_<timestamp> dins del
+  mateix crm-postgres, sense servei nou ni escriptures a aimetos_crm.
 - Domini final de l'app: https://crm.aimetos.com, upstream intern 3000.
 - Worker i Postgres: sense domini ni port publicat.
 
@@ -88,18 +95,20 @@ al nou administrador; conservar els identificadors GHL per deduplicar.
 
 ## Backup i restauració
 
-Script docker/backup-postgres.sh, cron diari 03:15 (hora del VPS), directori
-privat /var/backups/aimetos-crm, còpia a remote rclone crypt dedicat de Google Drive.
+Script docker/backup-postgres.sh. Preparacio manual prevista, NO executada:
+directori privat /opt/aimetos-crm/backups i configuracio rclone separada a
+/opt/aimetos-crm/config/rclone.conf, amb remote crypt de Google Drive.
 Sistema escollit davant Duplicati: aprofita els scripts existents i no afegeix
 cap servei permanent ni interfície administrativa. Duplicati no instal·lat.
-La configuracio efectiva del cron i de Drive encara esta pendent.
+Drive encara pendent. NO configurar cron global: programacio diaria pendent
+sota els nous limits. Els backups manuals no compleixen encara aquest requisit.
 Retenció configurable: KEEP_DAILY=7, KEEP_WEEKLY=4, KEEP_MONTHLY=3,
 KEEP_LOCAL_DAYS=14. Prefixos daily, weekly (diumenge UTC), monthly (dia 1 UTC).
 Cada còpia es torna a llegir i es comprova per SHA256 abans de la retenció.
 La retenció elimina només fitxers propis d'aquests prefixos, no altres dades.
 
 Cal OAuth Drive i clau crypt guardada també fora del VPS. No operatiu fins a
-descarregar, desxifrar i restaurar en crm-restore-test. El format productiu
+descarregar, desxifrar i restaurar en una DB de prova del CRM. El format productiu
 .dump usa pg_restore; el format local .json.gz usa scripts/postgres-restore.ts.
 No barrejar formats. Procediment complet a PRODUCTION_CRM_RUNBOOK.md.
 
@@ -114,7 +123,7 @@ No barrejar formats. Procediment complet a PRODUCTION_CRM_RUNBOOK.md.
 
 ## Bloquejos i seguretat
 
-Pendents: acces segur al host (Hostinger login manual), DNS, OAuth/crypt/cron,
+Pendents: execucio manual revisada per l'usuari, DNS, OAuth/crypt/programacio diaria,
 health checks automatics, restore extern i E2E productiu
 en organització aïllada. No declarar PASS ni publicar dades reals abans.
 

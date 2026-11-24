@@ -5,6 +5,12 @@ substitueix les instruccions de bootstrap antigues de DEPLOY_EASYPANEL.md.
 No executar cap ordre contra control-center, n8n, web, dashboards, Evolution API
 ni les seves bases. No usar el docker-compose local en aquest VPS.
 
+NOVA RESTRICCIO VIGENT: l'usuari no autoritza acces autonom de Codex a root
+ni a Hostinger, ni canvis globals del servidor. La guia executable/revisable es
+`CRM_MANUAL_VPS.md`, amb ordres manuals limitades al CRM. No cedir el terminal,
+no instal·lar cron global, no canviar systemd/paquets ni proveidors globals.
+Els apartats operatius de sota son context; la nova guia preval.
+
 ## 1. Accés i capacitat abans de crear serveis
 
 Acces EasyPanel HTTPS autenticat: https://abrfjv.easypanel.host/. Abans dels
@@ -17,10 +23,12 @@ La nova decisió de l'usuari és afegir serveis independents dins
 El límit de tres projectes ja no exigeix despesa. crm-app i crm-worker estan
 desplegats privats. crm-postgres esta arrencat, migrat i amb bootstrap sense demos.
 Accés HTTPS autenticat: https://abrfjv.easypanel.host/.
-SSH ha refusat la clau disponible; cal accés segur al host per cron i rclone.
+SSH va refusar la clau disponible; no repetir intents ni demanar acces al host.
+Les comandes del host les executa l'usuari, despres de revisar-les.
 No introduir secrets mitjançant l'accés HTTP a la IP.
 
-Al terminal del VPS, només lectura:
+Comprovacions historiques de recursos (no tornar a executar inventaris globals;
+usar el bloc 1 de CRM_MANUAL_VPS.md, restringit als contenidors CRM):
 
 ```sh
 free -h
@@ -134,41 +142,34 @@ Fonts: [rclone Drive](https://rclone.org/drive/) i
 No reutilitzar tokens ni configuracions d'altres serveis.
 
 Amb rclone disponible al VPS, instal·lar únicament l'script del repositori
-`docker/backup-postgres.sh` a `/opt/aimetos-crm/backup-postgres.sh` (mode 700).
-Dependències: sh, Docker CLI, rclone, flock, sha256sum. Crear fitxer mode 600
-`/etc/aimetos-crm-backup.env`:
+`docker/backup-postgres.sh` a `/opt/aimetos-crm/bin/backup-postgres.sh` (mode 700).
+Dependències: sh, Docker CLI, rclone, flock, sha256sum. No instal·lar paquets
+globals. Parametres per sessio manual, sense fitxers a /etc:
 
 ```sh
 POSTGRES_SERVICE=aimetos-control-center_crm-postgres
-BACKUP_DIR=/var/backups/aimetos-crm
+BACKUP_DIR=/opt/aimetos-crm/backups
 BACKUP_REMOTE=crm-backups:
-RCLONE_CONFIG=/root/.config/rclone/rclone.conf
+RCLONE_CONFIG=/opt/aimetos-crm/config/rclone.conf
 KEEP_DAILY=7
 KEEP_WEEKLY=4
 KEEP_MONTHLY=3
 KEEP_LOCAL_DAYS=14
 ```
 
-Confirmar el nom real amb `docker service ls` i adaptar només POSTGRES_SERVICE
-si EasyPanel l'ha normalitzat. Provar primer manualment:
-
-```sh
-set -a
-. /etc/aimetos-crm-backup.env
-set +a
-sh /opt/aimetos-crm/backup-postgres.sh
-```
+Usar els blocs 1, 3, 4 i 5 de CRM_MANUAL_VPS.md: comproven contenidors, ambit,
+hash de l'script i configuracio privada abans d'executar el backup manual.
+No reutilitzar rclone global ni apuntar a altres serveis.
 
 Nom `.dump` amb timestamp UTC, permisos privats, lock contra solapament,
 verificació pg_restore i SHA256 després de tornar a llegir la còpia de Drive.
 Retenció local de 14 dies i externa de 7 còpies daily, 4 weekly (diumenge UTC)
 i 3 monthly (dia 1 UTC), totes configurables. Només elimina còpies pròpies
 després de verificar Drive. Revisar quota mensualment.
-Cron de root, diari a 03:15 en la zona del VPS (comprovar `timedatectl`):
-
-```cron
-15 3 * * * set -a; . /etc/aimetos-crm-backup.env; set +a; timeout 1h sh /opt/aimetos-crm/backup-postgres.sh >> /var/log/aimetos-crm-backup.log 2>&1
-```
+No es proporciona cap ordre per crear cron de root: seria contrari als nous
+limits. La programacio diaria continua pendent. Comprovar nomes si el pla
+actual ja inclou backups programats natius, sense ampliar-lo ni tocar proveidors
+globals. Si no, cal acordar una solucio compatible abans de l'us comercial.
 
 Comprovar cada dia un nou `backup.external_verified` i còpia recent. Configurar
 rotació del log al VPS. Si falla o la còpia té més de 26 hores, resoldre abans
@@ -177,27 +178,11 @@ s'han instal·lat ni provat en el VPS en aquesta sessió.
 
 ## 6. Restauració abans de publicar
 
-Crear servei temporal **crm-restore-test**, Postgres 16 privat amb volum propi.
-No apuntar mai a crm-postgres. Descarregar un backup extern i el manifest:
-
-```sh
-rclone copyto 'crm-backups:/daily/NOM.dump' /var/backups/aimetos-crm/NOM.dump
-rclone copyto 'crm-backups:/daily/NOM.dump.sha256' /var/backups/aimetos-crm/NOM.dump.sha256
-cd /var/backups/aimetos-crm
-sha256sum -c NOM.dump.sha256
-```
-
-Trobar el contenidor temporal per l'etiqueta del seu servei (no el productiu),
-copiar-hi el dump amb `docker cp`, i executar dins la seva Shell:
-
-```sh
-pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-acl --exit-on-error /tmp/restore.dump
-psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c 'SELECT count(*) FROM "User"; SELECT count(*) FROM "PipelineStage";'
-```
-
-Comparar també recomptes Company, Contact, Opportunity, Task, Quote, Invoice
-amb l'origen i provar login en una instància **privada** amb aquesta base.
-Conservar evidència data/fitxer/recomptes. No obrir el domini si falla.
+No crear un servei addicional. El bloc 6 de CRM_MANUAL_VPS.md crea una base
+nova aimetos_crm_restore_<timestamp> dins de crm-postgres i restaura nomes alla.
+No canvia ni sobreescriu aimetos_crm; no usa --clean ni elimina bases. Verifica
+download/desxifrat, SHA256, pg_restore transaccional i recomptes. Es conserva
+la DB de prova per revisar-la. No obrir el domini si falla.
 Els backups locals `.json.gz` són un altre format: es restauren amb
 scripts/postgres-restore.ts sobre esquema migrat, mai amb pg_restore.
 
@@ -243,9 +228,8 @@ No repetir-los ni regenerar secrets. El punt actual es l'apartat 10.
    aimetos-control-center-crm-worker.abrfjv.easypanel.host. No eliminar serveis.
 6. Retornar el control. Encara no desplegar ni importar dades reals.
 
-Per al seguent pas caldra una sessio segura al terminal del VPS (Hostinger
-Browser Terminal o SSH autoritzat) per cron/rclone. La clau SSH local actual
-ha estat refusada. No cal canviar cap credencial del Control Center.
+El seguent pas es manual de l'usuari amb CRM_MANUAL_VPS.md. Codex no ha de
+rebre acces root ni Hostinger. No cal canviar cap credencial del Control Center.
 Google Drive requerira OAuth interactiu en rclone config; no enganxar tokens
 al xat. DNS quan es demani: A, nom crm, valor 72.62.31.48, TTL 300 o el minim
 permes, sense canviar altres registres.
@@ -272,12 +256,11 @@ desades i desplegades. Esperar sempre notificacio de desament abans de navegar.
 Una execucio temporal de crm-app amb sleep 36000 va permetre aplicar migrate
 i bootstrap des de la consola; ja s'ha substituit per l'arrencada normal.
 
-Accio manual imprescindible ara: iniciar sessio a Hostinger en la pestanya
-preparada i obrir VPS 72.62.31.48 > Browser Terminal. No executar ordres, no
-canviar contrasenyes ni claus i retornar el control. No enviar secrets pel xat.
-Despres es configuraran cron/rclone i OAuth Drive amb permisos limitats, i es
-verificara download/desxifrat/restore abans d'obrir el domini. No instal·lar
-Duplicati ni cap servei nou per suplir nomes la falta d'acces al host.
+Accio manual imprescindible ara: executar nomes el bloc 1 de CRM_MANUAL_VPS.md
+i comunicar eines disponibles i consum dels tres serveis, sense secrets.
+No donar control del terminal. Els blocs de backup/restore estan preparats
+per revisio, encara no executats. La programacio diaria no s'ha resolt sota
+la prohibicio de configuracio global; no instal·lar Duplicati per esquivar-la.
 
 Backups externs, restore, health checks automatics, DNS/TLS, transferencia i
 E2E productiu encara pendents. Control Center login disponible i serveis
