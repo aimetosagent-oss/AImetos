@@ -33,8 +33,10 @@ només s'afegeixen serveis independents al projecte intern existent.
 Mateixa arquitectura: Next.js/Auth.js/Prisma 6, worker separat i PostgreSQL 16.
 Sense Redis addicional, serveis SaaS, SMTP real ni Stripe live.
 
-- crm-app: només configuració creada; font/build/variables pendents, no desplegat.
-- crm-worker: només configuració creada; font/build/variables pendents, no desplegat.
+- crm-app: font GitHub i Dockerfile desats; plantilla d'entorn desada amb secrets
+  pendents. No desplegat. Domini automatic pendent de retirar abans d'arrencar.
+- crm-worker: mateixa font i Dockerfile; ordre worker desada; plantilla d'entorn
+  amb secrets pendents. No desplegat. Domini automatic pendent de retirar.
 - crm-postgres: creat amb postgres:16-alpine, base aimetos_crm i usuari crm_app.
   Arrencada confirmada als logs, 69,4 MB RAM inicials. Port exposat 0 (privat).
   Muntatge persistent verificat a la consola del contenidor:
@@ -57,8 +59,8 @@ al servidor fins a validar el compliment fiscal; no s'acredita VeriFactu.
 - Nova migració additiva de tres camps de recurrència, sense eliminar dades.
 - Bootstrap productiu explícit: admin, organització, dades fiscals i 12 etapes.
   No reescriu una organització existent.
-- Branca release prevista codex/crm-production; treball actual sobre main amb
-  canvis encara no publicats. No hi ha SHA desplegat. No utilitzar main per
+- Branca release codex/crm-production; codi publicat en
+  7e7bb669a3543f6bbbe525ff839ecf1fa553f567. No hi ha SHA desplegat. No utilitzar main per
   desplegar el CRM mentre inclogui canvis aliens o el codi validat no hi sigui.
 - App i worker han d'executar el mateix SHA i Dockerfile d'arrel. No modificar
   la branca, font o auto-deploy del Control Center.
@@ -86,6 +88,9 @@ al nou administrador; conservar els identificadors GHL per deduplicar.
 
 Script docker/backup-postgres.sh, cron diari 03:15 (hora del VPS), directori
 privat /var/backups/aimetos-crm, còpia a remote rclone crypt dedicat de Google Drive.
+Sistema escollit davant Duplicati: aprofita els scripts existents i no afegeix
+cap servei permanent ni interfície administrativa. Duplicati no instal·lat.
+La configuracio efectiva del cron i de Drive encara esta pendent.
 Retenció configurable: KEEP_DAILY=7, KEEP_WEEKLY=4, KEEP_MONTHLY=3,
 KEEP_LOCAL_DAYS=14. Prefixos daily, weekly (diumenge UTC), monthly (dia 1 UTC).
 Cada còpia es torna a llegir i es comprova per SHA256 abans de la retenció.

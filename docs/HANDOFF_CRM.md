@@ -5,6 +5,48 @@ des d'un altre ordinador sense dependre de l'historial de la conversa.
 
 ## Estat actual
 
+### Punt exacte de represa del desplegament
+
+Estat **PARTIAL**. Branca `codex/crm-production`, commit publicat
+`7e7bb669a3543f6bbbe525ff839ecf1fa553f567`. No hi ha cap commit desplegat encara.
+El 24/11 s'han desat a EasyPanel la font GitHub `aimetosagent-oss/AImetos`,
+branca `codex/crm-production`, context `/` i builder `Dockerfile` als serveis
+crm-app i crm-worker. Ordre del worker desada: `worker`; l'app usa CMD `app`.
+Les dues configuracions Entorno contenen la plantilla de produccio, encara
+amb placeholders a AUTH_SECRET, DATABASE_URL, DIRECT_DATABASE_URL i ADMIN_PASSWORD.
+No s'ha clicat Implementar ni executat migracions/bootstrap al VPS.
+
+EasyPanel ha creat dominis automatics per als dos serveis. Encara no s'han
+eliminat; abans de desplegar cal retirar-los des de Dominios de cada servei.
+No hi ha processos d'app/worker escoltant darrere d'aquestes rutes. No crear
+crm.aimetos.com fins a validar autenticacio, persistencia i recuperacio externa.
+
+Intervencio manual immediata: completar els quatre secrets/URLs a Entorno dels
+dos serveis pel panell HTTPS i guardar. ADMIN_PASSWORD nou independent de
+Control Center, minim 20 caracters; AUTH_SECRET aleatori minim 48 caracters
+(recomanat 64). Copiar la URL interna de crm-postgres a les dues URLs. Mai
+enganxar aquests valors al xat. No activar Create env file ni clicar Implementar.
+Retirar tambe els dos dominis automatics abans de retornar el control.
+
+Pendents posteriors: acces segur al host per cron/rclone, OAuth Drive,
+desxifrat/restore extern, DNS A crm -> 72.62.31.48, build Docker, migracions,
+bootstrap, health checks, transferencia idempotent i E2E productiu aillat.
+L'exportacio aprovada esta preparada, pero el consumidor productiu i la prova
+de repeticio encara s'han de completar; no executar l'importador GHL generic.
+Revocacio de la clau antiga n8n pendent d'acreditacio; nomes l'usuari la revoca
+des de Settings > n8n API, identificant la clau exposada, sense modificar demo.
+
+Validacio del commit publicat, despres dels pedaços compatibles: lint 0 errors
+(1 avis Apollo preexistent), typecheck i build correctes, 59/59 unit,
+33/33 integracio i 5/5 E2E. Els primers intents amb base local inactiva,
+DLL Prisma bloquejada i hostname E2E diferent es van corregir sense modificar
+logica CRM i es van repetir amb exit. No repetir la bateria si no canvia codi.
+
+Backup escollit: scripts + pg_dump + cron + rclone crypt, no Duplicati.
+Decisio i accions manuals a PRODUCTION_CRM_RUNBOOK.md. 0 EUR recurrents nous.
+Cap servei existent, demo, Control Center o dashboard modificat/reiniciat.
+Els apartats historics de sota queden subordinats a aquest punt de represa.
+
 ### Prioritat vigent: producció del pipeline manual
 
 La migració/auditoria GHL queda ajornada. L'objectiu actual és posar en marxa
@@ -128,12 +170,10 @@ La revocació de la clau d'n8n de l'historial de Git continua sense acreditar.
 S'ha informat l'usuari abans de producció, sense provar-la ni tocar demo.
 Topologia, límits i rutina de manteniment: docs/INFRASTRUCTURE.md.
 
-L'arbre de treball continua sobre `main`, base SHA
-`95183de5c8734292564655c5445da1c4cf0dacb5`, amb canvis CRM sense commit i altres
-canvis aliens a `aimetos-content-system`. La release ha d'anar en branca dedicada
-`codex/crm-production` amb només el CRM i prerequisits de robustesa, revisada
-abans de fer commit/push. No s'ha publicat cap commit ni canviat la branca o
-configuració de desplegament del Control Center.
+L'arbre de treball es a `codex/crm-production`, release publicada `7e7bb66`.
+Els canvis aliens d'aimetos-content-system continuen locals i sense incloure.
+Nomes s'ha inclos la retirada ja preparada del fitxer .n8n-local.env de Git,
+conservant-lo local i ignorat. main i el desplegament del Control Center intactes.
 
 Les seccions següents conserven l'estat i les validacions de fases anteriors;
 no impliquen validació del VPS ni del backup extern productiu.

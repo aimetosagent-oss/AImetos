@@ -41,7 +41,7 @@ recursos mesurats. Si no hi ha marge, no desplegar ni reiniciar altres serveis.
   validada. Incloure exclusivament els canvis CRM i prerequisits de robustesa;
   no afegir els canvis locals d'aimetos-content-system.
 - Fer commit i push només després de revisar `git diff --cached --name-status`.
-  No s'han fet commit ni push en aquesta sessió; el SHA de release queda pendent.
+  Release publicada: 7e7bb669a3543f6bbbe525ff839ecf1fa553f567. Cap SHA desplegat encara.
 - No publicar `main` sense distingir els canvis del Control Center. No tocar
   la seva font, branca, webhook de desplegament ni credencials.
 - Revisar també l'auditoria npm de la release: el 24/11 resten advisories a la
@@ -97,6 +97,21 @@ automàtic als serveis App. Mantenir una rèplica cadascun.
    Revisar consum real; no aplicar cap límit als serveis existents.
 
 ## 5. Backup diari extern a Google Drive
+
+Decisio: mantenir el sistema existent, no instal·lar Duplicati.
+
+| Criteri | Scripts, pg_dump, cron i rclone | Duplicati |
+| --- | --- | --- |
+| Dump consistent | Ja implementat amb pg_dump | Encara necessitaria generar pg_dump |
+| Operacio | Cron i logs simples, sense servei permanent nou | Interficie propia i configuracio persistent addicional |
+| Xifrat i Drive | rclone crypt sobre carpeta dedicada | Alternativa amb configuracio i credencials propies |
+| Recuperacio | pg_restore estandard, pendent prova externa real | Tampoc evita la prova de restauracio PostgreSQL |
+| Recursos/cost | Execucio puntual, 0 EUR addicionals | Un servei mes; no s'ha demostrat millora necessaria |
+
+No s'han muntat dos sistemes. [rclone crypt](https://rclone.org/crypt/) xifra
+abans de pujar i desxifra en recuperar. Cal guardar contrasenya i salt fora del
+VPS. [Duplicati](https://docs.duplicati.com/) no s'ha instal·lat: no aporta una
+millora demostrada en aquest cas que compensi el servei i accessos addicionals.
 
 No requereix contractar un servei. Usar rclone amb compte Drive autoritzat i
 una carpeta privada exclusiva `AImetos-CRM-Backups`. Cal capacitat disponible.
@@ -207,5 +222,36 @@ Mai seed/reset, mai eliminar/recrear crm-postgres ni el volum. Rollback del
 codi només si és compatible amb l'esquema; restaurar sempre primer en còpia
 separada. No activar auto-deploy fins que el procés estigui comprovat.
 
-Estat: preparació local; recursos VPS, build Docker, OAuth Drive, restore extern,
-prova de persistència al VPS, DNS i certificat segueixen pendents d'accés.
+## 9. Intervencio manual immediata i represa
+
+1. Obrir nomes https://abrfjv.easypanel.host/ amb la sessio autenticada.
+2. aimetos-control-center > crm-postgres > Credenciales: copiar la URL interna,
+   mai exposar un port. No regenerar la contrasenya de PostgreSQL.
+3. crm-app > Entorno: substituir AUTH_SECRET per un valor aleatori de 64
+   caracters del gestor; DATABASE_URL i DIRECT_DATABASE_URL per la URL interna;
+   ADMIN_PASSWORD per una contrasenya nova independent de minim 20 caracters.
+   Guardar, sense Implementar. Conservar ADMIN_EMAIL=aimetos.agent@gmail.com.
+4. crm-worker > Entorno: mateixos valors dels quatre camps i Guardar.
+   No activar Create env file. No enviar secrets per xat.
+5. Dominios de crm-app i crm-worker: eliminar nomes els dominis automatics
+   aimetos-control-center-crm-app.abrfjv.easypanel.host i
+   aimetos-control-center-crm-worker.abrfjv.easypanel.host. No eliminar serveis.
+6. Retornar el control. Encara no desplegar ni importar dades reals.
+
+Per al seguent pas caldra una sessio segura al terminal del VPS (Hostinger
+Browser Terminal o SSH autoritzat) per cron/rclone. La clau SSH local actual
+ha estat refusada. No cal canviar cap credencial del Control Center.
+Google Drive requerira OAuth interactiu en rclone config; no enganxar tokens
+al xat. DNS quan es demani: A, nom crm, valor 72.62.31.48, TTL 300 o el minim
+permes, sense canviar altres registres.
+
+Abans d'autoritzar us comercial, l'usuari ha de revocar la clau antiga d'n8n
+exposada: Settings > n8n API > clau corresponent > revocar/eliminar. Si no es
+pot identificar inequívocament, no revocar claus a cegues; revisar-ho manualment.
+Actualitzar despres nomes les configuracions locals que l'usaven. No modificar
+el projecte demo ni workflows/serveis. La revocacio encara no esta acreditada.
+
+Estat: PARTIAL. Font/builders i plantilles d'entorn desats, PostgreSQL privat i
+persistent arrencat; secrets, build Docker, migracions/bootstrap, OAuth Drive,
+restore extern, persistencia VPS, DNS i certificat pendents. Les proves locals
+del codi publicat ja passen: 59 unit, 33 integracio i 5 E2E, lint/typecheck/build.
